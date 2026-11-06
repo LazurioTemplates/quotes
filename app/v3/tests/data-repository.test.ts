@@ -1,11 +1,15 @@
-import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { describe, expect, setDefaultTimeout, test } from "bun:test";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { check, validateRepository } from "../../../templates/data-repo/scripts/validate.ts";
 import { renderSchemas } from "../src/cli/schema.ts";
 import { collections } from "../src/domain/collections.ts";
 import { createFixtureRepo } from "./support/fixture-repo.ts";
 import { DATA_REPO_TEMPLATE, newItem, newQuote, sampleData } from "./support/seed.ts";
+
+// The last test builds four data repositories with real Git; on a Windows
+// runner that takes longer than bun's default of 5 s per test.
+setDefaultTimeout(60_000);
 
 const schema = (file: string) =>
   JSON.parse(readFileSync(join(DATA_REPO_TEMPLATE, "schemas", file), "utf8"));
@@ -77,6 +81,15 @@ describe("data repository template", () => {
     );
     try {
       for (const fixture of fixtures) expect(validateRepository(fixture.mountRoot)).toEqual([]);
+      const [first] = fixtures;
+      if (!first) throw new Error("no fixture");
+      writeFileSync(
+        join(first.mountRoot, "data", "items", "BROKEN.yaml"),
+        "id: OTHER\nrecord:\n  code: BROKEN\nschemaVersion: quotes.item.v1\n",
+      );
+      const errors = validateRepository(first.mountRoot);
+      expect(errors.some((error) => error.includes("/record/name: is required"))).toBe(true);
+      expect(errors.some((error) => error.includes("the id must be the file name"))).toBe(true);
     } finally {
       for (const fixture of fixtures) fixture.cleanup();
     }

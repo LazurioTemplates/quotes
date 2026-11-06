@@ -141,7 +141,8 @@ profile releases only patch versions with a security fix change.
 Known for later profile releases: Vite+ is reconsidered when it supports Bun
 as a runtime and its formatter reaches 1.0; Biome's YAML and Markdown
 formatting stays off until a profile release turns it on. When
-`@lazurio/repository-db` words its Draft & Publish card in English, the App's
+`@lazurio/repository-db` words its Draft & Publish card in English
+([Lazurio/repository-db#40](https://github.com/Lazurio/repository-db/issues/40)), the App's
 own card (`app/v3/src/ui/components/DraftCard.tsx`) returns to the engine's
 `DraftPublishPanel`.
 

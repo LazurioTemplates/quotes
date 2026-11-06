@@ -15,7 +15,8 @@ import { useLocale, useT } from "../i18n.tsx";
  * `DraftPublishPanel` (`rdb-draft-*`). repository-db v3.2.6 words its card in
  * Czech only, so in English the card takes this file's words for the same
  * states, actions and refusals; in Czech it shows the engine's own words.
- * When the engine speaks English, this file returns to `DraftPublishPanel`.
+ * When the engine speaks English (Lazurio/repository-db#40), this file
+ * returns to `DraftPublishPanel`.
  */
 export interface DraftCardApi {
   loadReview(): Promise<DraftPanelInput>;
