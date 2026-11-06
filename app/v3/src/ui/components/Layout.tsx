@@ -1,29 +1,47 @@
 import type { DraftPanelInput } from "@lazurio/repository-db";
 import type { ReactNode } from "react";
+import type { Localized } from "../../i18n/locale.ts";
 import { quotesBrand } from "../../instance/brand.ts";
+import { useT } from "../i18n.tsx";
 import { href, type Route } from "../routes.ts";
 
-const NAV: { label: string; route: Route; matches: Route["page"][] }[] = [
-  { label: "Přehled", route: { page: "overview" }, matches: ["overview"] },
+const NAV: { label: Localized; route: Route; matches: Route["page"][] }[] = [
+  { label: { cs: "Přehled", en: "Overview" }, route: { page: "overview" }, matches: ["overview"] },
   {
-    label: "Nabídky",
+    label: { cs: "Nabídky", en: "Quotes" },
     route: { page: "quotes", status: null },
     matches: ["quotes", "quote", "edit-quote"],
   },
-  { label: "Nová nabídka", route: { page: "new-quote" }, matches: ["new-quote"] },
   {
-    label: "Ceník",
+    label: { cs: "Nová nabídka", en: "New quote" },
+    route: { page: "new-quote" },
+    matches: ["new-quote"],
+  },
+  {
+    label: { cs: "Ceník", en: "Price list" },
     route: { page: "items", category: null },
     matches: ["items", "item", "new-item"],
   },
-  { label: "Import ceníku", route: { page: "import" }, matches: ["import"] },
   {
-    label: "Zákazníci",
+    label: { cs: "Import ceníku", en: "Price list import" },
+    route: { page: "import" },
+    matches: ["import"],
+  },
+  {
+    label: { cs: "Zákazníci", en: "Customers" },
     route: { page: "customers" },
     matches: ["customers", "customer", "new-customer"],
   },
-  { label: "Nastavení", route: { page: "settings" }, matches: ["settings"] },
-  { label: "Koncept a publikování", route: { page: "draft" }, matches: ["draft"] },
+  {
+    label: { cs: "Nastavení", en: "Settings" },
+    route: { page: "settings" },
+    matches: ["settings"],
+  },
+  {
+    label: { cs: "Koncept a publikování", en: "Draft & publish" },
+    route: { page: "draft" },
+    matches: ["draft"],
+  },
 ];
 
 /** How many records the unpublished draft changes; null when there is no draft. */
@@ -42,27 +60,31 @@ export function Layout({
   draft: DraftPanelInput | null;
   children: ReactNode;
 }) {
+  const t = useT();
   const count = draftCount(draft);
   return (
     <div className="shell">
-      <nav className="sidebar" aria-label="Hlavní navigace">
+      <nav className="sidebar" aria-label={t("Hlavní navigace", "Main navigation")}>
         <div className="sidebar-header">
-          <span className="sidebar-product">Cenové nabídky</span>
+          <span className="sidebar-product">{t("Cenové nabídky", "Quotes")}</span>
           <span className="sidebar-context">{quotesBrand.organization}</span>
         </div>
         <ul className="sidebar-items">
           {NAV.map((item) => {
             const active = item.matches.includes(route.page);
             return (
-              <li key={item.label}>
+              <li key={item.label.en}>
                 <a
                   className={`sidebar-item${active ? " active" : ""}`}
                   href={href(item.route)}
                   aria-current={active ? "page" : undefined}
                 >
-                  <span>{item.label}</span>
+                  <span>{t.of(item.label)}</span>
                   {item.route.page === "draft" && count !== null ? (
-                    <span className="badge badge-draft" title="Nepublikované změny">
+                    <span
+                      className="badge badge-draft"
+                      title={t("Nepublikované změny", "Unpublished changes")}
+                    >
                       {count}
                     </span>
                   ) : null}

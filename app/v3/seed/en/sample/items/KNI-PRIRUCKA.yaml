@@ -1,0 +1,11 @@
+id: KNI-PRIRUCKA
+record:
+  category: services
+  code: KNI-PRIRUCKA
+  name: Healthy Workplace handbook (printed book)
+  purchase_price: 18000
+  sale_price: 29000
+  unit: pc
+  valid_from: 2026-01-01
+  vat_rate: zero
+schemaVersion: quotes.item.v1

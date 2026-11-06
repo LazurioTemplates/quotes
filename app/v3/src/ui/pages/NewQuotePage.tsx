@@ -3,6 +3,7 @@ import { idOfQuote } from "../../domain/quote.ts";
 import type { AppData } from "../App.tsx";
 import { api } from "../api.ts";
 import { ErrorNotice, Field, fieldErrors, PageHeader } from "../components/common.tsx";
+import { useT } from "../i18n.tsx";
 import { href, navigate } from "../routes.ts";
 
 /** A new quote starts as a draft with the next number; the lines come in the editor. */
@@ -13,6 +14,7 @@ export function NewQuotePage({
   data: AppData;
   onChanged: () => Promise<void>;
 }) {
+  const t = useT();
   const [customerId, setCustomerId] = useState(data.customers[0]?.value.id ?? "");
   const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false);
@@ -37,18 +39,22 @@ export function NewQuotePage({
   return (
     <section>
       <PageHeader
-        title="Nová nabídka"
-        subtitle="Vyberte zákazníka a napište, čeho se nabídka týká. Číslo přidělí aplikace podle formátu z Nastavení; položky doplníte v dalším kroku."
+        title={t("Nová nabídka", "New quote")}
+        subtitle={t(
+          "Vyberte zákazníka a napište, čeho se nabídka týká. Číslo přidělí aplikace podle formátu z Nastavení; položky doplníte v dalším kroku.",
+          "Choose the customer and say what the quote is about. The App gives it the next number in the format of Settings; the lines come in the next step.",
+        )}
       />
       {data.customers.length === 0 ? (
         <p className="notice notice-info">
-          Zatím nemáte žádného zákazníka. <a href={href({ page: "new-customer" })}>Přidejte ho</a>{" "}
-          a pak se sem vraťte.
+          {t("Zatím nemáte žádného zákazníka.", "There is no customer yet.")}{" "}
+          <a href={href({ page: "new-customer" })}>{t("Přidejte ho", "Add one")}</a>{" "}
+          {t("a pak se sem vraťte.", "and come back here.")}
         </p>
       ) : (
         <form className="form" onSubmit={submit}>
           <ErrorNotice error={error} />
-          <Field label="Zákazník" error={errors.customer_id}>
+          <Field label={t("Zákazník", "Customer")} error={errors.customer_id}>
             <select value={customerId} onChange={(event) => setCustomerId(event.target.value)}>
               {data.customers.map((entry) => (
                 <option key={entry.value.id} value={entry.value.id}>
@@ -57,15 +63,26 @@ export function NewQuotePage({
               ))}
             </select>
           </Field>
-          <Field label="Předmět nabídky" hint="Například „Vybavení zasedací místnosti“." error={errors.title}>
+          <Field
+            label={t("Předmět nabídky", "Subject of the quote")}
+            hint={t(
+              "Například „Vybavení zasedací místnosti“.",
+              "For example “Meeting room furniture”.",
+            )}
+            error={errors.title}
+          >
             <input value={title} onChange={(event) => setTitle(event.target.value)} required />
           </Field>
           <div className="form-actions">
-            <button className="button button-primary" type="submit" disabled={busy || !title.trim()}>
-              Založit koncept
+            <button
+              className="button button-primary"
+              type="submit"
+              disabled={busy || !title.trim()}
+            >
+              {t("Založit koncept", "Create the draft")}
             </button>
             <a className="button" href={href({ page: "new-customer" })}>
-              Nový zákazník
+              {t("Nový zákazník", "New customer")}
             </a>
           </div>
         </form>

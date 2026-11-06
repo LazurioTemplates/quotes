@@ -16,7 +16,7 @@
     "test": "bun test",
     "schema:export": "bun run src/cli/schema.ts --write",
     "schema:check": "bun run src/cli/schema.ts --check",
-    "validate:data": "bun run src/validate-data.ts seed/empty seed/sample",
+    "validate:data": "bun run src/validate-data.ts seed/cs/empty seed/cs/sample seed/en/empty seed/en/sample",
     "validate:db": "bun run src/validate-data.ts ../../db/data",
     "quotes": "bun --no-env-file run src/cli/quotes.ts",
     "check": "bun run typecheck && bun run lint && bun run schema:check && bun run validate:data && bun test"

@@ -1,0 +1,6 @@
+id: lighting
+record:
+  id: lighting
+  name: Lighting
+  order: 2
+schemaVersion: quotes.category.v1

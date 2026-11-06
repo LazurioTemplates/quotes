@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { calculateQuote } from "../../domain/calculate.ts";
 import { checkQuote, readyToSend } from "../../domain/checks.ts";
-import { formatDate, localToday } from "../../domain/common.ts";
+import { localToday } from "../../domain/common.ts";
 import { quoteEmail } from "../../domain/email.ts";
-import { formatMoney, formatNumber, formatPercent } from "../../domain/money.ts";
 import {
   ACTION_LABELS,
   allowedActions,
@@ -16,6 +15,7 @@ import type { AppData } from "../App.tsx";
 import { api, printUrl } from "../api.ts";
 import { ErrorNotice, PageHeader, StatusChip } from "../components/common.tsx";
 import { Totals } from "../components/Totals.tsx";
+import { useFormat, useT } from "../i18n.tsx";
 import { href, navigate } from "../routes.ts";
 
 export function QuoteDetailPage({
@@ -29,6 +29,8 @@ export function QuoteDetailPage({
   onChanged: () => Promise<void>;
   today?: string;
 }) {
+  const t = useT();
+  const f = useFormat();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
@@ -36,16 +38,18 @@ export function QuoteDetailPage({
   if (!stored) {
     return (
       <section>
-        <PageHeader title="Nabídka neexistuje" />
+        <PageHeader title={t("Nabídka neexistuje", "This quote does not exist")} />
         <p>
-          <a href={href({ page: "quotes", status: null })}>Zpět na nabídky</a>
+          <a href={href({ page: "quotes", status: null })}>
+            {t("Zpět na nabídky", "Back to the quotes")}
+          </a>
         </p>
       </section>
     );
   }
   const quote = stored.value;
   const settings = data.settings.value;
-  const money = (amount: number) => formatMoney(amount, quote.currency);
+  const money = (amount: number) => f.money(amount, quote.currency);
   const totals = calculateQuote(quote, settings);
   const versions = data.quotes
     .map((entry) => entry.value)
@@ -53,14 +57,18 @@ export function QuoteDetailPage({
     .sort((left, right) => left.version - right.version);
   const latest = versions.at(-1);
   const isLatest = latest?.version === quote.version;
-  const issues = checkQuote(quote, {
-    settings,
-    items: data.items.map((entry) => entry.value),
-    customers: data.customers.map((entry) => entry.value),
-    versions,
-    today,
-  });
-  const email = quoteEmail(quote, settings);
+  const issues = checkQuote(
+    quote,
+    {
+      settings,
+      items: data.items.map((entry) => entry.value),
+      customers: data.customers.map((entry) => entry.value),
+      versions,
+      today,
+    },
+    f.locale,
+  );
+  const email = quoteEmail(quote, settings, f.locale);
   const actions = isLatest ? allowedActions(quote) : [];
   const ready = readyToSend(issues);
 
@@ -88,7 +96,10 @@ export function QuoteDetailPage({
   return (
     <section>
       <PageHeader
-        eyebrow={`Nabídka · verze ${quote.version} z ${versions.length}`}
+        eyebrow={t(
+          `Nabídka · verze ${quote.version} z ${versions.length}`,
+          `Quote · version ${quote.version} of ${versions.length}`,
+        )}
         title={
           <>
             <span className="code-title">{quote.number}</span> {quote.title}
@@ -97,11 +108,11 @@ export function QuoteDetailPage({
         actions={
           <>
             <a className="button" href={printUrl(id)} target="_blank" rel="noreferrer">
-              Tisk a PDF
+              {t("Tisk a PDF", "Print and PDF")}
             </a>
             {quote.status === "draft" ? (
               <a className="button button-primary" href={href({ page: "edit-quote", id })}>
-                Upravit
+                {t("Upravit", "Edit")}
               </a>
             ) : null}
             {isLatest && canCreateVersion(quote) ? (
@@ -111,7 +122,7 @@ export function QuoteDetailPage({
                 disabled={busy}
                 onClick={() => run(() => api.newVersion(id))}
               >
-                Upravit jako novou verzi
+                {t("Upravit jako novou verzi", "Edit as a new version")}
               </button>
             ) : null}
           </>
@@ -122,23 +133,40 @@ export function QuoteDetailPage({
         <span>
           <a href={href({ page: "customer", id: quote.customer.id })}>{quote.customer.name}</a>
         </span>
-        <span className="muted">Vystaveno {formatDate(quote.issue_date)}</span>
-        <span className="muted">Platí do {formatDate(quote.valid_until)}</span>
-        {quote.sent_at ? <span className="muted">Odesláno {formatDate(quote.sent_at)}</span> : null}
-        {quote.prepared_by ? <span className="muted">Vypracoval(a) {quote.prepared_by}</span> : null}
+        <span className="muted">
+          {t("Vystaveno", "Issued")} {f.date(quote.issue_date)}
+        </span>
+        <span className="muted">
+          {t("Platí do", "Valid until")} {f.date(quote.valid_until)}
+        </span>
+        {quote.sent_at ? (
+          <span className="muted">
+            {t("Odesláno", "Sent")} {f.date(quote.sent_at)}
+          </span>
+        ) : null}
+        {quote.prepared_by ? (
+          <span className="muted">
+            {t("Vypracoval(a)", "Prepared by")} {quote.prepared_by}
+          </span>
+        ) : null}
       </div>
 
       <ErrorNotice error={error} />
       {!isLatest && latest ? (
         <p className="notice notice-info">
-          Toto je starší verze. Platná je{" "}
-          <a href={href({ page: "quote", id: idOfQuote(latest) })}>verze {latest.version}</a>.
+          {t("Toto je starší verze. Platná je", "This is an older version. The current one is")}{" "}
+          <a href={href({ page: "quote", id: idOfQuote(latest) })}>
+            {t("verze", "version")} {latest.version}
+          </a>
+          .
         </p>
       ) : null}
       {isLatest && isPastValidity(quote, today) ? (
         <p className="notice notice-warning">
-          Platnost skončila {formatDate(quote.valid_until)} a zákazník se neozval. Označte nabídku
-          jako propadlou, nebo z ní vytvořte novou verzi.
+          {t(
+            `Platnost skončila ${f.date(quote.valid_until)} a zákazník se neozval. Označte nabídku jako propadlou, nebo z ní vytvořte novou verzi.`,
+            `The quote expired on ${f.date(quote.valid_until)} without an answer. Mark it as expired, or create a new version of it.`,
+          )}
         </p>
       ) : null}
 
@@ -148,13 +176,13 @@ export function QuoteDetailPage({
             <thead>
               <tr>
                 <th>#</th>
-                <th>Položka</th>
-                <th className="num">Množství</th>
-                <th className="num">Cena za MJ</th>
-                <th className="num">Sleva</th>
-                <th className="num">DPH</th>
-                <th className="num">Bez DPH</th>
-                <th className="num">Marže</th>
+                <th>{t("Položka", "Item")}</th>
+                <th className="num">{t("Množství", "Quantity")}</th>
+                <th className="num">{t("Cena za MJ", "Unit price")}</th>
+                <th className="num">{t("Sleva", "Discount")}</th>
+                <th className="num">{t("DPH", "VAT")}</th>
+                <th className="num">{t("Bez DPH", "Excl. VAT")}</th>
+                <th className="num">{t("Marže", "Margin")}</th>
               </tr>
             </thead>
             <tbody>
@@ -169,22 +197,26 @@ export function QuoteDetailPage({
                       <div>{line.name}</div>
                       <div className="muted small">
                         {line.item_code ? (
-                          <a href={href({ page: "item", code: line.item_code })}>{line.item_code}</a>
+                          <a href={href({ page: "item", code: line.item_code })}>
+                            {line.item_code}
+                          </a>
                         ) : (
-                          "mimo ceník"
+                          t("mimo ceník", "not in the price list")
                         )}
                         {line.description ? ` · ${line.description}` : ""}
                       </div>
-                      {line.to_check ? <div className="warning small">⚠ {line.to_check}</div> : null}
+                      {line.to_check ? (
+                        <div className="warning small">⚠ {line.to_check}</div>
+                      ) : null}
                     </td>
                     <td className="num">
-                      {formatNumber(line.quantity)} {line.unit}
+                      {f.number(line.quantity)} {line.unit}
                     </td>
                     <td className="num">{money(line.unit_price)}</td>
                     <td className="num">
-                      {line.discount_percent ? formatPercent(line.discount_percent) : ""}
+                      {line.discount_percent ? f.percent(line.discount_percent) : ""}
                     </td>
-                    <td className="num">{formatPercent(line.vat_percent)}</td>
+                    <td className="num">{f.percent(line.vat_percent)}</td>
                     <td className="num">{money(amounts?.net ?? 0)}</td>
                     <td className={`num ${margin !== null && margin < 0 ? "danger" : "muted"}`}>
                       {margin === null ? "" : money(margin)}
@@ -195,30 +227,34 @@ export function QuoteDetailPage({
               {quote.lines.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="muted">
-                    Nabídka zatím nemá žádnou položku.
+                    {t("Nabídka zatím nemá žádnou položku.", "The quote has no line yet.")}
                   </td>
                 </tr>
               ) : null}
             </tbody>
           </table>
-          <Totals totals={totals} currency={quote.currency} discountPercent={quote.discount_percent} />
+          <Totals
+            totals={totals}
+            currency={quote.currency}
+            discountPercent={quote.discount_percent}
+          />
           {quote.introduction || quote.terms || quote.internal_note ? (
             <article className="panel">
               {quote.introduction ? (
                 <>
-                  <h3>Úvodní text</h3>
+                  <h3>{t("Úvodní text", "Introduction")}</h3>
                   <p className="pre">{quote.introduction}</p>
                 </>
               ) : null}
               {quote.terms ? (
                 <>
-                  <h3>Podmínky</h3>
+                  <h3>{t("Podmínky", "Terms")}</h3>
                   <p className="pre">{quote.terms}</p>
                 </>
               ) : null}
               {quote.internal_note ? (
                 <>
-                  <h3>Interní poznámka</h3>
+                  <h3>{t("Interní poznámka", "Internal note")}</h3>
                   <p className="pre muted">{quote.internal_note}</p>
                 </>
               ) : null}
@@ -229,7 +265,7 @@ export function QuoteDetailPage({
         <aside className="aside">
           {actions.length > 0 ? (
             <article className="panel">
-              <h2>Stav nabídky</h2>
+              <h2>{t("Stav nabídky", "State of the quote")}</h2>
               <div className="stack">
                 {actions.map((action) => (
                   <button
@@ -239,14 +275,16 @@ export function QuoteDetailPage({
                     disabled={busy || (action === "send" && !ready)}
                     onClick={() => act(action)}
                   >
-                    {ACTION_LABELS[action]}
+                    {t.of(ACTION_LABELS[action])}
                   </button>
                 ))}
               </div>
               {actions.includes("send") ? (
                 <p className="small muted">
-                  Aplikace nabídku neposílá. Pošlete ji zákazníkovi sami (PDF a text níže) a pak ji
-                  tady označte jako odeslanou; tím se tato verze uzamkne.
+                  {t(
+                    "Aplikace nabídku neposílá. Pošlete ji zákazníkovi sami (PDF a text níže) a pak ji tady označte jako odeslanou; tím se tato verze uzamkne.",
+                    "The App does not send the quote. Send it to the customer yourself (the PDF and the text below), then mark it as sent here; this locks the version.",
+                  )}
                 </p>
               ) : null}
             </article>
@@ -254,14 +292,21 @@ export function QuoteDetailPage({
 
           {quote.status === "draft" ? (
             <article className="panel">
-              <h2>Kontrola před odesláním</h2>
+              <h2>{t("Kontrola před odesláním", "Check before sending")}</h2>
               {issues.length === 0 ? (
-                <p className="ok">Nabídka je připravená k odeslání.</p>
+                <p className="ok">
+                  {t("Nabídka je připravená k odeslání.", "The quote is ready to go out.")}
+                </p>
               ) : (
                 <ul className="issues">
                   {issues.map((issue) => (
-                    <li key={`${issue.code}:${issue.line ?? ""}`} className={`issue issue-${issue.severity}`}>
-                      <span className="issue-mark">{issue.severity === "error" ? "Chyba" : "Pozor"}</span>{" "}
+                    <li
+                      key={`${issue.code}:${issue.line ?? ""}`}
+                      className={`issue issue-${issue.severity}`}
+                    >
+                      <span className="issue-mark">
+                        {issue.severity === "error" ? t("Chyba", "Error") : t("Pozor", "Warning")}
+                      </span>{" "}
                       {issue.message}
                     </li>
                   ))}
@@ -271,28 +316,32 @@ export function QuoteDetailPage({
           ) : null}
 
           <article className="panel">
-            <h2>E-mail pro zákazníka</h2>
+            <h2>{t("E-mail pro zákazníka", "E-mail for the customer")}</h2>
             <p className="small muted">
-              Komu: {email.to ?? "zákazník nemá e-mail"} · příloha {email.attachment}
+              {t("Komu", "To")}:{" "}
+              {email.to ?? t("zákazník nemá e-mail", "the customer has no e-mail")} ·{" "}
+              {t("příloha", "attachment")} {email.attachment}
             </p>
             <p className="email-subject">{email.subject}</p>
             <p className="pre email-body">{email.body}</p>
             <button className="button" type="button" onClick={copyEmail}>
-              {copied ? "Zkopírováno" : "Zkopírovat text"}
+              {copied ? t("Zkopírováno", "Copied") : t("Zkopírovat text", "Copy the text")}
             </button>
           </article>
 
           <article className="panel">
-            <h2>Verze</h2>
+            <h2>{t("Verze", "Versions")}</h2>
             <ul className="versions">
               {versions.map((version) => (
                 <li key={version.version}>
                   <a href={href({ page: "quote", id: idOfQuote(version) })}>
-                    Verze {version.version}
+                    {t("Verze", "Version")} {version.version}
                   </a>{" "}
                   <StatusChip status={version.status} />{" "}
-                  <span className="muted small">{formatDate(version.issue_date)}</span>
-                  {version.version === quote.version ? <span className="muted small"> · zobrazená</span> : null}
+                  <span className="muted small">{f.date(version.issue_date)}</span>
+                  {version.version === quote.version ? (
+                    <span className="muted small"> · {t("zobrazená", "shown")}</span>
+                  ) : null}
                 </li>
               ))}
             </ul>

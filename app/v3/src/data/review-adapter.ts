@@ -1,59 +1,60 @@
 import {
   parseYaml,
   REVIEW_SURFACE_CONTRACT_VERSION,
+  type ResourceChangeKind,
   type ReviewableResource,
   type ReviewFieldSummary,
   type ReviewInputChange,
-  type ResourceChangeKind,
   type ReviewSurfaceAdapter,
   structuralDiff,
 } from "@lazurio/repository-db";
 import { COLLECTION_NAMES, type CollectionName } from "../domain/collections.ts";
 import { formatMoney } from "../domain/money.ts";
+import { type Locale, type Localized, pick } from "../i18n/locale.ts";
 
 /** Czech labels of the fields a reviewer sees; a field without one shows its key. */
-const FIELD_LABELS: Record<string, string> = {
-  name: "Název",
-  title: "Předmět",
-  status: "Stav",
-  code: "Kód",
-  category: "Kategorie",
-  unit: "Jednotka",
-  purchase_price: "Nákupní cena",
-  sale_price: "Prodejní cena",
-  vat_rate: "Sazba DPH",
-  vat_rates: "Sazby DPH",
-  valid_from: "Platí od",
-  valid_to: "Platí do",
-  price_history: "Historie cen",
-  supplier: "Dodavatel",
-  supplier_code: "Kód dodavatele",
-  archived: "Vyřazená",
-  description: "Popis",
-  customer: "Zákazník",
-  lines: "Řádky",
-  discount_percent: "Sleva",
-  issue_date: "Vystaveno",
-  valid_until: "Platí do",
-  introduction: "Úvodní text",
-  terms: "Podmínky",
-  internal_note: "Interní poznámka",
-  sent_at: "Odesláno",
-  closed_at: "Uzavřeno",
-  email: "E-mail",
-  phone: "Telefon",
-  contact_person: "Kontaktní osoba",
-  company_id: "IČO",
-  vat_id: "DIČ",
-  street: "Ulice",
-  city: "Obec",
-  postal_code: "PSČ",
-  quote_number_format: "Formát čísla nabídky",
-  validity_days: "Platnost (dní)",
-  total_rounding: "Zaokrouhlení",
-  min_margin_percent: "Minimální marže",
-  default_vat_rate: "Výchozí sazba DPH",
-  order: "Pořadí",
+const FIELD_LABELS: Record<string, Localized> = {
+  name: { cs: "Název", en: "Name" },
+  title: { cs: "Předmět", en: "Subject" },
+  status: { cs: "Stav", en: "State" },
+  code: { cs: "Kód", en: "Code" },
+  category: { cs: "Kategorie", en: "Category" },
+  unit: { cs: "Jednotka", en: "Unit" },
+  purchase_price: { cs: "Nákupní cena", en: "Purchase price" },
+  sale_price: { cs: "Prodejní cena", en: "Sale price" },
+  vat_rate: { cs: "Sazba DPH", en: "VAT rate" },
+  vat_rates: { cs: "Sazby DPH", en: "VAT rates" },
+  valid_from: { cs: "Platí od", en: "Valid from" },
+  valid_to: { cs: "Platí do", en: "Valid until" },
+  price_history: { cs: "Historie cen", en: "Price history" },
+  supplier: { cs: "Dodavatel", en: "Supplier" },
+  supplier_code: { cs: "Kód dodavatele", en: "Supplier's code" },
+  archived: { cs: "Vyřazená", en: "Retired" },
+  description: { cs: "Popis", en: "Description" },
+  customer: { cs: "Zákazník", en: "Customer" },
+  lines: { cs: "Řádky", en: "Lines" },
+  discount_percent: { cs: "Sleva", en: "Discount" },
+  issue_date: { cs: "Vystaveno", en: "Issued" },
+  valid_until: { cs: "Platí do", en: "Valid until" },
+  introduction: { cs: "Úvodní text", en: "Introduction" },
+  terms: { cs: "Podmínky", en: "Terms" },
+  internal_note: { cs: "Interní poznámka", en: "Internal note" },
+  sent_at: { cs: "Odesláno", en: "Sent" },
+  closed_at: { cs: "Uzavřeno", en: "Closed" },
+  email: { cs: "E-mail", en: "E-mail" },
+  phone: { cs: "Telefon", en: "Phone" },
+  contact_person: { cs: "Kontaktní osoba", en: "Contact person" },
+  company_id: { cs: "IČO", en: "Company ID" },
+  vat_id: { cs: "DIČ", en: "VAT ID" },
+  street: { cs: "Ulice", en: "Street" },
+  city: { cs: "Obec", en: "City" },
+  postal_code: { cs: "PSČ", en: "Postal code" },
+  quote_number_format: { cs: "Formát čísla nabídky", en: "Quote number format" },
+  validity_days: { cs: "Platnost (dní)", en: "Validity (days)" },
+  total_rounding: { cs: "Zaokrouhlení", en: "Rounding" },
+  min_margin_percent: { cs: "Minimální marže", en: "Minimum margin" },
+  default_vat_rate: { cs: "Výchozí sazba DPH", en: "Default VAT rate" },
+  order: { cs: "Pořadí", en: "Order" },
 };
 
 const MONEY_FIELDS = new Set([
@@ -64,27 +65,30 @@ const MONEY_FIELDS = new Set([
   "sale_price_before",
 ]);
 
-const TYPE_LABELS: Record<CollectionName, string> = {
-  settings: "Nastavení",
-  categories: "Kategorie",
-  items: "Položka ceníku",
-  customers: "Zákazník",
-  quotes: "Nabídka",
+const TYPE_LABELS: Record<CollectionName, Localized> = {
+  settings: { cs: "Nastavení", en: "Settings" },
+  categories: { cs: "Kategorie", en: "Category" },
+  items: { cs: "Položka ceníku", en: "Price list item" },
+  customers: { cs: "Zákazník", en: "Customer" },
+  quotes: { cs: "Nabídka", en: "Quote" },
 };
 
 /** Names changed fields as a reviewer knows them and shows amounts in crowns. */
-export function labelFields(fields: readonly ReviewFieldSummary[]): ReviewFieldSummary[] {
+export function labelFields(
+  fields: readonly ReviewFieldSummary[],
+  locale: Locale = "cs",
+): ReviewFieldSummary[] {
   return fields.map((field) => {
     const segments = field.fieldPath.split("/").filter(Boolean);
     const key = segments[0] ?? "";
     const last = segments.at(-1) ?? "";
     const amount = (summary: string | undefined) =>
       summary !== undefined && MONEY_FIELDS.has(last) && /^[0-9]+$/.test(summary)
-        ? formatMoney(Number(summary))
+        ? formatMoney(Number(summary), "CZK", locale)
         : summary;
     return {
       ...field,
-      label: FIELD_LABELS[key] ?? field.label,
+      label: FIELD_LABELS[key]?.[locale] ?? field.label,
       beforeSummary: amount(field.beforeSummary),
       afterSummary: amount(field.afterSummary),
     };
@@ -92,13 +96,22 @@ export function labelFields(fields: readonly ReviewFieldSummary[]): ReviewFieldS
 }
 
 /** How a person recognises a record: its type, a label and the page that shows it. */
-export function describeRecord(collection: CollectionName, id: string, record: unknown) {
+export function describeRecord(
+  collection: CollectionName,
+  id: string,
+  record: unknown,
+  locale: Locale = "cs",
+) {
   const value = (record ?? {}) as Record<string, unknown>;
   const name = typeof value.name === "string" ? value.name : null;
-  const typeLabel = TYPE_LABELS[collection];
+  const typeLabel = TYPE_LABELS[collection][locale];
   switch (collection) {
     case "settings":
-      return { typeLabel, label: "Nastavení nabídek", href: "#/settings" };
+      return {
+        typeLabel,
+        label: pick(locale, "Nastavení nabídek", "Quote settings"),
+        href: "#/settings",
+      };
     case "categories":
       return { typeLabel, label: name ?? id, href: `#/items?category=${encodeURIComponent(id)}` };
     case "items":
@@ -117,7 +130,7 @@ export function describeRecord(collection: CollectionName, id: string, record: u
       const number = typeof value.number === "string" ? value.number : id;
       const version = typeof value.version === "number" ? value.version : null;
       const title = typeof value.title === "string" ? value.title : null;
-      const head = version ? `${number} (verze ${version})` : number;
+      const head = version ? `${number} (${pick(locale, "verze", "version")} ${version})` : number;
       return {
         typeLabel,
         label: title ? `${head} · ${title}` : head,
@@ -161,26 +174,31 @@ export function reviewResource(
   before: Record<string, unknown> | undefined,
   after: Record<string, unknown> | undefined,
   change: Pick<ReviewInputChange, "changeId" | "technicalRefs">,
+  locale: Locale = "cs",
 ): ReviewableResource {
-  const subject = describeRecord(collection, id, after ?? before);
+  const subject = describeRecord(collection, id, after ?? before, locale);
   const diff = structuralDiff(before ?? {}, after ?? {}, { maxFields: 12 });
-  const fields = labelFields(diff.fields);
+  const fields = labelFields(diff.fields, locale);
   return {
     appId: "quotes",
     resourceType: collection,
     stableResourceId: `${collection}:${id}`,
     label: subject.label,
-    routeTarget: { href: subject.href, label: "Otevřít" },
+    routeTarget: { href: subject.href, label: pick(locale, "Otevřít", "Open") },
     changes: [
       {
         changeId: change.changeId,
         kind,
         summary:
           kind === "created"
-            ? "Nový záznam"
+            ? pick(locale, "Nový záznam", "New record")
             : kind === "deleted"
-              ? "Smazaný záznam"
-              : `Změněno polí: ${fields.length + diff.truncated}`,
+              ? pick(locale, "Smazaný záznam", "Deleted record")
+              : pick(
+                  locale,
+                  `Změněno polí: ${fields.length + diff.truncated}`,
+                  `Fields changed: ${fields.length + diff.truncated}`,
+                ),
         technicalRefs: change.technicalRefs,
         fields,
       },
@@ -196,7 +214,7 @@ export function reviewResource(
  * fields named in Czech. A file this adapter does not know falls through to
  * the engine's generic review.
  */
-export const quotesReviewAdapter: ReviewSurfaceAdapter = {
+export const quotesReviewAdapter = (locale: Locale = "cs"): ReviewSurfaceAdapter => ({
   id: "quotes-v3",
   appId: "quotes",
   contractVersion: REVIEW_SURFACE_CONTRACT_VERSION,
@@ -217,9 +235,10 @@ export const quotesReviewAdapter: ReviewSurfaceAdapter = {
           recordOf(change.baselineText),
           recordOf(change.draftText),
           change,
+          locale,
         ),
       );
     }
     return resources;
   },
-};
+});

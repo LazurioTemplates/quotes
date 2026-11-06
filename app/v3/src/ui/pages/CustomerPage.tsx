@@ -1,25 +1,29 @@
 import { useState } from "react";
 import { calculateQuote } from "../../domain/calculate.ts";
-import { formatDate } from "../../domain/common.ts";
 import type { Customer } from "../../domain/customer.ts";
-import { formatMoney } from "../../domain/money.ts";
 import { idOfQuote, latestVersions } from "../../domain/quote.ts";
+import type { Localized } from "../../i18n/locale.ts";
 import type { AppData } from "../App.tsx";
 import { api } from "../api.ts";
 import { ErrorNotice, Field, fieldErrors, PageHeader, StatusChip } from "../components/common.tsx";
+import { useFormat, useT } from "../i18n.tsx";
 import { href, navigate } from "../routes.ts";
 
-const FIELDS: { key: keyof Omit<Customer, "id">; label: string; hint?: string }[] = [
-  { key: "name", label: "Název nebo jméno" },
-  { key: "company_id", label: "IČO" },
-  { key: "vat_id", label: "DIČ" },
-  { key: "street", label: "Ulice a číslo" },
-  { key: "postal_code", label: "PSČ" },
-  { key: "city", label: "Obec" },
-  { key: "country", label: "Stát" },
-  { key: "contact_person", label: "Kontaktní osoba" },
-  { key: "email", label: "E-mail", hint: "Sem půjde nabídka." },
-  { key: "phone", label: "Telefon" },
+const FIELDS: { key: keyof Omit<Customer, "id">; label: Localized; hint?: Localized }[] = [
+  { key: "name", label: { cs: "Název nebo jméno", en: "Name" } },
+  { key: "company_id", label: { cs: "IČO", en: "Company ID" } },
+  { key: "vat_id", label: { cs: "DIČ", en: "VAT ID" } },
+  { key: "street", label: { cs: "Ulice a číslo", en: "Street and number" } },
+  { key: "postal_code", label: { cs: "PSČ", en: "Postal code" } },
+  { key: "city", label: { cs: "Obec", en: "City" } },
+  { key: "country", label: { cs: "Stát", en: "Country" } },
+  { key: "contact_person", label: { cs: "Kontaktní osoba", en: "Contact person" } },
+  {
+    key: "email",
+    label: { cs: "E-mail", en: "E-mail" },
+    hint: { cs: "Sem půjde nabídka.", en: "The quote goes here." },
+  },
+  { key: "phone", label: { cs: "Telefon", en: "Phone" } },
 ];
 
 export function CustomerPage({
@@ -31,9 +35,11 @@ export function CustomerPage({
   id: string | null;
   onChanged: () => Promise<void>;
 }) {
+  const t = useT();
+  const f = useFormat();
   const stored = id ? data.customers.find((entry) => entry.value.id === id) : undefined;
   const [form, setForm] = useState<Partial<Customer>>(() =>
-    stored ? { ...stored.value } : { country: "Česká republika" },
+    stored ? { ...stored.value } : { country: t("Česká republika", "Czech Republic") },
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -41,12 +47,14 @@ export function CustomerPage({
   if (id && !stored) {
     return (
       <section>
-        <PageHeader title="Zákazník neexistuje" />
+        <PageHeader title={t("Zákazník neexistuje", "This customer does not exist")} />
       </section>
     );
   }
   const quotes = stored
-    ? latestVersions(data.quotes.map((entry) => entry.value)).filter((quote) => quote.customer.id === id)
+    ? latestVersions(data.quotes.map((entry) => entry.value)).filter(
+        (quote) => quote.customer.id === id,
+      )
     : [];
 
   async function save(event: React.FormEvent) {
@@ -72,12 +80,14 @@ export function CustomerPage({
   return (
     <section>
       <PageHeader
-        eyebrow={stored ? `Zákazník ${stored.value.id}` : "Zákazníci"}
-        title={stored ? stored.value.name : "Nový zákazník"}
+        eyebrow={
+          stored ? `${t("Zákazník", "Customer")} ${stored.value.id}` : t("Zákazníci", "Customers")
+        }
+        title={stored ? stored.value.name : t("Nový zákazník", "New customer")}
         actions={
           stored ? (
             <a className="button button-primary" href={href({ page: "new-quote" })}>
-              Nová nabídka
+              {t("Nová nabídka", "New quote")}
             </a>
           ) : null
         }
@@ -88,7 +98,13 @@ export function CustomerPage({
           <article className="panel">
             <div className="form-grid">
               {FIELDS.map((field) => (
-                <Field key={field.key} label={field.label} hint={field.hint} error={errors[field.key]} wide={field.key === "name"}>
+                <Field
+                  key={field.key}
+                  label={t.of(field.label)}
+                  hint={field.hint ? t.of(field.hint) : undefined}
+                  error={errors[field.key]}
+                  wide={field.key === "name"}
+                >
                   <input
                     value={form[field.key] ?? ""}
                     required={field.key === "name"}
@@ -97,23 +113,40 @@ export function CustomerPage({
                   />
                 </Field>
               ))}
-              <Field label="Poznámka" hint="Jen pro vás; do nabídky se nekopíruje." wide>
-                <textarea rows={2} value={form.note ?? ""} onChange={(event) => setForm({ ...form, note: event.target.value })} />
+              <Field
+                label={t("Poznámka", "Note")}
+                hint={t(
+                  "Jen pro vás; do nabídky se nekopíruje.",
+                  "For you only; never copied into a quote.",
+                )}
+                wide
+              >
+                <textarea
+                  rows={2}
+                  value={form.note ?? ""}
+                  onChange={(event) => setForm({ ...form, note: event.target.value })}
+                />
               </Field>
             </div>
           </article>
           <div className="form-actions">
-            <button className="button button-primary" type="submit" disabled={busy || !form.name?.trim()}>
-              {stored ? "Uložit do konceptu" : "Založit zákazníka"}
+            <button
+              className="button button-primary"
+              type="submit"
+              disabled={busy || !form.name?.trim()}
+            >
+              {stored
+                ? t("Uložit do konceptu", "Save to the draft")
+                : t("Založit zákazníka", "Create the customer")}
             </button>
           </div>
         </form>
         {stored ? (
           <aside className="aside">
             <article className="panel">
-              <h2>Nabídky</h2>
+              <h2>{t("Nabídky", "Quotes")}</h2>
               {quotes.length === 0 ? (
-                <p className="muted">Zatím žádná.</p>
+                <p className="muted">{t("Zatím žádná.", "None yet.")}</p>
               ) : (
                 <ul className="versions">
                   {quotes.map((quote) => (
@@ -122,8 +155,11 @@ export function CustomerPage({
                       <StatusChip status={quote.status} />
                       <div className="small">{quote.title}</div>
                       <div className="small muted">
-                        {formatDate(quote.issue_date)} ·{" "}
-                        {formatMoney(calculateQuote(quote, data.settings.value).payable, quote.currency)}
+                        {f.date(quote.issue_date)} ·{" "}
+                        {f.money(
+                          calculateQuote(quote, data.settings.value).payable,
+                          quote.currency,
+                        )}
                       </div>
                     </li>
                   ))}

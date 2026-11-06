@@ -3,19 +3,19 @@ import { calculateQuote } from "../../domain/calculate.ts";
 import type { Item } from "../../domain/catalog.ts";
 import {
   formatAmount,
-  formatMoney,
   formatNumber,
-  formatPercent,
   parseMoney,
   parsePercent,
   parseQuantity,
 } from "../../domain/money.ts";
 import { idOfQuote, nextLineId, type Quote, type QuoteLine } from "../../domain/quote.ts";
 import { vatRateById } from "../../domain/settings.ts";
+import type { Locale } from "../../i18n/locale.ts";
 import type { AppData } from "../App.tsx";
 import { api } from "../api.ts";
 import { ErrorNotice, Field, fieldErrors, PageHeader } from "../components/common.tsx";
 import { Totals } from "../components/Totals.tsx";
+import { useFormat, useT } from "../i18n.tsx";
 import { href, navigate } from "../routes.ts";
 
 /** The texts of a line's number fields as typed, so `2,` or `1 2` can be on the way to a value. */
@@ -25,23 +25,30 @@ interface LineTexts {
   discount: string;
 }
 
-function textsOf(line: QuoteLine): LineTexts {
+function textsOf(line: QuoteLine, locale: Locale): LineTexts {
   return {
-    quantity: formatNumber(line.quantity),
-    unit_price: formatAmount(line.unit_price),
-    discount: line.discount_percent ? formatNumber(line.discount_percent) : "",
+    quantity: formatNumber(line.quantity, locale),
+    unit_price: formatAmount(line.unit_price, locale),
+    discount: line.discount_percent ? formatNumber(line.discount_percent, locale) : "",
   };
 }
 
 /** The values the texts stand for, or the fields that are not numbers. */
-function parsedLine(line: QuoteLine, texts: LineTexts) {
-  const quantity = parseQuantity(texts.quantity);
-  const price = parseMoney(texts.unit_price);
-  const discount = texts.discount.trim() === "" ? 0 : parsePercent(texts.discount);
+function parsedLine(line: QuoteLine, texts: LineTexts, locale: Locale) {
+  const en = locale === "en";
+  const quantity = parseQuantity(texts.quantity, locale);
+  const price = parseMoney(texts.unit_price, locale);
+  const discount = texts.discount.trim() === "" ? 0 : parsePercent(texts.discount, locale);
   const problems: Partial<Record<keyof LineTexts, string>> = {};
-  if (quantity === null || quantity <= 0) problems.quantity = "kladné číslo, nejvýš 3 desetinná místa";
-  if (price === null || price < 0) problems.unit_price = "částka, např. 1 290,50";
-  if (discount === null || discount < 0 || discount > 100) problems.discount = "0–100 %";
+  if (quantity === null || quantity <= 0) {
+    problems.quantity = en
+      ? "a positive number, at most 3 decimals"
+      : "kladné číslo, nejvýš 3 desetinná místa";
+  }
+  if (price === null || price < 0)
+    problems.unit_price = en ? "an amount, e.g. 1,290.50" : "částka, např. 1 290,50";
+  if (discount === null || discount < 0 || discount > 100)
+    problems.discount = en ? "0–100%" : "0–100 %";
   const value: QuoteLine = {
     ...line,
     quantity: quantity && quantity > 0 ? quantity : line.quantity,
@@ -61,14 +68,19 @@ export function QuoteEditPage({
   id: string;
   onChanged: () => Promise<void>;
 }) {
+  const t = useT();
+  const f = useFormat();
+  const locale = f.locale;
   const stored = data.quotes.find((entry) => idOfQuote(entry.value) === id);
   const settings = data.settings.value;
-  const [form, setForm] = useState<Quote | null>(() => (stored ? structuredClone(stored.value) : null));
+  const [form, setForm] = useState<Quote | null>(() =>
+    stored ? structuredClone(stored.value) : null,
+  );
   const [texts, setTexts] = useState<Record<string, LineTexts>>(() =>
-    Object.fromEntries((stored?.value.lines ?? []).map((line) => [line.id, textsOf(line)])),
+    Object.fromEntries((stored?.value.lines ?? []).map((line) => [line.id, textsOf(line, locale)])),
   );
   const [discountText, setDiscountText] = useState(
-    stored?.value.discount_percent ? formatNumber(stored.value.discount_percent) : "",
+    stored?.value.discount_percent ? formatNumber(stored.value.discount_percent, locale) : "",
   );
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
@@ -78,11 +90,11 @@ export function QuoteEditPage({
   const lines = useMemo(
     () =>
       (form?.lines ?? []).map((line) =>
-        parsedLine(line, texts[line.id] ?? textsOf(line)),
+        parsedLine(line, texts[line.id] ?? textsOf(line, locale), locale),
       ),
-    [form, texts],
+    [form, texts, locale],
   );
-  const quoteDiscount = discountText.trim() === "" ? 0 : parsePercent(discountText);
+  const quoteDiscount = discountText.trim() === "" ? 0 : parsePercent(discountText, locale);
   const record: Quote | null = form
     ? (() => {
         const next: Quote = { ...form, lines: lines.map((line) => line.value) };
@@ -99,17 +111,18 @@ export function QuoteEditPage({
   if (!stored || !form || !record) {
     return (
       <section>
-        <PageHeader title="Nabídka neexistuje" />
+        <PageHeader title={t("Nabídka neexistuje", "This quote does not exist")} />
       </section>
     );
   }
   if (stored.value.status !== "draft") {
     return (
       <section>
-        <PageHeader title="Tuto verzi už měnit nelze" />
+        <PageHeader title={t("Tuto verzi už měnit nelze", "This version cannot change any more")} />
         <p>
-          Nabídka už odešla. <a href={href({ page: "quote", id })}>Otevřete ji</a> a vytvořte
-          novou verzi.
+          {t("Nabídka už odešla.", "The quote went out.")}{" "}
+          <a href={href({ page: "quote", id })}>{t("Otevřete ji", "Open it")}</a>{" "}
+          {t("a vytvořte novou verzi.", "and create a new version.")}
         </p>
       </section>
     );
@@ -133,7 +146,7 @@ export function QuoteEditPage({
     setTexts({ ...texts, [lineId]: { ...(texts[lineId] as LineTexts), [key]: value } });
   const addLine = (line: QuoteLine) => {
     setForm({ ...form, lines: [...form.lines, line] });
-    setTexts({ ...texts, [line.id]: textsOf(line) });
+    setTexts({ ...texts, [line.id]: textsOf(line, locale) });
   };
   const addItem = (item: Item) => {
     const rate = vatRateById(settings, item.vat_rate);
@@ -203,13 +216,17 @@ export function QuoteEditPage({
   return (
     <section>
       <PageHeader
-        eyebrow={`Koncept · verze ${form.version}`}
+        eyebrow={t(`Koncept · verze ${form.version}`, `Draft · version ${form.version}`)}
         title={
           <>
-            <span className="code-title">{form.number}</span> {form.title || "Bez předmětu"}
+            <span className="code-title">{form.number}</span>{" "}
+            {form.title || t("Bez předmětu", "No subject")}
           </>
         }
-        subtitle="Úpravy se uloží jako koncept. Zákazník je uvidí, až nabídku vytisknete a pošlete."
+        subtitle={t(
+          "Úpravy se uloží jako koncept. Zákazník je uvidí, až nabídku vytisknete a pošlete.",
+          "Edits are saved as a draft. The customer sees them once you print and send the quote.",
+        )}
       />
       <form className="editor" onSubmit={save}>
         <ErrorNotice error={error} />
@@ -217,11 +234,13 @@ export function QuoteEditPage({
           <div className="editor-main">
             <article className="panel">
               <div className="form-row">
-                <Field label="Zákazník" error={errors["customer.id"]}>
+                <Field label={t("Zákazník", "Customer")} error={errors["customer.id"]}>
                   <select
                     value={form.customer.id}
                     onChange={(event) => {
-                      const contact = data.customers.find((entry) => entry.value.id === event.target.value);
+                      const contact = data.customers.find(
+                        (entry) => entry.value.id === event.target.value,
+                      );
                       if (!contact) return;
                       const { note: _note, ...snapshot } = contact.value;
                       update({ customer: snapshot });
@@ -234,26 +253,29 @@ export function QuoteEditPage({
                     ))}
                   </select>
                 </Field>
-                <Field label="Předmět" error={errors.title}>
-                  <input value={form.title} onChange={(event) => update({ title: event.target.value })} />
+                <Field label={t("Předmět", "Subject")} error={errors.title}>
+                  <input
+                    value={form.title}
+                    onChange={(event) => update({ title: event.target.value })}
+                  />
                 </Field>
               </div>
               <div className="form-row">
-                <Field label="Vystaveno" error={errors.issue_date}>
+                <Field label={t("Vystaveno", "Issued")} error={errors.issue_date}>
                   <input
                     type="date"
                     value={form.issue_date}
                     onChange={(event) => update({ issue_date: event.target.value })}
                   />
                 </Field>
-                <Field label="Platí do" error={errors.valid_until}>
+                <Field label={t("Platí do", "Valid until")} error={errors.valid_until}>
                   <input
                     type="date"
                     value={form.valid_until}
                     onChange={(event) => update({ valid_until: event.target.value })}
                   />
                 </Field>
-                <Field label="Vypracoval(a)" error={errors.prepared_by}>
+                <Field label={t("Vypracoval(a)", "Prepared by")} error={errors.prepared_by}>
                   <input
                     value={form.prepared_by ?? ""}
                     onChange={(event) => update({ prepared_by: event.target.value || undefined })}
@@ -264,28 +286,35 @@ export function QuoteEditPage({
 
             <article className="panel">
               <div className="panel-head">
-                <h2>Položky</h2>
+                <h2>{t("Položky", "Lines")}</h2>
                 <button className="button" type="button" onClick={addFree}>
-                  Přidat řádek mimo ceník
+                  {t("Přidat řádek mimo ceník", "Add a line outside the price list")}
                 </button>
               </div>
               <div className="item-search">
                 <input
                   type="search"
-                  placeholder="Přidat z ceníku: hledejte kód nebo název (aspoň 2 znaky)"
+                  placeholder={t(
+                    "Přidat z ceníku: hledejte kód nebo název (aspoň 2 znaky)",
+                    "Add from the price list: search a code or a name (2 characters at least)",
+                  )}
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  aria-label="Hledat v ceníku"
+                  aria-label={t("Hledat v ceníku", "Search the price list")}
                 />
                 {found.length > 0 ? (
                   <ul className="search-results">
                     {found.map((item) => (
                       <li key={item.code}>
-                        <button type="button" className="search-result" onClick={() => addItem(item)}>
+                        <button
+                          type="button"
+                          className="search-result"
+                          onClick={() => addItem(item)}
+                        >
                           <span className="code-link">{item.code}</span>
                           <span>{item.name}</span>
                           <span className="num">
-                            {formatMoney(item.sale_price, settings.currency)} / {item.unit}
+                            {f.money(item.sale_price, settings.currency)} / {item.unit}
                           </span>
                         </button>
                       </li>
@@ -293,78 +322,151 @@ export function QuoteEditPage({
                   </ul>
                 ) : query.length >= 2 ? (
                   <p className="small muted">
-                    V ceníku nic takového není. Přidejte řádek mimo ceník, nebo položku nejdřív{" "}
-                    <a href={href({ page: "new-item" })}>založte v ceníku</a>.
+                    {t(
+                      "V ceníku nic takového není. Přidejte řádek mimo ceník, nebo položku nejdřív",
+                      "Nothing like that is in the price list. Add a line outside it, or first",
+                    )}{" "}
+                    <a href={href({ page: "new-item" })}>
+                      {t("založte v ceníku", "create the item in the price list")}
+                    </a>
+                    .
                   </p>
                 ) : null}
               </div>
 
               <div className="line-editor">
                 {form.lines.length === 0 ? (
-                  <p className="muted">Zatím žádná položka. Přidejte ji z ceníku nebo jako řádek mimo ceník.</p>
+                  <p className="muted">
+                    {t(
+                      "Zatím žádná položka. Přidejte ji z ceníku nebo jako řádek mimo ceník.",
+                      "No line yet. Add one from the price list or as a line outside it.",
+                    )}
+                  </p>
                 ) : null}
                 {form.lines.map((line, index) => {
                   const parsed = lines[index];
-                  const lineTexts = texts[line.id] ?? textsOf(line);
+                  const lineTexts = texts[line.id] ?? textsOf(line, locale);
                   const amounts = totals.lines[index];
                   return (
                     <div key={line.id} className={`line${line.to_check ? " line-warning" : ""}`}>
                       <div className="line-head">
                         <span className="muted small">
-                          {index + 1}. {line.item_code ? `z ceníku · ${line.item_code}` : "mimo ceník"}
+                          {index + 1}.{" "}
+                          {line.item_code
+                            ? t(
+                                `z ceníku · ${line.item_code}`,
+                                `from the price list · ${line.item_code}`,
+                              )
+                            : t("mimo ceník", "outside the price list")}
                         </span>
                         <span className="line-tools">
-                          <button type="button" className="link" disabled={index === 0} onClick={() => moveLine(index, -1)} aria-label="Posunout nahoru">
+                          <button
+                            type="button"
+                            className="link"
+                            disabled={index === 0}
+                            onClick={() => moveLine(index, -1)}
+                            aria-label={t("Posunout nahoru", "Move up")}
+                          >
                             ↑
                           </button>
-                          <button type="button" className="link" disabled={index === form.lines.length - 1} onClick={() => moveLine(index, 1)} aria-label="Posunout dolů">
+                          <button
+                            type="button"
+                            className="link"
+                            disabled={index === form.lines.length - 1}
+                            onClick={() => moveLine(index, 1)}
+                            aria-label={t("Posunout dolů", "Move down")}
+                          >
                             ↓
                           </button>
-                          <button type="button" className="link danger" onClick={() => removeLine(line.id)}>
-                            Odebrat
+                          <button
+                            type="button"
+                            className="link danger"
+                            onClick={() => removeLine(line.id)}
+                          >
+                            {t("Odebrat", "Remove")}
                           </button>
                         </span>
                       </div>
                       {line.to_check ? (
                         <div className="line-check">
                           <span>⚠ {line.to_check}</span>
-                          <button type="button" className="link" onClick={() => updateLine(line.id, { to_check: undefined })}>
-                            Vyřešeno
+                          <button
+                            type="button"
+                            className="link"
+                            onClick={() => updateLine(line.id, { to_check: undefined })}
+                          >
+                            {t("Vyřešeno", "Resolved")}
                           </button>
                         </div>
                       ) : null}
                       <div className="line-fields">
-                        <Field label="Název" wide>
-                          <input value={line.name} onChange={(event) => updateLine(line.id, { name: event.target.value })} />
+                        <Field label={t("Název", "Name")} wide>
+                          <input
+                            value={line.name}
+                            onChange={(event) => updateLine(line.id, { name: event.target.value })}
+                          />
                         </Field>
-                        <Field label="Množství" error={parsed?.problems.quantity}>
-                          <input inputMode="decimal" value={lineTexts.quantity} onChange={(event) => updateText(line.id, "quantity", event.target.value)} />
+                        <Field label={t("Množství", "Quantity")} error={parsed?.problems.quantity}>
+                          <input
+                            inputMode="decimal"
+                            value={lineTexts.quantity}
+                            onChange={(event) =>
+                              updateText(line.id, "quantity", event.target.value)
+                            }
+                          />
                         </Field>
-                        <Field label="MJ">
-                          <input value={line.unit} onChange={(event) => updateLine(line.id, { unit: event.target.value })} />
+                        <Field label={t("MJ", "Unit")}>
+                          <input
+                            value={line.unit}
+                            onChange={(event) => updateLine(line.id, { unit: event.target.value })}
+                          />
                         </Field>
-                        <Field label="Cena za MJ bez DPH" error={parsed?.problems.unit_price}>
-                          <input inputMode="decimal" value={lineTexts.unit_price} onChange={(event) => updateText(line.id, "unit_price", event.target.value)} />
+                        <Field
+                          label={t("Cena za MJ bez DPH", "Unit price excl. VAT")}
+                          error={parsed?.problems.unit_price}
+                        >
+                          <input
+                            inputMode="decimal"
+                            value={lineTexts.unit_price}
+                            onChange={(event) =>
+                              updateText(line.id, "unit_price", event.target.value)
+                            }
+                          />
                         </Field>
-                        <Field label="Sleva %" error={parsed?.problems.discount}>
-                          <input inputMode="decimal" value={lineTexts.discount} placeholder="0" onChange={(event) => updateText(line.id, "discount", event.target.value)} />
+                        <Field label={t("Sleva %", "Discount %")} error={parsed?.problems.discount}>
+                          <input
+                            inputMode="decimal"
+                            value={lineTexts.discount}
+                            placeholder="0"
+                            onChange={(event) =>
+                              updateText(line.id, "discount", event.target.value)
+                            }
+                          />
                         </Field>
-                        <Field label="DPH">
-                          <select value={line.vat_percent} onChange={(event) => updateLine(line.id, { vat_percent: Number(event.target.value) })}>
+                        <Field label={t("DPH", "VAT")}>
+                          <select
+                            value={line.vat_percent}
+                            onChange={(event) =>
+                              updateLine(line.id, { vat_percent: Number(event.target.value) })
+                            }
+                          >
                             {rates.map((rate) => (
                               <option key={rate.id} value={rate.percent}>
-                                {formatPercent(rate.percent)} {rate.label.toLowerCase()}
+                                {f.percent(rate.percent)} {rate.label.toLowerCase()}
                               </option>
                             ))}
                             {rates.some((rate) => rate.percent === line.vat_percent) ? null : (
-                              <option value={line.vat_percent}>{formatPercent(line.vat_percent)}</option>
+                              <option value={line.vat_percent}>
+                                {f.percent(line.vat_percent)}
+                              </option>
                             )}
                           </select>
                         </Field>
                       </div>
                       <div className="line-total">
                         <span className="muted small">
-                          Celkem bez DPH <strong>{formatMoney(amounts?.net ?? 0, form.currency)}</strong>
+                          {t("Celkem bez DPH", "Total excl. VAT")}{" "}
+                          <strong>{f.money(amounts?.net ?? 0, form.currency)}</strong>
                         </span>
                       </div>
                     </div>
@@ -374,31 +476,70 @@ export function QuoteEditPage({
             </article>
 
             <article className="panel">
-              <Field label="Úvodní text pro zákazníka" error={errors.introduction}>
-                <textarea rows={3} value={form.introduction ?? ""} onChange={(event) => update({ introduction: event.target.value || undefined })} />
+              <Field
+                label={t("Úvodní text pro zákazníka", "Introduction for the customer")}
+                error={errors.introduction}
+              >
+                <textarea
+                  rows={3}
+                  value={form.introduction ?? ""}
+                  onChange={(event) => update({ introduction: event.target.value || undefined })}
+                />
               </Field>
-              <Field label="Podmínky (dodání, platba)" error={errors.terms}>
-                <textarea rows={3} value={form.terms ?? ""} onChange={(event) => update({ terms: event.target.value || undefined })} />
+              <Field
+                label={t("Podmínky (dodání, platba)", "Terms (delivery, payment)")}
+                error={errors.terms}
+              >
+                <textarea
+                  rows={3}
+                  value={form.terms ?? ""}
+                  onChange={(event) => update({ terms: event.target.value || undefined })}
+                />
               </Field>
-              <Field label="Interní poznámka" hint="Jen pro vás a kolegy; do dokumentu se netiskne." error={errors.internal_note}>
-                <textarea rows={2} value={form.internal_note ?? ""} onChange={(event) => update({ internal_note: event.target.value || undefined })} />
+              <Field
+                label={t("Interní poznámka", "Internal note")}
+                hint={t(
+                  "Jen pro vás a kolegy; do dokumentu se netiskne.",
+                  "For you and colleagues only; never printed.",
+                )}
+                error={errors.internal_note}
+              >
+                <textarea
+                  rows={2}
+                  value={form.internal_note ?? ""}
+                  onChange={(event) => update({ internal_note: event.target.value || undefined })}
+                />
               </Field>
             </article>
           </div>
 
           <aside className="editor-aside">
             <article className="panel sticky">
-              <h2>Souhrn</h2>
-              <Field label="Sleva na celou nabídku %" error={quoteDiscount === null || quoteDiscount > 100 ? "0–100 %" : undefined}>
-                <input inputMode="decimal" value={discountText} placeholder="0" onChange={(event) => setDiscountText(event.target.value)} />
+              <h2>{t("Souhrn", "Summary")}</h2>
+              <Field
+                label={t("Sleva na celou nabídku %", "Discount on the whole quote %")}
+                error={
+                  quoteDiscount === null || quoteDiscount > 100 ? t("0–100 %", "0–100%") : undefined
+                }
+              >
+                <input
+                  inputMode="decimal"
+                  value={discountText}
+                  placeholder="0"
+                  onChange={(event) => setDiscountText(event.target.value)}
+                />
               </Field>
-              <Totals totals={totals} currency={form.currency} discountPercent={quoteDiscount ?? 0} />
+              <Totals
+                totals={totals}
+                currency={form.currency}
+                discountPercent={quoteDiscount ?? 0}
+              />
               <div className="stack">
                 <button className="button button-primary" type="submit" disabled={busy || invalid}>
-                  Uložit koncept
+                  {t("Uložit koncept", "Save the draft")}
                 </button>
                 <a className="button" href={href({ page: "quote", id })}>
-                  Zahodit úpravy
+                  {t("Zahodit úpravy", "Drop the edits")}
                 </a>
               </div>
             </article>

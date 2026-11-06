@@ -1,12 +1,14 @@
 import { z } from "zod";
+import { issuesOf } from "../data/records.ts";
 import { type QuotesStore, StoreError } from "../data/store.ts";
 import { category, item } from "../domain/catalog.ts";
+import { isoDate } from "../domain/common.ts";
 import { customer } from "../domain/customer.ts";
+import { percent } from "../domain/money.ts";
 import { IMPORT_FIELDS } from "../domain/price-import.ts";
 import { QUOTE_ACTIONS, quote } from "../domain/quote.ts";
 import { settings } from "../domain/settings.ts";
-import { percent } from "../domain/money.ts";
-import { isoDate } from "../domain/common.ts";
+import { type Locale, localeOfAcceptLanguage } from "../i18n/locale.ts";
 import { createService, type QuotesService } from "../service/quotes-service.ts";
 
 /**
@@ -92,9 +94,14 @@ const STATUS_BY_CODE: Record<string, number> = {
   config_changed: 503,
 };
 
-function errorResponse(error: unknown): Response {
+function errorResponse(error: unknown, locale: Locale): Response {
   if (error instanceof StoreError) {
-    return refusal(error.code, error.message, STATUS_BY_CODE[error.code] ?? 409, [...error.issues]);
+    return refusal(
+      error.code,
+      error.messageIn(locale),
+      STATUS_BY_CODE[error.code] ?? 409,
+      error.issuesIn(locale),
+    );
   }
   console.error(error);
   return refusal("unexpected", error instanceof Error ? error.message : String(error), 500);
@@ -105,37 +112,59 @@ async function body<T>(req: Request, schema: z.ZodType<T>): Promise<T> {
   try {
     raw = await req.json();
   } catch {
-    throw new StoreError("bad_request", "Tělo požadavku není JSON.");
+    throw new StoreError("bad_request", {
+      cs: "Tělo požadavku není JSON.",
+      en: "The request body is not JSON.",
+    });
   }
   const parsed = schema.safeParse(raw);
   if (!parsed.success) {
+    const issues = issuesOf(parsed.error.issues, ["record"]);
     throw new StoreError(
       "invalid_record",
-      parsed.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; "),
-      parsed.error.issues.map((issue) => ({
-        path: issue.path.filter((part) => part !== "record").join(".") || "(record)",
-        message: issue.message,
-      })),
+      {
+        cs: issues.map((issue) => `${issue.path}: ${issue.message.cs}`).join("; "),
+        en: issues.map((issue) => `${issue.path}: ${issue.message.en}`).join("; "),
+      },
+      issues,
     );
   }
   return parsed.data;
 }
 
 /** A write is accepted only as JSON from one of the App's own origins (no cross-site writes). */
-function writeRefusal(req: Request, allowedOrigins: ReadonlySet<string>): Response | null {
+function writeRefusal(
+  req: Request,
+  allowedOrigins: ReadonlySet<string>,
+  locale: Locale,
+): Response | null {
   if (!WRITE_METHODS.has(req.method)) return null;
   const origin = req.headers.get("origin");
+  const en = locale === "en";
   if (!origin || !allowedOrigins.has(origin)) {
-    return refusal("origin_refused", "Změnu lze poslat jen z aplikace Cenové nabídky.", 403);
+    return refusal(
+      "origin_refused",
+      en
+        ? "A change is accepted only from the Quotes App."
+        : "Změnu lze poslat jen z aplikace Cenové nabídky.",
+      403,
+    );
   }
   if (!(req.headers.get("content-type") ?? "").startsWith("application/json")) {
-    return refusal("bad_request", "Změna se posílá jako application/json.", 415);
+    return refusal(
+      "bad_request",
+      en ? "A change is sent as application/json." : "Změna se posílá jako application/json.",
+      415,
+    );
   }
   return null;
 }
 
 export function createApi(store: QuotesStore, options: ApiOptions) {
-  const service: QuotesService = createService(store, options.today ? { today: options.today } : {});
+  const service: QuotesService = createService(
+    store,
+    options.today ? { today: options.today } : {},
+  );
 
   function events(req: Request): Response {
     let stop = () => {};
@@ -173,7 +202,7 @@ export function createApi(store: QuotesStore, options: ApiOptions) {
     return match?.[1] ? decodeURIComponent(match[1]) : null;
   };
 
-  async function route(req: Request, url: URL): Promise<Response> {
+  async function route(req: Request, url: URL, locale: Locale): Promise<Response> {
     const { pathname } = url;
     const method = req.method;
     const get = method === "GET";
@@ -193,7 +222,12 @@ export function createApi(store: QuotesStore, options: ApiOptions) {
     const categoryId = one(/^\/api\/categories\/([^/]+)$/, pathname);
     if (categoryId && method === "PUT") {
       const input = await body(req, save(category));
-      if (input.record.id !== categoryId) throw new StoreError("bad_request", "Id kategorie se nemění.");
+      if (input.record.id !== categoryId) {
+        throw new StoreError("bad_request", {
+          cs: "Id kategorie se nemění.",
+          en: "A category's id does not change.",
+        });
+      }
       return json(await store.saveCategory(input.record, input.baseRevision));
     }
 
@@ -205,18 +239,28 @@ export function createApi(store: QuotesStore, options: ApiOptions) {
     const code = one(/^\/api\/items\/([^/]+)$/, pathname);
     if (code && get) {
       const found = await store.getItem(code);
-      return found ? json(found) : refusal("not_found", `Položka ${code} neexistuje.`, 404);
+      return found
+        ? json(found)
+        : refusal(
+            "not_found",
+            locale === "en" ? `The item ${code} does not exist.` : `Položka ${code} neexistuje.`,
+            404,
+          );
     }
     if (code && method === "PUT") {
       const input = await body(
         req,
-        z.strictObject({ record: item, baseRevision: revision, note: z.string().trim().min(1).optional() }),
+        z.strictObject({
+          record: item,
+          baseRevision: revision,
+          note: z.string().trim().min(1).optional(),
+        }),
       );
       return json(await service.saveItem(code, input.record, input.baseRevision, input.note));
     }
 
     if (pathname === "/api/import/preview" && method === "POST") {
-      return json(await service.importPreview(await body(req, importInput)));
+      return json(await service.importPreview(await body(req, importInput), locale));
     }
     if (pathname === "/api/import/apply" && method === "POST") {
       const input = await body(
@@ -226,7 +270,7 @@ export function createApi(store: QuotesStore, options: ApiOptions) {
           revisions: z.record(z.string(), z.string().nullable()),
         }),
       );
-      return json(await service.importApply(input));
+      return json(await service.importApply(input, locale));
     }
 
     if (pathname === "/api/customers" && get) return json(await store.listCustomers());
@@ -237,11 +281,24 @@ export function createApi(store: QuotesStore, options: ApiOptions) {
     const customerId = one(/^\/api\/customers\/([^/]+)$/, pathname);
     if (customerId && get) {
       const found = await store.getCustomer(customerId);
-      return found ? json(found) : refusal("not_found", `Zákazník ${customerId} neexistuje.`, 404);
+      return found
+        ? json(found)
+        : refusal(
+            "not_found",
+            locale === "en"
+              ? `The customer ${customerId} does not exist.`
+              : `Zákazník ${customerId} neexistuje.`,
+            404,
+          );
     }
     if (customerId && method === "PUT") {
       const input = await body(req, save(customer));
-      if (input.record.id !== customerId) throw new StoreError("bad_request", "Id zákazníka se nemění.");
+      if (input.record.id !== customerId) {
+        throw new StoreError("bad_request", {
+          cs: "Id zákazníka se nemění.",
+          en: "A customer's id does not change.",
+        });
+      }
       return json(await store.saveCustomer(input.record, input.baseRevision));
     }
 
@@ -253,10 +310,10 @@ export function createApi(store: QuotesStore, options: ApiOptions) {
     if (quoteId) {
       const tail = pathname.slice(pathname.lastIndexOf("/") + 1);
       if (tail === "check" && get) {
-        const { issues } = await service.checkQuote(quoteId);
+        const { issues } = await service.checkQuote(quoteId, locale);
         return json(issues);
       }
-      if (tail === "email" && get) return json(await service.email(quoteId));
+      if (tail === "email" && get) return json(await service.email(quoteId, locale));
       if (tail === "action" && method === "POST") {
         const input = await body(req, actionInput);
         return json(await service.act(quoteId, input.action, input.baseRevision));
@@ -266,7 +323,15 @@ export function createApi(store: QuotesStore, options: ApiOptions) {
       }
       if (get) {
         const found = await store.getQuote(quoteId);
-        return found ? json(found) : refusal("not_found", `Nabídka ${quoteId} neexistuje.`, 404);
+        return found
+          ? json(found)
+          : refusal(
+              "not_found",
+              locale === "en"
+                ? `The quote ${quoteId} does not exist.`
+                : `Nabídka ${quoteId} neexistuje.`,
+              404,
+            );
       }
       if (method === "PUT") {
         const input = await body(req, save(quote));
@@ -274,8 +339,8 @@ export function createApi(store: QuotesStore, options: ApiOptions) {
       }
     }
 
-    if (pathname === "/api/check" && get) return json(await store.check());
-    if (pathname === "/api/draft" && get) return json(await store.draft());
+    if (pathname === "/api/check" && get) return json(await store.check(locale));
+    if (pathname === "/api/draft" && get) return json(await store.draft(locale));
     if (pathname === "/api/draft/publish" && method === "POST") {
       const input = await body(req, publishInput);
       await store.publish(input.summary ? input : { expectedRevision: input.expectedRevision });
@@ -296,18 +361,25 @@ export function createApi(store: QuotesStore, options: ApiOptions) {
       return json({ ok: true });
     }
     if (pathname === "/api/events" && get) return events(req);
-    return refusal("not_found", `${method} ${pathname} není součást API.`, 404);
+    return refusal(
+      "not_found",
+      locale === "en"
+        ? `${method} ${pathname} is not part of the API.`
+        : `${method} ${pathname} není součást API.`,
+      404,
+    );
   }
 
   /** Answers an `/api/…` request; every other path is not the API's. */
   return async function handle(req: Request): Promise<Response> {
     const url = new URL(req.url);
-    const refused = writeRefusal(req, options.allowedOrigins);
+    const locale = localeOfAcceptLanguage(req.headers.get("accept-language"));
+    const refused = writeRefusal(req, options.allowedOrigins, locale);
     if (refused) return refused;
     try {
-      return await route(req, url);
+      return await route(req, url, locale);
     } catch (error) {
-      return errorResponse(error);
+      return errorResponse(error, locale);
     }
   };
 }

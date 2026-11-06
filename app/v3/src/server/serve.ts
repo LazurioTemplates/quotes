@@ -54,7 +54,7 @@ export async function serve(createStore: () => QuotesStore, label: string) {
     if (url.pathname.startsWith("/api/")) return api(req);
     if (url.pathname.startsWith("/print/") && req.method === "GET") {
       try {
-        const page = await print(url.pathname);
+        const page = await print(url.pathname, url.searchParams.get("lang"));
         if (page) return page;
       } catch (error) {
         return new Response(error instanceof Error ? error.message : String(error), {

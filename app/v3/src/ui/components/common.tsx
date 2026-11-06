@@ -1,9 +1,11 @@
 import type { ReactNode } from "react";
-import { STATUS_LABELS, type QuoteStatus } from "../../domain/quote.ts";
+import { type QuoteStatus, STATUS_LABELS } from "../../domain/quote.ts";
 import { ApiError } from "../api.ts";
+import { useT } from "../i18n.tsx";
 
 export function StatusChip({ status }: { status: QuoteStatus }) {
-  return <span className={`chip chip-${status}`}>{STATUS_LABELS[status]}</span>;
+  const t = useT();
+  return <span className={`chip chip-${status}`}>{t.of(STATUS_LABELS[status])}</span>;
 }
 
 export function Field({
@@ -32,12 +34,13 @@ export function Field({
 
 /** A refusal of the API in words, with the fields it names. */
 export function ErrorNotice({ error }: { error: unknown }) {
+  const t = useT();
   if (!error) return null;
   const message = error instanceof Error ? error.message : String(error);
   const issues = error instanceof ApiError ? error.issues : [];
   return (
     <div className="notice notice-danger" role="alert">
-      <strong>Neuloženo.</strong> {message}
+      <strong>{t("Neuloženo.", "Not saved.")}</strong> {message}
       {issues.length > 0 ? (
         <ul className="issues">
           {issues.map((issue) => (

@@ -1,6 +1,7 @@
 import { z } from "zod";
-import { addDays, currencyCode, isoDate, optionalText, text } from "./common.ts";
+import { type Locale, type Localized, pick } from "../i18n/locale.ts";
 import { itemCode } from "./catalog.ts";
+import { addDays, currencyCode, isoDate, optionalText, text } from "./common.ts";
 import { customerId } from "./customer.ts";
 import { money, percent, quantity } from "./money.ts";
 import type { Settings } from "./settings.ts";
@@ -88,7 +89,7 @@ export function nextLineId(lines: readonly Pick<QuoteLine, "id">[]): string {
 
 // --- Numbers ----------------------------------------------------------------
 
-function escape(value: string): string {
+function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
@@ -105,7 +106,9 @@ export function nextQuoteNumber(format: string, date: string, existing: readonly
   const fixed = (part: string) =>
     part.replaceAll("{YYYY}", year).replaceAll("{YY}", year.slice(2)).replaceAll("{MM}", month);
   const [before = "", after = ""] = format.split(counter[0]);
-  const pattern = new RegExp(`^${escape(fixed(before))}([0-9]+)${escape(fixed(after))}$`);
+  const pattern = new RegExp(
+    `^${escapeRegExp(fixed(before))}([0-9]+)${escapeRegExp(fixed(after))}$`,
+  );
   let highest = 0;
   for (const number of existing) {
     const match = pattern.exec(number);
@@ -116,11 +119,30 @@ export function nextQuoteNumber(format: string, date: string, existing: readonly
 }
 
 /** Why a number format cannot be used, or null when it can. */
-export function numberFormatProblem(format: string): string | null {
+export function numberFormatProblem(format: string, locale: Locale = "cs"): string | null {
+  if (!/^(?:[A-Za-z0-9._-]|\{YYYY\}|\{YY\}|\{MM\}|\{N{1,8}\})+$/.test(format)) {
+    return pick(
+      locale,
+      "formát smí obsahovat písmena, číslice, . _ - a značky {YYYY} {YY} {MM} {NNNN}",
+      "the format may hold letters, digits, . _ - and the tokens {YYYY} {YY} {MM} {NNNN}",
+    );
+  }
   const counters = format.match(/\{N+\}/g) ?? [];
-  if (counters.length !== 1) return "formát čísla potřebuje právě jedno počítadlo {NNNN}";
+  if (counters.length !== 1) {
+    return pick(
+      locale,
+      "formát čísla potřebuje právě jedno počítadlo {NNNN}",
+      "the number format needs exactly one counter {NNNN}",
+    );
+  }
   const sample = nextQuoteNumber(format, "2026-01-01", []);
-  if (!QUOTE_NUMBER.test(sample)) return "formát musí začínat písmenem nebo číslicí";
+  if (!QUOTE_NUMBER.test(sample)) {
+    return pick(
+      locale,
+      "formát musí začínat písmenem nebo číslicí",
+      "the format must start with a letter or a digit",
+    );
+  }
   return null;
 }
 
@@ -136,19 +158,19 @@ const TRANSITIONS: Record<QuoteAction, { from: readonly QuoteStatus[]; to: Quote
   expire: { from: ["sent"], to: "expired" },
 };
 
-export const STATUS_LABELS: Record<QuoteStatus, string> = {
-  draft: "Koncept",
-  sent: "Odeslaná",
-  accepted: "Přijatá",
-  rejected: "Odmítnutá",
-  expired: "Propadlá",
+export const STATUS_LABELS: Record<QuoteStatus, Localized> = {
+  draft: { cs: "Koncept", en: "Draft" },
+  sent: { cs: "Odeslaná", en: "Sent" },
+  accepted: { cs: "Přijatá", en: "Accepted" },
+  rejected: { cs: "Odmítnutá", en: "Rejected" },
+  expired: { cs: "Propadlá", en: "Expired" },
 };
 
-export const ACTION_LABELS: Record<QuoteAction, string> = {
-  send: "Označit jako odeslanou",
-  accept: "Přijatá zákazníkem",
-  reject: "Odmítnutá zákazníkem",
-  expire: "Označit jako propadlou",
+export const ACTION_LABELS: Record<QuoteAction, Localized> = {
+  send: { cs: "Označit jako odeslanou", en: "Mark as sent" },
+  accept: { cs: "Přijatá zákazníkem", en: "Accepted by the customer" },
+  reject: { cs: "Odmítnutá zákazníkem", en: "Rejected by the customer" },
+  expire: { cs: "Označit jako propadlou", en: "Mark as expired" },
 };
 
 /** The actions a quote in this state allows. */
@@ -166,11 +188,16 @@ export function canCreateVersion(value: Pick<Quote, "status">): boolean {
   return value.status === "sent" || value.status === "rejected" || value.status === "expired";
 }
 
-/** The quote after an action, or an error message when the state does not allow it. */
-export function applyAction(value: Quote, action: QuoteAction, today: string): Quote | string {
+/** The quote after an action, or why the state does not allow it. */
+export function applyAction(value: Quote, action: QuoteAction, today: string): Quote | Localized {
   const transition = TRANSITIONS[action];
   if (!transition.from.includes(value.status)) {
-    return `Nabídka ve stavu „${STATUS_LABELS[value.status]}“ tento krok nedovoluje (${ACTION_LABELS[action].toLowerCase()}).`;
+    const status = STATUS_LABELS[value.status];
+    const step = ACTION_LABELS[action];
+    return {
+      cs: `Nabídka ve stavu „${status.cs}“ tento krok nedovoluje (${step.cs.toLowerCase()}).`,
+      en: `A quote in the state “${status.en}” does not allow this step (${step.en.toLowerCase()}).`,
+    };
   }
   const next: Quote = { ...value, status: transition.to, updated_at: today };
   if (action === "send") next.sent_at = today;
@@ -187,13 +214,12 @@ export function isPastValidity(value: Pick<Quote, "status" | "valid_until">, tod
  * The next version of a quote: a draft with the same number and content,
  * dated today and valid for the usual number of days.
  */
-export function nextVersion(value: Quote, settings: Pick<Settings, "validity_days">, today: string) {
-  const {
-    sent_at: _sent,
-    closed_at: _closed,
-    previous_version: _previous,
-    ...content
-  } = value;
+export function nextVersion(
+  value: Quote,
+  settings: Pick<Settings, "validity_days">,
+  today: string,
+) {
+  const { sent_at: _sent, closed_at: _closed, previous_version: _previous, ...content } = value;
   return {
     ...content,
     version: value.version + 1,

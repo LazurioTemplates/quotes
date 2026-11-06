@@ -10,6 +10,7 @@ import {
 } from "../domain/collections.ts";
 import { checkRules, type RuleIssue } from "../domain/rules.ts";
 import { parseIn } from "./records.ts";
+import { StoreError } from "./store.ts";
 
 /**
  * Reads the records of a plain directory laid out like `db/data/` (one
@@ -74,7 +75,7 @@ export function readDataDirectory(root: string): DirectoryData {
     }
   }
   const data: DataSet = { ...values, settings: values.settings[0] ?? null };
-  issues.push(...checkRules(data));
+  issues.push(...checkRules(data, "en"));
   return { data, issues, documents };
 }
 
@@ -108,6 +109,7 @@ function readDocument<C extends CollectionName>(
     (values[collection] as RecordOf[C][]).push(value);
     return null;
   } catch (error) {
+    if (error instanceof StoreError) return error.messageIn("en");
     return error instanceof Error ? error.message : String(error);
   }
 }

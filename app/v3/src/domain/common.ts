@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { Locale } from "../i18n/locale.ts";
 
 /** A calendar date as the records store it: `YYYY-MM-DD`, no time zone. */
 export const isoDate = z.string().regex(/^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/, {
@@ -33,10 +34,26 @@ export function localToday(now: Date = new Date()): string {
   return `${now.getFullYear()}-${month}-${day}`;
 }
 
-/** `2026-11-06` → `6. 11. 2026`, the Czech way of writing a date. */
-export function formatDate(date: string | undefined): string {
+const MONTHS_EN = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+/** `2026-11-06` → `6. 11. 2026` in Czech, `6 Nov 2026` in English. */
+export function formatDate(date: string | undefined, locale: Locale = "cs"): string {
   if (!date) return "";
   const [year, month, day] = date.split("-");
+  if (locale === "en") return `${Number(day)} ${MONTHS_EN[Number(month) - 1] ?? month} ${year}`;
   return `${Number(day)}. ${Number(month)}. ${year}`;
 }
 

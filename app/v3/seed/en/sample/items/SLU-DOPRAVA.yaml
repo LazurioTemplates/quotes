@@ -1,0 +1,10 @@
+id: SLU-DOPRAVA
+record:
+  category: services
+  code: SLU-DOPRAVA
+  name: Delivery and carrying within the city
+  sale_price: 120000
+  unit: flat
+  valid_from: 2026-01-01
+  vat_rate: standard
+schemaVersion: quotes.item.v1

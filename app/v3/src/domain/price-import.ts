@@ -1,13 +1,8 @@
-import { type Category, type Item, ITEM_CODE, withPrice } from "./catalog.ts";
+import { type Locale, type Localized, pick } from "../i18n/locale.ts";
+import { type Category, ITEM_CODE, type Item, withPrice } from "./catalog.ts";
 import { slugify } from "./common.ts";
 import { parseCsv } from "./csv.ts";
-import {
-  parseMoney,
-  parsePercent,
-  percentToBasisPoints,
-  roundTo,
-  withMarkup,
-} from "./money.ts";
+import { parseMoney, parsePercent, percentToBasisPoints, roundTo, withMarkup } from "./money.ts";
 import type { Settings } from "./settings.ts";
 
 /**
@@ -29,14 +24,14 @@ export const IMPORT_FIELDS = [
 export type ImportField = (typeof IMPORT_FIELDS)[number];
 export type ImportMapping = Partial<Record<ImportField, number>>;
 
-export const IMPORT_FIELD_LABELS: Record<ImportField, string> = {
-  code: "Kód dodavatele",
-  name: "Název",
-  unit: "Jednotka",
-  purchase_price: "Nákupní cena",
-  sale_price: "Prodejní cena",
-  vat: "Sazba DPH",
-  category: "Kategorie",
+export const IMPORT_FIELD_LABELS: Record<ImportField, Localized> = {
+  code: { cs: "Kód dodavatele", en: "Supplier's code" },
+  name: { cs: "Název", en: "Name" },
+  unit: { cs: "Jednotka", en: "Unit" },
+  purchase_price: { cs: "Nákupní cena", en: "Purchase price" },
+  sale_price: { cs: "Prodejní cena", en: "Sale price" },
+  vat: { cs: "Sazba DPH", en: "VAT rate" },
+  category: { cs: "Kategorie", en: "Category" },
 };
 
 const HEADER_NAMES: Record<ImportField, readonly string[]> = {
@@ -121,6 +116,8 @@ export interface ImportInput {
   items: readonly Item[];
   categories: readonly Category[];
   settings: Settings;
+  /** The language of the problems the preview names, and of the amounts in the file. */
+  locale?: Locale | undefined;
 }
 
 /** A code of ours for a supplier's code: `ab/12 x` → `ab-12-x`, unique among `taken`. */
@@ -139,6 +136,8 @@ export function itemCodeFor(supplierCode: string, taken: ReadonlySet<string>): s
 
 export function previewImport(input: ImportInput): ImportPreview {
   const { options, settings } = input;
+  const locale = input.locale ?? "cs";
+  const t = (cs: string, en: string) => pick(locale, cs, en);
   const [header = [], ...records] = parseCsv(input.csv);
   const mapping = input.mapping ?? guessMapping(header);
   const cell = (row: readonly string[], field: ImportField) => {
@@ -158,33 +157,53 @@ export function previewImport(input: ImportInput): ImportPreview {
     const line = index + 2;
     const supplierCode = cell(record, "code");
     const problems: string[] = [];
-    if (mapping.code === undefined) problems.push("chybí sloupec s kódem dodavatele");
-    else if (!supplierCode) problems.push("řádek nemá kód");
-    else if (seen.has(supplierCode)) problems.push("kód se v souboru opakuje");
+    if (mapping.code === undefined)
+      problems.push(t("chybí sloupec s kódem dodavatele", "no column holds the supplier's code"));
+    else if (!supplierCode) problems.push(t("řádek nemá kód", "the row has no code"));
+    else if (seen.has(supplierCode))
+      problems.push(t("kód se v souboru opakuje", "the code appears twice in the file"));
     if (supplierCode) seen.add(supplierCode);
 
     const purchaseText = cell(record, "purchase_price");
-    const purchase = purchaseText === "" ? undefined : parseMoney(purchaseText);
+    const purchase = purchaseText === "" ? undefined : parseMoney(purchaseText, locale);
     if (purchase === null || (purchase !== undefined && purchase < 0)) {
-      problems.push(`nákupní cena „${purchaseText}“ není částka`);
+      problems.push(
+        t(
+          `nákupní cena „${purchaseText}“ není částka`,
+          `the purchase price “${purchaseText}” is not an amount`,
+        ),
+      );
     }
     const saleText = cell(record, "sale_price");
-    const saleColumn = saleText === "" ? undefined : parseMoney(saleText);
+    const saleColumn = saleText === "" ? undefined : parseMoney(saleText, locale);
     if (saleColumn === null || (saleColumn !== undefined && saleColumn < 0)) {
-      problems.push(`prodejní cena „${saleText}“ není částka`);
+      problems.push(
+        t(
+          `prodejní cena „${saleText}“ není částka`,
+          `the sale price “${saleText}” is not an amount`,
+        ),
+      );
     }
     const vatText = cell(record, "vat");
     let vatRate: string | undefined;
     if (vatText !== "") {
-      const percent = parsePercent(vatText);
+      const percent = parsePercent(vatText, locale);
       vatRate = settings.vat_rates.find(
-        (rate) => percent !== null && percentToBasisPoints(rate.percent) === percentToBasisPoints(percent),
+        (rate) =>
+          percent !== null && percentToBasisPoints(rate.percent) === percentToBasisPoints(percent),
       )?.id;
-      if (!vatRate) problems.push(`sazbu DPH „${vatText}“ Nastavení nezná`);
+      if (!vatRate)
+        problems.push(
+          t(
+            `sazbu DPH „${vatText}“ Nastavení nezná`,
+            `Settings do not know the VAT rate “${vatText}”`,
+          ),
+        );
     }
     const existing = supplierCode ? bySupplierCode.get(supplierCode) : undefined;
     const name = cell(record, "name");
-    if (!existing && !name) problems.push("nová položka potřebuje název");
+    if (!existing && !name)
+      problems.push(t("nová položka potřebuje název", "a new item needs a name"));
 
     let sale: number | undefined;
     if (markup !== null && typeof purchase === "number") {
@@ -192,7 +211,14 @@ export function previewImport(input: ImportInput): ImportPreview {
       if (options.round_to_crowns) sale = roundTo(sale, 100);
     } else if (typeof saleColumn === "number") sale = saleColumn;
     else if (existing) sale = existing.sale_price;
-    else problems.push("chybí prodejní cena: zadejte přirážku nebo namapujte sloupec prodejní ceny");
+    else {
+      problems.push(
+        t(
+          "chybí prodejní cena: zadejte přirážku nebo namapujte sloupec prodejní ceny",
+          "no sale price: enter a markup or map the sale price column",
+        ),
+      );
+    }
 
     if (problems.length > 0 || sale === undefined) {
       rows.push({ kind: "invalid", line, supplierCode: supplierCode || null, problems });
@@ -204,10 +230,17 @@ export function previewImport(input: ImportInput): ImportPreview {
       const categoryText = normalize(cell(record, "category"));
       const category =
         input.categories.find(
-          (entry) => categoryText !== "" && (entry.id === slugify(categoryText) || normalize(entry.name) === categoryText),
+          (entry) =>
+            categoryText !== "" &&
+            (entry.id === slugify(categoryText) || normalize(entry.name) === categoryText),
         )?.id ?? defaultCategory;
       if (!category) {
-        rows.push({ kind: "invalid", line, supplierCode, problems: ["ceník nemá žádnou kategorii"] });
+        rows.push({
+          kind: "invalid",
+          line,
+          supplierCode,
+          problems: [t("ceník nemá žádnou kategorii", "the price list has no category")],
+        });
         return;
       }
       const code = itemCodeFor(supplierCode, taken);
@@ -254,7 +287,8 @@ export function previewImport(input: ImportInput): ImportPreview {
       options.note ?? options.supplier,
     );
     if (priced !== next) {
-      if ((existing.purchase_price ?? null) !== (nextPurchase ?? null)) fields.push("purchase_price");
+      if ((existing.purchase_price ?? null) !== (nextPurchase ?? null))
+        fields.push("purchase_price");
       if (existing.sale_price !== sale) fields.push("sale_price");
       next = priced;
     }

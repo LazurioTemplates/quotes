@@ -1,6 +1,5 @@
 import { calculateQuote } from "../../domain/calculate.ts";
-import { formatDate, localToday } from "../../domain/common.ts";
-import { formatMoney } from "../../domain/money.ts";
+import { localToday } from "../../domain/common.ts";
 import {
   idOfQuote,
   isPastValidity,
@@ -11,6 +10,7 @@ import {
 } from "../../domain/quote.ts";
 import type { AppData } from "../App.tsx";
 import { PageHeader, StatusChip } from "../components/common.tsx";
+import { useFormat, useT } from "../i18n.tsx";
 import { href } from "../routes.ts";
 
 export function QuoteListPage({
@@ -22,6 +22,8 @@ export function QuoteListPage({
   status: QuoteStatus | null;
   today?: string;
 }) {
+  const t = useT();
+  const f = useFormat();
   const settings = data.settings.value;
   const latest = latestVersions(data.quotes.map((entry) => entry.value));
   const shown = status ? latest.filter((quote) => quote.status === status) : latest;
@@ -29,17 +31,23 @@ export function QuoteListPage({
   return (
     <section>
       <PageHeader
-        title="Nabídky"
-        subtitle="Poslední verze každé nabídky. Starší verze najdete v detailu nabídky."
+        title={t("Nabídky", "Quotes")}
+        subtitle={t(
+          "Poslední verze každé nabídky. Starší verze najdete v detailu nabídky.",
+          "The latest version of every quote. Older versions are in the quote's detail.",
+        )}
         actions={
           <a className="button button-primary" href={href({ page: "new-quote" })}>
-            Nová nabídka
+            {t("Nová nabídka", "New quote")}
           </a>
         }
       />
-      <nav className="filters" aria-label="Stav nabídky">
-        <a className={`filter${status === null ? " active" : ""}`} href={href({ page: "quotes", status: null })}>
-          Všechny ({latest.length})
+      <nav className="filters" aria-label={t("Stav nabídky", "State of the quote")}>
+        <a
+          className={`filter${status === null ? " active" : ""}`}
+          href={href({ page: "quotes", status: null })}
+        >
+          {t("Všechny", "All")} ({latest.length})
         </a>
         {QUOTE_STATUSES.map((value) => (
           <a
@@ -47,22 +55,24 @@ export function QuoteListPage({
             className={`filter${status === value ? " active" : ""}`}
             href={href({ page: "quotes", status: value })}
           >
-            {STATUS_LABELS[value]} ({count(value)})
+            {t.of(STATUS_LABELS[value])} ({count(value)})
           </a>
         ))}
       </nav>
       {shown.length === 0 ? (
-        <p className="panel empty muted">Žádná nabídka v tomto stavu.</p>
+        <p className="panel empty muted">
+          {t("Žádná nabídka v tomto stavu.", "No quote in this state.")}
+        </p>
       ) : (
         <table className="table">
           <thead>
             <tr>
-              <th>Číslo</th>
-              <th>Předmět</th>
-              <th>Zákazník</th>
-              <th>Stav</th>
-              <th>Platí do</th>
-              <th className="num">Celkem s DPH</th>
+              <th>{t("Číslo", "Number")}</th>
+              <th>{t("Předmět", "Subject")}</th>
+              <th>{t("Zákazník", "Customer")}</th>
+              <th>{t("Stav", "State")}</th>
+              <th>{t("Platí do", "Valid until")}</th>
+              <th className="num">{t("Celkem s DPH", "Total incl. VAT")}</th>
             </tr>
           </thead>
           <tbody>
@@ -83,12 +93,14 @@ export function QuoteListPage({
                   <td>
                     <StatusChip status={quote.status} />
                     {isPastValidity(quote, today) ? (
-                      <span className="chip chip-warning">po platnosti</span>
+                      <span className="chip chip-warning">
+                        {t("po platnosti", "past validity")}
+                      </span>
                     ) : null}
                   </td>
-                  <td>{formatDate(quote.valid_until)}</td>
+                  <td>{f.date(quote.valid_until)}</td>
                   <td className="num">
-                    {formatMoney(calculateQuote(quote, settings).payable, quote.currency)}
+                    {f.money(calculateQuote(quote, settings).payable, quote.currency)}
                   </td>
                 </tr>
               );

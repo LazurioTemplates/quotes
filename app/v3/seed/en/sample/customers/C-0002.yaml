@@ -1,0 +1,14 @@
+id: C-0002
+record:
+  city: Prague 4
+  company_id: "00000002"
+  contact_person: Sam Taylor
+  country: Czech Republic
+  email: sam.taylor@vzorova-ucetni.example
+  id: C-0002
+  name: Model Accounting s.r.o.
+  phone: +420 000 000 202
+  postal_code: 140 00
+  street: Fiction Street 5
+  vat_id: CZ00000002
+schemaVersion: quotes.customer.v1

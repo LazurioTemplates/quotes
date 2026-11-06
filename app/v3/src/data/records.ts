@@ -7,20 +7,77 @@ import {
   type RecordOf,
   recordId,
 } from "../domain/collections.ts";
-import { checkRules, type RuleIssue } from "../domain/rules.ts";
+import { checkRules } from "../domain/rules.ts";
+import type { Locale, Localized } from "../i18n/locale.ts";
 import { StoreError } from "./store.ts";
+
+type Issue = z.core.$ZodIssue;
+
+/** One problem Zod found, in both languages. */
+export function issueText(issue: Issue): Localized {
+  const raw = issue as Issue & {
+    expected?: unknown;
+    minimum?: unknown;
+    maximum?: unknown;
+    origin?: unknown;
+    keys?: string[];
+    input?: unknown;
+  };
+  switch (issue.code) {
+    case "invalid_type":
+      return raw.input === undefined
+        ? { cs: "povinné", en: "required" }
+        : { cs: `čeká se ${String(raw.expected)}`, en: `expected ${String(raw.expected)}` };
+    case "too_small":
+      if (raw.origin === "string" && Number(raw.minimum) === 1)
+        return { cs: "povinné", en: "required" };
+      if (raw.origin === "array") {
+        return {
+          cs: `aspoň ${String(raw.minimum)} položek`,
+          en: `at least ${String(raw.minimum)} item(s)`,
+        };
+      }
+      return { cs: `nejméně ${String(raw.minimum)}`, en: `at least ${String(raw.minimum)}` };
+    case "too_big":
+      return { cs: `nejvýš ${String(raw.maximum)}`, en: `at most ${String(raw.maximum)}` };
+    case "invalid_format":
+      return { cs: "nesprávný formát", en: issue.message };
+    case "not_multiple_of":
+      return { cs: "příliš mnoho desetinných míst", en: "too many decimal places" };
+    case "unrecognized_keys":
+      return {
+        cs: `neznámé pole: ${(raw.keys ?? []).join(", ")}`,
+        en: `unknown field: ${(raw.keys ?? []).join(", ")}`,
+      };
+    case "invalid_value":
+      return { cs: "nepovolená hodnota", en: "not an allowed value" };
+    default:
+      return { cs: issue.message, en: issue.message };
+  }
+}
+
+/** The problems of a failed parse, by field path, in both languages. */
+export function issuesOf(issues: readonly Issue[], drop: readonly (string | number)[] = []) {
+  return issues.map((issue) => ({
+    path:
+      issue.path.filter((part) => !drop.includes(part as string | number)).join(".") || "(record)",
+    message: issueText(issue),
+  }));
+}
 
 /** Parse one record with its schema, or refuse it with every issue named. */
 export function parseRecord<T>(schema: z.ZodType<T>, value: unknown, label: string): T {
   const result = schema.safeParse(value);
   if (result.success) return result.data;
-  const issues = result.error.issues.map((issue) => ({
-    path: issue.path.join(".") || "(record)",
-    message: issue.message,
-  }));
+  const issues = issuesOf(result.error.issues);
+  const list = (locale: Locale) =>
+    issues.map((issue) => `${issue.path}: ${issue.message[locale]}`).join("; ");
   throw new StoreError(
     "invalid_record",
-    `${label} neodpovídá schématu: ${issues.map((issue) => `${issue.path}: ${issue.message}`).join("; ")}`,
+    {
+      cs: `${label} neodpovídá schématu: ${list("cs")}`,
+      en: `${label} does not match its schema: ${list("en")}`,
+    },
     issues,
   );
 }
@@ -30,7 +87,11 @@ export function parseIn<C extends CollectionName>(
   value: unknown,
   label: string = collection,
 ): RecordOf[C] {
-  return parseRecord(collections[collection].record as unknown as z.ZodType<RecordOf[C]>, value, label);
+  return parseRecord(
+    collections[collection].record as unknown as z.ZodType<RecordOf[C]>,
+    value,
+    label,
+  );
 }
 
 /** The key of a record across collections: `items/NAB-ZIDLE`. */
@@ -44,9 +105,15 @@ export interface Entry<T = unknown> {
   revision: string;
 }
 
+/** A record that could not be read, with why in both languages. */
+export interface Problem {
+  record: string;
+  message: Localized;
+}
+
 /** Every record by collection and id, plus records that could not be read. */
 export type Snapshot = { [C in CollectionName]: Map<string, Entry<RecordOf[C]>> } & {
-  problems: RuleIssue[];
+  problems: Problem[];
 };
 
 export function emptySnapshot(): Snapshot {
@@ -79,12 +146,26 @@ export function dataSetOf(snapshot: Snapshot): DataSet {
  */
 export function assertRulesFor(keys: readonly string[], data: DataSet): void {
   const wanted = new Set(keys);
-  const issues = checkRules(data).filter((issue) => wanted.has(issue.record));
+  const cs = checkRules(data, "cs");
+  const en = checkRules(data, "en");
+  const issues = cs.flatMap((issue, index) =>
+    wanted.has(issue.record)
+      ? [
+          {
+            path: issue.record,
+            message: { cs: issue.message, en: en[index]?.message ?? issue.message },
+          },
+        ]
+      : [],
+  );
   if (issues.length === 0) return;
   throw new StoreError(
     "invalid_record",
-    issues.map((issue) => `${issue.record}: ${issue.message}`).join("; "),
-    issues.map((issue) => ({ path: issue.record, message: issue.message })),
+    {
+      cs: issues.map((issue) => `${issue.path}: ${issue.message.cs}`).join("; "),
+      en: issues.map((issue) => `${issue.path}: ${issue.message.en}`).join("; "),
+    },
+    issues,
   );
 }
 
@@ -97,7 +178,10 @@ export function ordered<C extends CollectionName>(
   switch (collection) {
     case "categories":
       return entries.sort((left, right) =>
-        compareCategories(left.value as RecordOf["categories"], right.value as RecordOf["categories"]),
+        compareCategories(
+          left.value as RecordOf["categories"],
+          right.value as RecordOf["categories"],
+        ),
       );
     case "items": {
       const compare = compareItems(dataSetOf(snapshot).categories);

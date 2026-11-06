@@ -7,6 +7,7 @@ import type { ImportMapping, ImportOptions, ImportPreview } from "../domain/pric
 import type { Quote, QuoteAction } from "../domain/quote.ts";
 import type { RuleIssue } from "../domain/rules.ts";
 import type { Settings } from "../domain/settings.ts";
+import { DEFAULT_LOCALE, type Locale, type Localized } from "../i18n/locale.ts";
 
 /** What the server stores, as the browser receives it. */
 export interface Stored<T> {
@@ -31,25 +32,68 @@ export class ApiError extends Error {
   }
 }
 
-/** Czech wording of the refusals a person can meet. */
-const MESSAGES: Record<string, string> = {
-  record_changed: "Záznam mezitím uložil někdo jiný. Načtěte ho znovu; vaše úpravy zůstávají ve formuláři.",
-  draft_changed: "Koncept se od zobrazení změnil. Podívejte se na něj znovu a potvrďte.",
-  draft_write_blocked: "Právě probíhá publikování. Zkuste to za chvíli znovu.",
-  conflict_active: "Publikování zastavil konflikt; změny zůstávají vidět v konceptu.",
-  publish_conflict:
-    "Novější práci kolegy nešlo bezpečně spojit s vaší. Postup ukazuje karta konceptu.",
-  pull_blocked_by_draft:
-    "Kolega změnil stejný záznam, který upravujete. Vraťte ho, stáhněte a upravte znovu.",
-  publish_push_failed: "Uloženo, ale server nebyl dostupný. Dokončete odeslání.",
-  send_pending: "Publikování čeká na odeslání; nejdřív ho dokončete.",
-  identity_missing:
-    "Toto Prostředí nemá jméno a e-mail pro Git; přihlaste se ke GitHubu v Lazuriu.",
-  credentials: "Toto Prostředí se k datovému repozitáři nedostane; přihlaste se.",
-  validation_failed: "Data porušují pravidlo datového repozitáře. Nic se nepublikovalo.",
-  mount_unavailable: "Data zatím nejsou k dispozici.",
-  settings_missing: "Datový repozitář zatím nemá nastavení nabídek.",
-  origin_refused: "Změnu lze poslat jen z aplikace Cenové nabídky.",
+/** The interface's language, which the server words its answers in (`Accept-Language`). */
+let locale: Locale = DEFAULT_LOCALE;
+
+export function setApiLocale(value: Locale): void {
+  locale = value;
+}
+
+/** The wording of the refusals a person can meet. */
+const MESSAGES: Record<string, Localized> = {
+  record_changed: {
+    cs: "Záznam mezitím uložil někdo jiný. Načtěte ho znovu; vaše úpravy zůstávají ve formuláři.",
+    en: "Someone else saved the record meanwhile. Load it again; your edits stay in the form.",
+  },
+  draft_changed: {
+    cs: "Koncept se od zobrazení změnil. Podívejte se na něj znovu a potvrďte.",
+    en: "The draft changed since it was shown. Look at it again and confirm.",
+  },
+  draft_write_blocked: {
+    cs: "Právě probíhá publikování. Zkuste to za chvíli znovu.",
+    en: "A publish is running. Try again in a moment.",
+  },
+  conflict_active: {
+    cs: "Publikování zastavil konflikt; změny zůstávají vidět v konceptu.",
+    en: "A conflict stopped publishing; the changes stay visible in the draft.",
+  },
+  publish_conflict: {
+    cs: "Novější práci kolegy nešlo bezpečně spojit s vaší. Postup ukazuje karta konceptu.",
+    en: "A colleague's newer work could not be combined with yours safely. The draft card shows the way out.",
+  },
+  pull_blocked_by_draft: {
+    cs: "Kolega změnil stejný záznam, který upravujete. Vraťte ho, stáhněte a upravte znovu.",
+    en: "A colleague changed the record you are editing. Return it, take their work and edit again.",
+  },
+  publish_push_failed: {
+    cs: "Uloženo, ale server nebyl dostupný. Dokončete odeslání.",
+    en: "Saved, but the server was not reached. Finish sending.",
+  },
+  send_pending: {
+    cs: "Publikování čeká na odeslání; nejdřív ho dokončete.",
+    en: "A publish waits to be sent; finish it first.",
+  },
+  identity_missing: {
+    cs: "Toto Prostředí nemá jméno a e-mail pro Git; přihlaste se ke GitHubu v Lazuriu.",
+    en: "This Environment has no Git name and e-mail; sign in to GitHub in Lazurio.",
+  },
+  credentials: {
+    cs: "Toto Prostředí se k datovému repozitáři nedostane; přihlaste se.",
+    en: "This Environment cannot reach the data repository; sign in.",
+  },
+  validation_failed: {
+    cs: "Data porušují pravidlo datového repozitáře. Nic se nepublikovalo.",
+    en: "The data breaks a rule of the data repository. Nothing was published.",
+  },
+  mount_unavailable: { cs: "Data zatím nejsou k dispozici.", en: "The data is not available yet." },
+  settings_missing: {
+    cs: "Datový repozitář zatím nemá nastavení nabídek.",
+    en: "The data repository has no quote settings yet.",
+  },
+  origin_refused: {
+    cs: "Změnu lze poslat jen z aplikace Cenové nabídky.",
+    en: "A change is accepted only from the Quotes App.",
+  },
 };
 
 async function request<T>(path: string, init?: { method: string; body: unknown }): Promise<T> {
@@ -58,17 +102,21 @@ async function request<T>(path: string, init?: { method: string; body: unknown }
     init
       ? {
           method: init.method,
-          headers: { "content-type": "application/json" },
+          headers: { "content-type": "application/json", "accept-language": locale },
           body: JSON.stringify(init.body),
         }
-      : { headers: { accept: "application/json" } },
+      : { headers: { accept: "application/json", "accept-language": locale } },
   );
   const data = (await response.json().catch(() => null)) as
     | (T & { code?: string; message?: string; issues?: FieldIssue[] })
     | null;
   if (!response.ok) {
     const code = data?.code ?? "unexpected";
-    throw new ApiError(code, MESSAGES[code] ?? data?.message ?? response.statusText, data?.issues);
+    throw new ApiError(
+      code,
+      MESSAGES[code]?.[locale] ?? data?.message ?? response.statusText,
+      data?.issues,
+    );
   }
   return data as T;
 }
@@ -137,9 +185,9 @@ export const api = {
   pull: () => post<{ ok: true }>("/api/draft/pull", {}),
 };
 
-/** The print page of a quote version; the browser prints it to PDF. */
-export function printUrl(id: string): string {
-  return `/print/quotes/${encodeURIComponent(id)}`;
+/** The print page of a quote version in the interface's language; the browser prints it to PDF. */
+export function printUrl(id: string, language: Locale = locale): string {
+  return `/print/quotes/${encodeURIComponent(id)}?lang=${language}`;
 }
 
 /** Server events: records came in or the draft moved. Returns the unsubscribe function. */

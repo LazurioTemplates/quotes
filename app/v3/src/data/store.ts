@@ -4,6 +4,7 @@ import type { Customer } from "../domain/customer.ts";
 import type { Quote } from "../domain/quote.ts";
 import type { RuleIssue } from "../domain/rules.ts";
 import type { Settings } from "../domain/settings.ts";
+import type { Locale, Localized } from "../i18n/locale.ts";
 
 /**
  * The storage port of Quotes: everything the server and the agent's command
@@ -88,10 +89,10 @@ export interface QuotesStore {
    * Every problem of the data as it stands (draft included): records that do
    * not match their schema and broken rules across records. Empty when valid.
    */
-  check(): Promise<RuleIssue[]>;
+  check(locale?: Locale): Promise<RuleIssue[]>;
 
-  /** The Draft & Publish card: state, the changed records and the draft revision. */
-  draft(): Promise<DraftCard>;
+  /** The Draft & Publish card: state, the changed records and the draft revision, labelled in `locale`. */
+  draft(locale?: Locale): Promise<DraftCard>;
   /** Publish the whole draft as shown; a changed draft is refused with `draft_changed`. */
   publish(input: { expectedRevision: string; actor?: string; summary?: string }): Promise<void>;
   /** Finish sending a publish that was saved but not sent. */
@@ -107,12 +108,41 @@ export interface QuotesStore {
 /** A refusal the UI words for the person; `code` follows repository-db's error codes. */
 export class StoreError extends Error {
   readonly code: string;
-  readonly issues: readonly { path: string; message: string }[];
+  readonly text: Localized;
+  readonly localizedIssues: readonly { path: string; message: Localized }[];
 
-  constructor(code: string, message: string, issues: { path: string; message: string }[] = []) {
-    super(message);
+  constructor(
+    code: string,
+    message: string | Localized,
+    issues: { path: string; message: string | Localized }[] = [],
+  ) {
+    const text = typeof message === "string" ? { cs: message, en: message } : message;
+    super(text.en);
     this.name = "StoreError";
     this.code = code;
-    this.issues = issues;
+    this.text = text;
+    this.localizedIssues = issues.map((issue) => ({
+      path: issue.path,
+      message:
+        typeof issue.message === "string"
+          ? { cs: issue.message, en: issue.message }
+          : issue.message,
+    }));
+  }
+
+  /** The issues in English, as logs and tests read them. */
+  get issues(): { path: string; message: string }[] {
+    return this.issuesIn("en");
+  }
+
+  messageIn(locale: Locale): string {
+    return this.text[locale];
+  }
+
+  issuesIn(locale: Locale): { path: string; message: string }[] {
+    return this.localizedIssues.map((issue) => ({
+      path: issue.path,
+      message: issue.message[locale],
+    }));
   }
 }

@@ -6,6 +6,7 @@ import type { Quote } from "../domain/quote.ts";
 import type { Settings } from "../domain/settings.ts";
 import { ApiError, api, type Stored, subscribe } from "./api.ts";
 import { Layout } from "./components/Layout.tsx";
+import { useT } from "./i18n.tsx";
 import { CustomerListPage } from "./pages/CustomerListPage.tsx";
 import { CustomerPage } from "./pages/CustomerPage.tsx";
 import { DraftPage } from "./pages/DraftPage.tsx";
@@ -43,6 +44,7 @@ function useHashRoute(): Route {
 }
 
 export function App() {
+  const t = useT();
   const route = useHashRoute();
   const [data, setData] = useState<AppData | null>(null);
   const [draft, setDraft] = useState<DraftPanelInput | null>(null);
@@ -81,17 +83,22 @@ export function App() {
   };
 
   const quiet =
-    error instanceof ApiError && (error.code === "mount_unavailable" || error.code === "settings_missing");
+    error instanceof ApiError &&
+    (error.code === "mount_unavailable" || error.code === "settings_missing");
   return (
     <Layout route={route} draft={draft}>
       {error ? (
         <div className={`notice ${quiet ? "notice-info" : "notice-danger"}`} role="alert">
-          <strong>{quiet ? "Data zatím nejsou k dispozici." : "Data se nepodařilo načíst."}</strong>{" "}
+          <strong>
+            {quiet
+              ? t("Data zatím nejsou k dispozici.", "The data is not available yet.")
+              : t("Data se nepodařilo načíst.", "The data could not be loaded.")}
+          </strong>{" "}
           {error.message}
         </div>
       ) : null}
       {data ? <Page route={route} data={data} onChanged={changed} /> : null}
-      {!data && !error ? <p className="muted">Načítám…</p> : null}
+      {!data && !error ? <p className="muted">{t("Načítám…", "Loading…")}</p> : null}
     </Layout>
   );
 }
@@ -105,6 +112,7 @@ function Page({
   data: AppData;
   onChanged: () => Promise<void>;
 }) {
+  const t = useT();
   switch (route.page) {
     case "overview":
       return <OverviewPage data={data} />;
@@ -137,9 +145,9 @@ function Page({
     case "not-found":
       return (
         <section>
-          <h1 className="page-title">Stránka neexistuje</h1>
+          <h1 className="page-title">{t("Stránka neexistuje", "This page does not exist")}</h1>
           <p>
-            <a href="#/">Zpět na přehled</a>
+            <a href="#/">{t("Zpět na přehled", "Back to the overview")}</a>
           </p>
         </section>
       );

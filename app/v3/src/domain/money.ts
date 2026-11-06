@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { Locale } from "../i18n/locale.ts";
 
 /**
  * Money is counted in minor units of the currency (haléře for CZK) as safe
@@ -106,22 +107,32 @@ export function allocate(total: number, weights: readonly number[]): number[] {
 
 /**
  * Parses a decimal number as people type it into an integer scaled by
- * `10^decimals`, without floating point: `1 234,5` → 123450 for two decimals.
- * A comma or a dot is the decimal separator; with both, the last one is, and
- * spaces, non-breaking spaces and the other mark group thousands. Returns null
- * for anything else or for more decimals than allowed.
+ * `10^decimals`, without floating point. In English a comma groups
+ * thousands and a dot is the decimal mark (`1,234.5`). In Czech a comma is
+ * the decimal mark; a dot is one too when it is the only mark, and with both
+ * the last one is (`1 234,5`, `1.234,5`, `12.5`). Spaces and non-breaking
+ * spaces group thousands. Returns null for anything else or for more
+ * decimals than allowed: `1 234,5` → 123450 for two decimals.
  */
-export function parseScaled(input: string, decimals: number): number | null {
-  let value = input.replace(/[\s  ]/g, "").replace(/(Kč|CZK|EUR|€|%)$/i, "");
+export function parseScaled(input: string, decimals: number, locale: Locale = "cs"): number | null {
+  let value = input
+    .replace(/[\s\u00a0\u202f]/g, "")
+    .replace(/^(Kč|CZK|EUR|€)|(Kč|CZK|EUR|€|%)$/gi, "");
   if (value === "") return null;
   const negative = value.startsWith("-");
   if (negative || value.startsWith("+")) value = value.slice(1);
-  const lastComma = value.lastIndexOf(",");
-  const lastDot = value.lastIndexOf(".");
   let separator: "," | "." | null = null;
-  if (lastComma >= 0 && lastDot >= 0) separator = lastComma > lastDot ? "," : ".";
-  else if (lastComma >= 0) separator = value.indexOf(",") === lastComma ? "," : null;
-  else if (lastDot >= 0) separator = value.indexOf(".") === lastDot ? "." : null;
+  if (locale === "en") {
+    value = value.replace(/,/g, "");
+    separator = value.includes(".") ? "." : null;
+    if (value.indexOf(".") !== value.lastIndexOf(".")) return null;
+  } else {
+    const lastComma = value.lastIndexOf(",");
+    const lastDot = value.lastIndexOf(".");
+    if (lastComma >= 0 && lastDot >= 0) separator = lastComma > lastDot ? "," : ".";
+    else if (lastComma >= 0) separator = value.indexOf(",") === lastComma ? "," : null;
+    else if (lastDot >= 0) separator = value.indexOf(".") === lastDot ? "." : null;
+  }
   let whole = value;
   let fraction = "";
   if (separator) {
@@ -135,51 +146,56 @@ export function parseScaled(input: string, decimals: number): number | null {
     if (/[^0]/.test(fraction.slice(decimals))) return null;
     fraction = fraction.slice(0, decimals);
   }
-  const scaled = BigInt(whole || "0") * 10n ** BigInt(decimals) + BigInt(fraction.padEnd(decimals, "0") || "0");
+  const scaled =
+    BigInt(whole || "0") * 10n ** BigInt(decimals) + BigInt(fraction.padEnd(decimals, "0") || "0");
   if (scaled > BigInt(Number.MAX_SAFE_INTEGER)) return null;
   return negative ? -Number(scaled) : Number(scaled);
 }
 
 /** `1 234,50` → 123450 haléřů; null when it is not an amount. */
-export function parseMoney(input: string): number | null {
-  return parseScaled(input, 2);
+export function parseMoney(input: string, locale: Locale = "cs"): number | null {
+  return parseScaled(input, 2, locale);
 }
 
 /** `2,5` → 2.5; null when it is not a quantity with at most three decimals. */
-export function parseQuantity(input: string): number | null {
-  const milli = parseScaled(input, 3);
+export function parseQuantity(input: string, locale: Locale = "cs"): number | null {
+  const milli = parseScaled(input, 3, locale);
   return milli === null ? null : milli / 1000;
 }
 
 /** `21` or `12,5` → 21 or 12.5; null when it is not a percentage with at most two decimals. */
-export function parsePercent(input: string): number | null {
-  const basisPoints = parseScaled(input, 2);
+export function parsePercent(input: string, locale: Locale = "cs"): number | null {
+  const basisPoints = parseScaled(input, 2, locale);
   return basisPoints === null ? null : basisPoints / 100;
 }
 
-const NBSP = " ";
+const NBSP = "\u00a0";
 const SYMBOLS: Record<string, string> = { CZK: "Kč", EUR: "€" };
 
-/** `123450` → `1 234,50`, with non-breaking spaces between thousands. */
-export function formatAmount(amount: number): string {
+/** `123450` → `1 234,50` in Czech (non-breaking spaces), `1,234.50` in English. */
+export function formatAmount(amount: number, locale: Locale = "cs"): string {
   const negative = amount < 0;
   const absolute = BigInt(Math.abs(amount));
-  const whole = (absolute / 100n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, NBSP);
+  const group = locale === "en" ? "," : NBSP;
+  const whole = (absolute / 100n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, group);
   const fraction = (absolute % 100n).toString().padStart(2, "0");
-  return `${negative ? "−" : ""}${whole},${fraction}`;
+  return `${negative ? "−" : ""}${whole}${locale === "en" ? "." : ","}${fraction}`;
 }
 
-/** `123450` → `1 234,50 Kč`. */
-export function formatMoney(amount: number, currency = "CZK"): string {
-  return `${formatAmount(amount)}${NBSP}${SYMBOLS[currency] ?? currency}`;
+/** `123450` → `1 234,50 Kč` in Czech, `CZK 1,234.50` in English. */
+export function formatMoney(amount: number, currency = "CZK", locale: Locale = "cs"): string {
+  if (locale === "en") return `${currency}${NBSP}${formatAmount(amount, locale)}`;
+  return `${formatAmount(amount, locale)}${NBSP}${SYMBOLS[currency] ?? currency}`;
 }
 
-/** `2.5` → `2,5`; `21` → `21`. */
-export function formatNumber(value: number): string {
-  return String(value).replace(".", ",");
+/** `2.5` → `2,5` in Czech, `2.5` in English. */
+export function formatNumber(value: number, locale: Locale = "cs"): string {
+  return locale === "en" ? String(value) : String(value).replace(".", ",");
 }
 
-/** `12.5` → `12,5 %`. */
-export function formatPercent(value: number): string {
-  return `${formatNumber(value)}${NBSP}%`;
+/** `12.5` → `12,5 %` in Czech, `12.5%` in English. */
+export function formatPercent(value: number, locale: Locale = "cs"): string {
+  return locale === "en"
+    ? `${formatNumber(value, locale)}%`
+    : `${formatNumber(value, locale)}${NBSP}%`;
 }

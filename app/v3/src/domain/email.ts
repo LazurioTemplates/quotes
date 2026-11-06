@@ -1,3 +1,4 @@
+import type { Locale } from "../i18n/locale.ts";
 import { calculateQuote } from "./calculate.ts";
 import { formatDate } from "./common.ts";
 import { formatMoney } from "./money.ts";
@@ -30,12 +31,19 @@ export interface QuoteEmail {
   attachment: string;
 }
 
-/** The file name of the quote's PDF: `Nabidka-NAB-2026-0007-v2.pdf`. */
-export function pdfFileName(value: Pick<Quote, "number" | "version">): string {
-  return `Nabidka-${value.number}-v${value.version}.pdf`;
+/** The file name of the quote's PDF: `Nabidka-NAB-2026-0007-v2.pdf`, `Quote-Q-2026-0007-v2.pdf`. */
+export function pdfFileName(
+  value: Pick<Quote, "number" | "version">,
+  locale: Locale = "cs",
+): string {
+  return `${locale === "en" ? "Quote" : "Nabidka"}-${value.number}-v${value.version}.pdf`;
 }
 
-export function quoteEmail(value: Quote, settings: Settings): QuoteEmail {
+/**
+ * The template is the Organization's own text in its settings; `locale`
+ * decides how the amounts and dates filled into it are written.
+ */
+export function quoteEmail(value: Quote, settings: Settings, locale: Locale = "cs"): QuoteEmail {
   const totals = calculateQuote(value, settings);
   const values: Record<(typeof EMAIL_PLACEHOLDERS)[number], string> = {
     number: value.number,
@@ -43,9 +51,9 @@ export function quoteEmail(value: Quote, settings: Settings): QuoteEmail {
     title: value.title,
     customer: value.customer.name,
     contact: value.customer.contact_person ?? value.customer.name,
-    valid_until: formatDate(value.valid_until),
-    total: formatMoney(totals.payable, value.currency),
-    total_without_vat: formatMoney(totals.base, value.currency),
+    valid_until: formatDate(value.valid_until, locale),
+    total: formatMoney(totals.payable, value.currency, locale),
+    total_without_vat: formatMoney(totals.base, value.currency, locale),
     organization: settings.supplier.name,
     prepared_by: value.prepared_by ?? settings.supplier.name,
   };
@@ -57,6 +65,6 @@ export function quoteEmail(value: Quote, settings: Settings): QuoteEmail {
     to: value.customer.email ?? null,
     subject: fill(settings.email.subject),
     body: fill(settings.email.body),
-    attachment: pdfFileName(value),
+    attachment: pdfFileName(value, locale),
   };
 }

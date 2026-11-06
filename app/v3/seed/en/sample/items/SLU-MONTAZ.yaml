@@ -1,0 +1,11 @@
+id: SLU-MONTAZ
+record:
+  category: services
+  code: SLU-MONTAZ
+  name: Furniture assembly
+  purchase_price: 38000
+  sale_price: 65000
+  unit: h
+  valid_from: 2026-01-01
+  vat_rate: standard
+schemaVersion: quotes.item.v1

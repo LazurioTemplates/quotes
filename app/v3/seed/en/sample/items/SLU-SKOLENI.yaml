@@ -1,0 +1,10 @@
+id: SLU-SKOLENI
+record:
+  category: services
+  code: SLU-SKOLENI
+  name: Workplace ergonomics training
+  sale_price: 180000
+  unit: h
+  valid_from: 2026-01-01
+  vat_rate: standard
+schemaVersion: quotes.item.v1

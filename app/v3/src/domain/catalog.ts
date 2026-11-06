@@ -54,9 +54,7 @@ export type PriceChange = z.infer<typeof priceChange>;
 
 /** Categories in their order, then by name. */
 export function compareCategories(left: Category, right: Category): number {
-  return (
-    (left.order ?? 1000) - (right.order ?? 1000) || left.name.localeCompare(right.name, "cs")
-  );
+  return (left.order ?? 1000) - (right.order ?? 1000) || left.name.localeCompare(right.name, "cs");
 }
 
 /** Items by category order, then by name. */

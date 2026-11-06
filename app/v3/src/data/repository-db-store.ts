@@ -16,8 +16,9 @@ import {
   collections,
   recordId,
 } from "../domain/collections.ts";
+import type { Localized } from "../i18n/locale.ts";
+import { createRecordStore, type Put } from "./record-store.ts";
 import { type Entry, emptySnapshot, parseIn, type Snapshot } from "./records.ts";
-import { type Put, createRecordStore } from "./record-store.ts";
 import { quotesReviewAdapter } from "./review-adapter.ts";
 import type { DraftCard, QuotesStore } from "./store.ts";
 import { StoreError } from "./store.ts";
@@ -70,26 +71,53 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Quot
         const path = pathOf(db, collection, id);
         const text = readDataFile(mountRoot, path);
         if (text === null) continue;
+        const problem = (message: Localized) => result.problems.push({ record: path, message });
+        let document: Record<string, unknown> | null;
         try {
-          const document = parseYaml(text) as Record<string, unknown> | null;
-          if (!document || typeof document !== "object") throw new Error("není to mapa");
-          if (document.schemaVersion !== spec.schemaVersion) {
-            throw new Error(`schemaVersion je ${String(document.schemaVersion)}, čeká se ${spec.schemaVersion}`);
-          }
-          if (document.id !== id) throw new Error(`id ${String(document.id)} neodpovídá souboru`);
+          document = parseYaml(text) as Record<string, unknown> | null;
+        } catch (error) {
+          const reason = error instanceof Error ? error.message : String(error);
+          problem({ cs: `není to YAML (${reason})`, en: `not YAML (${reason})` });
+          continue;
+        }
+        if (!document || typeof document !== "object" || Array.isArray(document)) {
+          problem({ cs: "dokument není mapa", en: "the document is not a mapping" });
+          continue;
+        }
+        if (document.schemaVersion !== spec.schemaVersion) {
+          const found = String(document.schemaVersion);
+          problem({
+            cs: `schemaVersion je ${found}, čeká se ${spec.schemaVersion}`,
+            en: `schemaVersion is ${found}, expected ${spec.schemaVersion}`,
+          });
+          continue;
+        }
+        if (document.id !== id) {
+          const found = String(document.id);
+          problem({
+            cs: `id ${found} neodpovídá souboru`,
+            en: `the id ${found} does not match the file`,
+          });
+          continue;
+        }
+        try {
           const value = parseIn(collection, document.record, path);
-          if (recordId(collection, value as never) !== id) {
-            throw new Error(`záznam patří pod id ${recordId(collection, value as never)}`);
+          const expected = recordId(collection, value as never);
+          if (expected !== id) {
+            problem({
+              cs: `záznam patří pod id ${expected}`,
+              en: `the record belongs under the id ${expected}`,
+            });
+            continue;
           }
           (result[collection] as Map<string, Entry>).set(id, {
             value,
             revision: recordRevisionFromBytes(Buffer.from(text, "utf8")),
           });
         } catch (error) {
-          result.problems.push({
-            record: path,
-            message: error instanceof Error ? error.message : String(error),
-          });
+          problem(
+            error instanceof StoreError ? error.text : { cs: String(error), en: String(error) },
+          );
         }
       }
     }
@@ -121,7 +149,7 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Quot
           return operation(snapshot(db), put);
         }),
       ),
-    async draft(): Promise<DraftCard> {
+    async draft(locale): Promise<DraftCard> {
       // The host computes its status in the background; before the first
       // check (or without a timer) it is computed now.
       let status = host.status();
@@ -129,12 +157,14 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Quot
       if (!status.available) {
         return {
           status: null,
-          unavailableReason: status.error?.message ?? "Data zatím nejsou k dispozici.",
+          unavailableReason:
+            status.error?.message ??
+            (locale === "en" ? "The data is not available yet." : "Data zatím nejsou k dispozici."),
         };
       }
       return engine(() =>
         host.read(async (db) => {
-          const review = await db.review({ adapters: [quotesReviewAdapter] });
+          const review = await db.review({ adapters: [quotesReviewAdapter(locale)] });
           const paths = review.resources.flatMap(
             (resource) => resource.changes[0]?.technicalRefs[0]?.path ?? [],
           );

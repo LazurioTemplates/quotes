@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { marginPercent, priceExpired } from "../../domain/catalog.ts";
-import { formatDate, localToday } from "../../domain/common.ts";
-import { formatMoney, formatPercent } from "../../domain/money.ts";
+import { localToday } from "../../domain/common.ts";
 import { vatRateById } from "../../domain/settings.ts";
 import type { AppData } from "../App.tsx";
 import { api } from "../api.ts";
 import { ErrorNotice, PageHeader } from "../components/common.tsx";
+import { useFormat, useT } from "../i18n.tsx";
 import { href } from "../routes.ts";
 
 export function ItemListPage({
@@ -19,12 +19,14 @@ export function ItemListPage({
   onChanged: () => Promise<void>;
   today?: string;
 }) {
+  const t = useT();
+  const f = useFormat();
   const [search, setSearch] = useState("");
   const [showArchived, setShowArchived] = useState(false);
   const [newCategory, setNewCategory] = useState("");
   const [error, setError] = useState<unknown>(null);
   const settings = data.settings.value;
-  const money = (amount: number) => formatMoney(amount, settings.currency);
+  const money = (amount: number) => f.money(amount, settings.currency);
   const categoryName = new Map(data.categories.map((entry) => [entry.value.id, entry.value.name]));
   const query = search.trim().toLowerCase();
   const items = data.items
@@ -38,7 +40,8 @@ export function ItemListPage({
         item.name.toLowerCase().includes(query) ||
         (item.supplier ?? "").toLowerCase().includes(query),
     );
-  const count = (id: string) => data.items.filter((entry) => entry.value.category === id && !entry.value.archived).length;
+  const count = (id: string) =>
+    data.items.filter((entry) => entry.value.category === id && !entry.value.archived).length;
 
   async function addCategory(event: React.FormEvent) {
     event.preventDefault();
@@ -55,22 +58,28 @@ export function ItemListPage({
   return (
     <section>
       <PageHeader
-        title="Ceník"
-        subtitle="Položky, ze kterých se skládají nabídky. Ceny jsou bez DPH; každá změna ceny se zapíše do historie položky."
+        title={t("Ceník", "Price list")}
+        subtitle={t(
+          "Položky, ze kterých se skládají nabídky. Ceny jsou bez DPH; každá změna ceny se zapíše do historie položky.",
+          "The items quotes are made of. Prices exclude VAT; every change of a price goes into the item's history.",
+        )}
         actions={
           <>
             <a className="button" href={href({ page: "import" })}>
-              Import ceníku dodavatele
+              {t("Import ceníku dodavatele", "Import a supplier's price list")}
             </a>
             <a className="button button-primary" href={href({ page: "new-item" })}>
-              Nová položka
+              {t("Nová položka", "New item")}
             </a>
           </>
         }
       />
-      <nav className="filters" aria-label="Kategorie">
-        <a className={`filter${category === null ? " active" : ""}`} href={href({ page: "items", category: null })}>
-          Vše ({data.items.filter((entry) => !entry.value.archived).length})
+      <nav className="filters" aria-label={t("Kategorie", "Categories")}>
+        <a
+          className={`filter${category === null ? " active" : ""}`}
+          href={href({ page: "items", category: null })}
+        >
+          {t("Vše", "All")} ({data.items.filter((entry) => !entry.value.archived).length})
         </a>
         {data.categories.map(({ value }) => (
           <a
@@ -85,31 +94,40 @@ export function ItemListPage({
       <div className="toolbar-row">
         <input
           type="search"
-          placeholder="Hledat kód, název nebo dodavatele"
+          placeholder={t(
+            "Hledat kód, název nebo dodavatele",
+            "Search a code, a name or a supplier",
+          )}
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          aria-label="Hledat v ceníku"
+          aria-label={t("Hledat v ceníku", "Search the price list")}
         />
         <label className="checkbox">
-          <input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} />
-          Zobrazit vyřazené
+          <input
+            type="checkbox"
+            checked={showArchived}
+            onChange={(event) => setShowArchived(event.target.checked)}
+          />
+          {t("Zobrazit vyřazené", "Show retired items")}
         </label>
       </div>
       {items.length === 0 ? (
-        <p className="panel empty muted">Žádná položka tomu neodpovídá.</p>
+        <p className="panel empty muted">
+          {t("Žádná položka tomu neodpovídá.", "No item matches.")}
+        </p>
       ) : (
         <table className="table">
           <thead>
             <tr>
-              <th>Kód</th>
-              <th>Název</th>
-              <th>Kategorie</th>
-              <th>MJ</th>
-              <th className="num">Nákup</th>
-              <th className="num">Prodej</th>
-              <th className="num">Marže</th>
-              <th className="num">DPH</th>
-              <th>Platnost ceny</th>
+              <th>{t("Kód", "Code")}</th>
+              <th>{t("Název", "Name")}</th>
+              <th>{t("Kategorie", "Category")}</th>
+              <th>{t("MJ", "Unit")}</th>
+              <th className="num">{t("Nákup", "Purchase")}</th>
+              <th className="num">{t("Prodej", "Sale")}</th>
+              <th className="num">{t("Marže", "Margin")}</th>
+              <th className="num">{t("DPH", "VAT")}</th>
+              <th>{t("Platnost ceny", "Price valid")}</th>
             </tr>
           </thead>
           <tbody>
@@ -129,16 +147,22 @@ export function ItemListPage({
                   </td>
                   <td>{categoryName.get(item.category) ?? item.category}</td>
                   <td>{item.unit}</td>
-                  <td className="num">{item.purchase_price === undefined ? "" : money(item.purchase_price)}</td>
-                  <td className="num">{money(item.sale_price)}</td>
-                  <td className={`num ${margin !== null && margin < (settings.min_margin_percent ?? 0) ? "warning" : "muted"}`}>
-                    {margin === null ? "" : formatPercent(margin)}
+                  <td className="num">
+                    {item.purchase_price === undefined ? "" : money(item.purchase_price)}
                   </td>
-                  <td className="num">{rate ? formatPercent(rate.percent) : item.vat_rate}</td>
+                  <td className="num">{money(item.sale_price)}</td>
+                  <td
+                    className={`num ${margin !== null && margin < (settings.min_margin_percent ?? 0) ? "warning" : "muted"}`}
+                  >
+                    {margin === null ? "" : f.percent(margin)}
+                  </td>
+                  <td className="num">{rate ? f.percent(rate.percent) : item.vat_rate}</td>
                   <td>
-                    {formatDate(item.valid_from)}
-                    {item.valid_to ? ` – ${formatDate(item.valid_to)}` : " –"}
-                    {priceExpired(item, today) ? <span className="chip chip-warning">neplatná</span> : null}
+                    {f.date(item.valid_from)}
+                    {item.valid_to ? ` – ${f.date(item.valid_to)}` : " –"}
+                    {priceExpired(item, today) ? (
+                      <span className="chip chip-warning">{t("neplatná", "expired")}</span>
+                    ) : null}
                   </td>
                 </tr>
               );
@@ -147,7 +171,7 @@ export function ItemListPage({
         </table>
       )}
       <article className="panel narrow">
-        <h2>Kategorie</h2>
+        <h2>{t("Kategorie", "Categories")}</h2>
         <ErrorNotice error={error} />
         <ul className="plain">
           {data.categories.map(({ value }) => (
@@ -158,13 +182,13 @@ export function ItemListPage({
         </ul>
         <form className="inline-form" onSubmit={addCategory}>
           <input
-            placeholder="Nová kategorie"
+            placeholder={t("Nová kategorie", "New category")}
             value={newCategory}
             onChange={(event) => setNewCategory(event.target.value)}
-            aria-label="Název nové kategorie"
+            aria-label={t("Název nové kategorie", "Name of the new category")}
           />
           <button className="button" type="submit" disabled={!newCategory.trim()}>
-            Přidat
+            {t("Přidat", "Add")}
           </button>
         </form>
       </article>

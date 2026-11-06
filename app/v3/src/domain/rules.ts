@@ -1,3 +1,4 @@
+import { type Locale, pick } from "../i18n/locale.ts";
 import type { DataSet } from "./collections.ts";
 import { numberFormatProblem, quoteId } from "./quote.ts";
 
@@ -14,19 +15,34 @@ export interface RuleIssue {
   message: string;
 }
 
-export function checkRules(data: DataSet): RuleIssue[] {
+export function checkRules(data: DataSet, locale: Locale = "cs"): RuleIssue[] {
   const issues: RuleIssue[] = [];
+  const t = (cs: string, en: string) => pick(locale, cs, en);
   const add = (record: string, message: string) => issues.push({ record, message });
   const settings = data.settings;
   if (!settings) {
-    add("settings/settings", "data nemají záznam s nastavením");
+    add(
+      "settings/settings",
+      t("data nemají záznam s nastavením", "the data has no settings record"),
+    );
   } else {
     const ids = settings.vat_rates.map((rate) => rate.id);
-    if (new Set(ids).size !== ids.length) add("settings/settings", "sazba DPH má stejné id dvakrát");
-    if (!ids.includes(settings.default_vat_rate)) {
-      add("settings/settings", `výchozí sazba DPH ${settings.default_vat_rate} není mezi sazbami`);
+    if (new Set(ids).size !== ids.length) {
+      add(
+        "settings/settings",
+        t("sazba DPH má stejné id dvakrát", "two VAT rates have the same id"),
+      );
     }
-    const problem = numberFormatProblem(settings.quote_number_format);
+    if (!ids.includes(settings.default_vat_rate)) {
+      add(
+        "settings/settings",
+        t(
+          `výchozí sazba DPH ${settings.default_vat_rate} není mezi sazbami`,
+          `the default VAT rate ${settings.default_vat_rate} is not one of the rates`,
+        ),
+      );
+    }
+    const problem = numberFormatProblem(settings.quote_number_format, locale);
     if (problem) add("settings/settings", problem);
   }
 
@@ -34,21 +50,40 @@ export function checkRules(data: DataSet): RuleIssue[] {
   const rates = new Set(settings?.vat_rates.map((rate) => rate.id) ?? []);
   for (const item of data.items) {
     const record = `items/${item.code}`;
-    if (!categories.has(item.category)) add(record, `kategorie ${item.category} neexistuje`);
-    if (settings && !rates.has(item.vat_rate)) add(record, `sazba DPH ${item.vat_rate} neexistuje`);
+    if (!categories.has(item.category)) {
+      add(
+        record,
+        t(`kategorie ${item.category} neexistuje`, `the category ${item.category} does not exist`),
+      );
+    }
+    if (settings && !rates.has(item.vat_rate)) {
+      add(
+        record,
+        t(`sazba DPH ${item.vat_rate} neexistuje`, `the VAT rate ${item.vat_rate} does not exist`),
+      );
+    }
     if (item.valid_to !== undefined && item.valid_to < item.valid_from) {
-      add(record, "cena platí do data před svým začátkem");
+      add(record, t("cena platí do data před svým začátkem", "the price ends before it starts"));
     }
     const history = item.price_history ?? [];
     for (let index = 1; index < history.length; index += 1) {
       if ((history[index]?.valid_from ?? "") < (history[index - 1]?.valid_from ?? "")) {
-        add(record, "historie cen není seřazená podle data");
+        add(
+          record,
+          t("historie cen není seřazená podle data", "the price history is not in date order"),
+        );
         break;
       }
     }
     const last = history.at(-1);
     if (last && last.valid_from > item.valid_from) {
-      add(record, "poslední změna ceny platí později než cena položky");
+      add(
+        record,
+        t(
+          "poslední změna ceny platí později než cena položky",
+          "the last price change starts later than the item's price",
+        ),
+      );
     }
   }
 
@@ -57,27 +92,70 @@ export function checkRules(data: DataSet): RuleIssue[] {
   const quotes = new Set(data.quotes.map((entry) => quoteId(entry.number, entry.version)));
   for (const quote of data.quotes) {
     const record = `quotes/${quoteId(quote.number, quote.version)}`;
-    if (!customers.has(quote.customer.id)) add(record, `zákazník ${quote.customer.id} neexistuje`);
-    if (quote.valid_until < quote.issue_date) add(record, "platnost končí před vystavením");
-    if (quote.updated_at < quote.created_at) add(record, "updated_at je před created_at");
+    if (!customers.has(quote.customer.id)) {
+      add(
+        record,
+        t(
+          `zákazník ${quote.customer.id} neexistuje`,
+          `the customer ${quote.customer.id} does not exist`,
+        ),
+      );
+    }
+    if (quote.valid_until < quote.issue_date) {
+      add(record, t("platnost končí před vystavením", "the quote expires before its issue date"));
+    }
+    if (quote.updated_at < quote.created_at) {
+      add(record, t("updated_at je před created_at", "updated_at is before created_at"));
+    }
     const lineIds = quote.lines.map((line) => line.id);
-    if (new Set(lineIds).size !== lineIds.length) add(record, "řádek nabídky má stejné id dvakrát");
+    if (new Set(lineIds).size !== lineIds.length) {
+      add(
+        record,
+        t("řádek nabídky má stejné id dvakrát", "two lines of the quote have the same id"),
+      );
+    }
     for (const line of quote.lines) {
       if (line.item_code !== undefined && !items.has(line.item_code)) {
-        add(record, `řádek ${line.id} odkazuje na neexistující položku ${line.item_code}`);
+        add(
+          record,
+          t(
+            `řádek ${line.id} odkazuje na neexistující položku ${line.item_code}`,
+            `the line ${line.id} names the unknown item ${line.item_code}`,
+          ),
+        );
       }
     }
     if (quote.version > 1) {
       if (quote.previous_version !== quote.version - 1) {
-        add(record, `verze ${quote.version} musí navazovat na verzi ${quote.version - 1}`);
+        add(
+          record,
+          t(
+            `verze ${quote.version} musí navazovat na verzi ${quote.version - 1}`,
+            `version ${quote.version} must follow version ${quote.version - 1}`,
+          ),
+        );
       }
       if (!quotes.has(quoteId(quote.number, quote.version - 1))) {
-        add(record, `předchozí verze ${quote.version - 1} neexistuje`);
+        add(
+          record,
+          t(
+            `předchozí verze ${quote.version - 1} neexistuje`,
+            `the previous version ${quote.version - 1} does not exist`,
+          ),
+        );
       }
     } else if (quote.previous_version !== undefined) {
-      add(record, "první verze nemá předchozí verzi");
+      add(
+        record,
+        t("první verze nemá předchozí verzi", "the first version has no previous version"),
+      );
     }
-    if (quote.status !== "draft" && !quote.sent_at) add(record, "odeslaná nabídka nemá datum odeslání");
+    if (quote.status !== "draft" && !quote.sent_at) {
+      add(
+        record,
+        t("odeslaná nabídka nemá datum odeslání", "a quote that went out has no date it was sent"),
+      );
+    }
   }
   return issues;
 }

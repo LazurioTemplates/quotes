@@ -51,7 +51,8 @@ export function parseRoute(hash: string): Route {
   if (first === "customers" && second === "new" && parts.length === 2) {
     return { page: "new-customer" };
   }
-  if (first === "customers" && second && parts.length === 2) return { page: "customer", id: second };
+  if (first === "customers" && second && parts.length === 2)
+    return { page: "customer", id: second };
   if (first === "settings" && parts.length === 1) return { page: "settings" };
   if (first === "draft" && parts.length === 1) return { page: "draft" };
   return { page: "not-found" };

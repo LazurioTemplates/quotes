@@ -1,6 +1,7 @@
 import type { CollectionName, RecordOf } from "../domain/collections.ts";
 import { checkRules, type RuleIssue } from "../domain/rules.ts";
 import { SETTINGS_ID } from "../domain/settings.ts";
+import type { Locale, Localized } from "../i18n/locale.ts";
 import {
   assertRulesFor,
   dataSetOf,
@@ -40,7 +41,7 @@ export interface RecordBackend {
   available(): Promise<{ ok: true } | { ok: false; code: string; message: string }>;
   read<T>(operation: (snapshot: Snapshot) => T): Promise<T>;
   write<T>(kind: string, operation: (snapshot: Snapshot, put: Put) => T): Promise<T>;
-  draft(): Promise<DraftCard>;
+  draft(locale: Locale): Promise<DraftCard>;
   publish(input: { expectedRevision: string; actor?: string; summary?: string }): Promise<void>;
   finishSend(expectedHead: string): Promise<void>;
   discard(scope: DiscardScope, expectedRevision: string): Promise<void>;
@@ -49,15 +50,18 @@ export interface RecordBackend {
   close(): void;
 }
 
-const LABELS: Record<CollectionName, string> = {
-  settings: "Nastavení",
-  categories: "Kategorie",
-  items: "Položka",
-  customers: "Zákazník",
-  quotes: "Nabídka",
+const LABELS: Record<CollectionName, Localized> = {
+  settings: { cs: "Nastavení", en: "Settings" },
+  categories: { cs: "Kategorie", en: "Category" },
+  items: { cs: "Položka", en: "Item" },
+  customers: { cs: "Zákazník", en: "Customer" },
+  quotes: { cs: "Nabídka", en: "Quote" },
 };
 
-const stored = <T>(entry: Entry<T>): Stored<T> => ({ value: entry.value, revision: entry.revision });
+const stored = <T>(entry: Entry<T>): Stored<T> => ({
+  value: entry.value,
+  revision: entry.revision,
+});
 
 export function createRecordStore(backend: RecordBackend): QuotesStore {
   function list<C extends CollectionName>(collection: C): Promise<Stored<RecordOf[C]>[]> {
@@ -84,22 +88,36 @@ export function createRecordStore(backend: RecordBackend): QuotesStore {
     }));
     const ids = parsed.map((entry) => recordId(collection, entry.value));
     if (new Set(ids).size !== ids.length) {
-      return Promise.reject(new StoreError("bad_request", "Stejný záznam je v ukládání dvakrát."));
+      return Promise.reject(
+        new StoreError("bad_request", {
+          cs: "Stejný záznam je v ukládání dvakrát.",
+          en: "The same record is saved twice.",
+        }),
+      );
     }
     return backend.write(`save-${collection}`, (snapshot, put) => {
       const records = snapshot[collection] as Map<string, Entry<RecordOf[C]>>;
       parsed.forEach((entry, index) => {
         const id = ids[index] as string;
         const existing = records.get(id);
-        const label = `${LABELS[collection]} ${id}`;
+        const { cs, en } = LABELS[collection];
         if (entry.base === null && existing) {
-          throw new StoreError("record_changed", `${label} už existuje.`);
+          throw new StoreError("record_changed", {
+            cs: `${cs} ${id} už existuje.`,
+            en: `${en} ${id} already exists.`,
+          });
         }
         if (entry.base !== null && !existing) {
-          throw new StoreError("record_changed", `${label} mezitím zmizel nebo se vrátil.`);
+          throw new StoreError("record_changed", {
+            cs: `${cs} ${id} mezitím zmizel nebo se vrátil.`,
+            en: `${en} ${id} was deleted or returned meanwhile.`,
+          });
         }
         if (existing && entry.base !== existing.revision) {
-          throw new StoreError("record_changed", `${label} mezitím uložil někdo jiný.`);
+          throw new StoreError("record_changed", {
+            cs: `${cs} ${id} mezitím uložil někdo jiný.`,
+            en: `Someone else saved ${en.toLowerCase()} ${id} meanwhile.`,
+          });
         }
       });
       parsed.forEach((entry, index) => {
@@ -122,7 +140,8 @@ export function createRecordStore(backend: RecordBackend): QuotesStore {
     baseRevision: Revision | null,
   ): Promise<Stored<RecordOf[C]>> {
     const [saved] = await saveMany(collection, [{ value, baseRevision }]);
-    if (!saved) throw new StoreError("unexpected", "Nic se neuložilo.");
+    if (!saved)
+      throw new StoreError("unexpected", { cs: "Nic se neuložilo.", en: "Nothing was saved." });
     return saved;
   }
 
@@ -131,7 +150,10 @@ export function createRecordStore(backend: RecordBackend): QuotesStore {
     async settings() {
       const found = await get("settings", SETTINGS_ID);
       if (!found) {
-        throw new StoreError("settings_missing", "Data zatím nemají nastavení nabídek.");
+        throw new StoreError("settings_missing", {
+          cs: "Data zatím nemají nastavení nabídek.",
+          en: "The data has no quote settings yet.",
+        });
       }
       return found;
     },
@@ -148,12 +170,15 @@ export function createRecordStore(backend: RecordBackend): QuotesStore {
     listQuotes: () => list("quotes"),
     getQuote: (id) => get("quotes", id),
     saveQuote: (value, base) => save("quotes", value, base),
-    check: () =>
+    check: (locale = "cs") =>
       backend.read((snapshot): RuleIssue[] => [
-        ...snapshot.problems,
-        ...checkRules(dataSetOf(snapshot)),
+        ...snapshot.problems.map((problem) => ({
+          record: problem.record,
+          message: problem.message[locale],
+        })),
+        ...checkRules(dataSetOf(snapshot), locale),
       ]),
-    draft: () => backend.draft(),
+    draft: (locale = "cs") => backend.draft(locale),
     publish: (input) => backend.publish(input),
     finishSend: (head) => backend.finishSend(head),
     discard: (scope, revision) => backend.discard(scope, revision),

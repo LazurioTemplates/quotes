@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { CollectionName, DataSet } from "../domain/collections.ts";
+import { createRecordStore, type Put } from "./record-store.ts";
 import { type Entry, emptySnapshot, recordId, recordKey, type Snapshot } from "./records.ts";
-import { type Put, createRecordStore } from "./record-store.ts";
 import { reviewResource } from "./review-adapter.ts";
 import type { DiscardScope, DraftCard, QuotesStore, Revision, StoreEvent } from "./store.ts";
 import { StoreError } from "./store.ts";
@@ -66,7 +66,10 @@ export function createMemoryStore(seed: Partial<DataSet>): QuotesStore {
 
   function assertRevision(expected: string) {
     if (expected !== draftRevision()) {
-      throw new StoreError("draft_changed", "Koncept se od zobrazení změnil.");
+      throw new StoreError("draft_changed", {
+        cs: "Koncept se od zobrazení změnil.",
+        en: "The draft changed since it was shown.",
+      });
     }
   }
 
@@ -78,7 +81,7 @@ export function createMemoryStore(seed: Partial<DataSet>): QuotesStore {
       emit({ type: "draft-changed" });
       return result;
     },
-    async draft(): Promise<DraftCard> {
+    async draft(locale): Promise<DraftCard> {
       const keys = changedKeys();
       return {
         status: {
@@ -105,6 +108,7 @@ export function createMemoryStore(seed: Partial<DataSet>): QuotesStore {
               published.get(key) as Record<string, unknown> | undefined,
               draft.get(key) as Record<string, unknown> | undefined,
               { changeId: key, technicalRefs: [{ path: key, kind: "canonical_data_path" }] },
+              locale,
             ),
           };
         }),
@@ -117,7 +121,10 @@ export function createMemoryStore(seed: Partial<DataSet>): QuotesStore {
       emit({ type: "draft-changed" });
     },
     async finishSend() {
-      throw new StoreError("nothing_to_send", "Nic nečeká na odeslání.");
+      throw new StoreError("nothing_to_send", {
+        cs: "Nic nečeká na odeslání.",
+        en: "Nothing waits to be sent.",
+      });
     },
     async discard(scope: DiscardScope, expectedRevision) {
       assertRevision(expectedRevision);
@@ -140,4 +147,3 @@ export function createMemoryStore(seed: Partial<DataSet>): QuotesStore {
     },
   });
 }
-
