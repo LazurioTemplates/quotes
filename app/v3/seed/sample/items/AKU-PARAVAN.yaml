@@ -1,0 +1,11 @@
+id: AKU-PARAVAN
+record:
+  category: akustika
+  code: AKU-PARAVAN
+  name: Akustický paraván ke stolu
+  purchase_price: 135000
+  sale_price: 209000
+  unit: ks
+  valid_from: 2026-01-01
+  vat_rate: standard
+schemaVersion: quotes.item.v1

@@ -1,17 +1,13 @@
-// Read-only readiness of the preparation (Lazurio Module Standard,
-// `check_script`). The Vite dev server needs no build; the App is prepared
-// when every dependency of this package is installed. Exit 0 when prepared,
-// 1 otherwise.
+// Read-only readiness of the preparation (Module Standard, `check_script`):
+// the dependencies the App runs on are installed. The client build of the
+// built version is the Platform's `build_script`, never a preparation step.
 import { resolve } from "node:path";
-import manifest from "../package.json";
 
-const app = resolve(import.meta.dir, "..");
-const names = [...Object.keys(manifest.dependencies), ...Object.keys(manifest.devDependencies)];
+const required = ["@lazurio/repository-db", "@lazurio/module-kit", "react", "react-dom", "zod"];
 const missing: string[] = [];
-for (const name of names) {
-  if (!(await Bun.file(resolve(app, "node_modules", name, "package.json")).exists())) {
-    missing.push(name);
-  }
+for (const name of required) {
+  const manifest = resolve(import.meta.dir, "..", "node_modules", name, "package.json");
+  if (!(await Bun.file(manifest).exists())) missing.push(name);
 }
 if (missing.length > 0) {
   console.error(

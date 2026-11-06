@@ -1,0 +1,43 @@
+id: settings
+record:
+  currency: CZK
+  default_terms: Ceny jsou uvedeny bez DPH a s DPH podle platných sazeb.
+  default_vat_rate: standard
+  email:
+    body: |-
+      Dobrý den,
+
+      posíláme Vám cenovou nabídku {number} – {title}. Celkem vychází na {total} včetně DPH ({total_without_vat} bez DPH) a platí do {valid_until}.
+
+      Nabídku najdete v příloze. Pokud budete chtít cokoli upravit, stačí odpovědět na tento e-mail.
+
+      S pozdravem
+      {prepared_by}
+      {organization}
+    subject: "Cenová nabídka {number}: {title}"
+  quote_number_format: NAB-{YYYY}-{NNNN}
+  supplier:
+    bank_account: REPLACE-WITH-ORG-BANK-ACCOUNT
+    city: REPLACE-WITH-ORG-CITY
+    company_id: REPLACE-WITH-ORG-COMPANY-ID
+    country: Česká republika
+    email: REPLACE-WITH-ORG-EMAIL
+    name: REPLACE-WITH-ORG-NAME
+    phone: REPLACE-WITH-ORG-PHONE
+    postal_code: REPLACE-WITH-ORG-POSTAL-CODE
+    street: REPLACE-WITH-ORG-STREET
+    vat_id: REPLACE-WITH-ORG-VAT-ID
+    web: REPLACE-WITH-ORG-WEB
+  total_rounding: none
+  validity_days: 30
+  vat_rates:
+    - id: standard
+      label: Základní
+      percent: 21
+    - id: reduced
+      label: Snížená
+      percent: 12
+    - id: zero
+      label: Nulová
+      percent: 0
+schemaVersion: quotes.settings.v1

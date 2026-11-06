@@ -1,0 +1,6 @@
+id: sluzby
+record:
+  id: sluzby
+  name: Práce a služby
+  order: 2
+schemaVersion: quotes.category.v1

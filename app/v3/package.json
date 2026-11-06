@@ -5,18 +5,25 @@
   "type": "module",
   "packageManager": "bun@1.4.4",
   "scripts": {
-    "dev": "bun --no-env-file ./node_modules/vite/bin/vite.js",
+    "dev": "bun --no-env-file run src/server/main.ts",
+    "start": "bun --no-env-file run src/server/main.ts",
+    "dev:demo": "bun --no-env-file run src/server/demo.ts",
     "build": "bun ./node_modules/vite/bin/vite.js build",
-    "typecheck": "tsc --noEmit",
-    "lint": "biome check .",
-    "format": "biome check --write .",
-    "check": "bun run typecheck && bun run lint && bun run test && bun run validate:data",
     "check:prepared": "bun run src/prepared.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "biome check --error-on-warnings .",
+    "format": "biome check --write .",
     "test": "bun test",
-    "validate:data": "bun run src/validate-data.ts seed",
-    "validate:db": "bun run src/validate-data.ts ../../db/data"
+    "schema:export": "bun run src/cli/schema.ts --write",
+    "schema:check": "bun run src/cli/schema.ts --check",
+    "validate:data": "bun run src/validate-data.ts seed/empty seed/sample",
+    "validate:db": "bun run src/validate-data.ts ../../db/data",
+    "quotes": "bun --no-env-file run src/cli/quotes.ts",
+    "check": "bun run typecheck && bun run lint && bun run schema:check && bun run validate:data && bun test"
   },
   "dependencies": {
+    "@fontsource-variable/inter-tight": "5.3.0",
+    "@fontsource/geist-mono": "5.3.0",
     "@lazurio/module-kit": "github:Lazurio/module-kit#v0.2.0",
     "@lazurio/repository-db": "github:Lazurio/repository-db#v3.2.6",
     "@vitejs/plugin-react": "6.2.1",
@@ -36,16 +43,19 @@
     "runtime": {
       "schema_version": "lazurio.runtime.v1",
       "id": "replace-with-org-slug-quotes-v3",
-      "title": "Quotes",
-      "company": "replace-with-org-slug",
+      "title": "Cenové nabídky",
+      "description": "Ceník, nabídky pro zákazníky a jejich tisk do PDF: data Organizace v repository-db.",
+      "company": "REPLACE-WITH-ORG-NAME",
       "module": "quotes",
       "surface": "internal",
       "dev_script": "dev",
+      "start_script": "start",
       "build_script": "build",
       "build_output": "dist",
-      "static_fallback": "spa",
       "tags": [
-        "quotes"
+        "quotes",
+        "price-list",
+        "repository-db"
       ],
       "listeners": [
         {
@@ -55,7 +65,7 @@
           "protocol": "http",
           "health": {
             "kind": "http",
-            "path": "/"
+            "path": "/healthz"
           }
         }
       ]
