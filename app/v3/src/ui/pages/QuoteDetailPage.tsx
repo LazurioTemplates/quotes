@@ -170,7 +170,7 @@ export function QuoteDetailPage({
         </p>
       ) : null}
 
-      <div className="detail-grid">
+      <div className="quote-layout">
         <div>
           <table className="table lines-table">
             <thead>

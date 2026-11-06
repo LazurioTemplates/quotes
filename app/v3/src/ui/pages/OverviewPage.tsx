@@ -6,6 +6,11 @@ import { PageHeader, StatusChip } from "../components/common.tsx";
 import { useFormat, useT } from "../i18n.tsx";
 import { href } from "../routes.ts";
 
+const ITEMS = {
+  cs: { one: "položka", few: "položky", many: "položek" },
+  en: { one: "item", other: "items" },
+};
+
 export function OverviewPage({ data, today = localToday() }: { data: AppData; today?: string }) {
   const t = useT();
   const f = useFormat();
@@ -33,14 +38,15 @@ export function OverviewPage({ data, today = localToday() }: { data: AppData; to
       className="list-row"
       href={href({ page: "quote", id: idOfQuote(quote) })}
     >
-      <span className="code-link">{quote.number}</span>
-      <span className="list-row-title">
-        {quote.title}
-        <span className="muted"> · {quote.customer.name}</span>
+      <span className="list-row-main">
+        <span className="code-link">{quote.number}</span>
+        <span className="list-row-title">{quote.title}</span>
+        <span className="muted small">
+          {quote.customer.name} · {note}
+        </span>
       </span>
       <StatusChip status={quote.status} />
       <span className="num">{money(payable(quote))}</span>
-      <span className="muted list-row-note">{note}</span>
     </a>
   );
   const validUntil = (quote: Quote) =>
@@ -136,14 +142,13 @@ export function OverviewPage({ data, today = localToday() }: { data: AppData; to
       <article className="panel">
         <h2>{t("Ceník", "Price list")}</h2>
         <p>
-          {t(
-            `${active.length} položek v ${data.categories.length} kategoriích.`,
-            `${active.length} items in ${data.categories.length} categories.`,
-          )}{" "}
+          {t.count(active.length, ITEMS)}
+          {t(", kategorie: ", ", categories: ")}
+          {data.categories.length}.{" "}
           {expiring.length > 0
             ? t(
-                `${expiring.length} z nich má cenu, která do měsíce končí nebo už skončila.`,
-                `${expiring.length} of them have a price that ends within a month or has ended.`,
+                `Cena, která do měsíce končí nebo už skončila: ${t.count(expiring.length, ITEMS)}.`,
+                `A price that ends within a month or has ended: ${t.count(expiring.length, ITEMS)}.`,
               )
             : t("Žádná cena v příštím měsíci nekončí.", "No price ends in the next month.")}{" "}
           <a href={href({ page: "items", category: null })}>

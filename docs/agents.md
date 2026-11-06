@@ -92,4 +92,7 @@ The print page `/print/quotes/<id>?lang=cs|en` is a whole HTML document. In the
 Environment browser (`lazurio browser window`) open the App's `runtime.url`
 with that path and save it with `agent-browser --cdp 9222 --session <session>
 pdf <path>`, using the file name `quote:email` names. Keep the PDF outside the
-repositories, in `~/Documents/<task>/`.
+repositories, in `~/Documents/<task>/`. `agent-browser pdf` prints on the
+browser's default paper (US Letter); a person who prints from the page's
+button gets A4, which the page asks for. Both fit the layout; check the PDF
+before it goes anywhere.

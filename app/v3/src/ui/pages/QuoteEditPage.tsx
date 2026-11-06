@@ -286,7 +286,7 @@ export function QuoteEditPage({
 
             <article className="panel">
               <div className="panel-head">
-                <h2>{t("Položky", "Lines")}</h2>
+                <h2>{t("Položky (ceny bez DPH)", "Lines (prices excl. VAT)")}</h2>
                 <button className="button" type="button" onClick={addFree}>
                   {t("Přidat řádek mimo ceník", "Add a line outside the price list")}
                 </button>
@@ -422,7 +422,7 @@ export function QuoteEditPage({
                           />
                         </Field>
                         <Field
-                          label={t("Cena za MJ bez DPH", "Unit price excl. VAT")}
+                          label={t("Cena za MJ", "Unit price")}
                           error={parsed?.problems.unit_price}
                         >
                           <input

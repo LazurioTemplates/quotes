@@ -15,6 +15,11 @@ import { ErrorNotice, Field, PageHeader } from "../components/common.tsx";
 import { useFormat, useT } from "../i18n.tsx";
 import { href } from "../routes.ts";
 
+const ITEMS = {
+  cs: { one: "položka", few: "položky", many: "položek" },
+  en: { one: "item", other: "items" },
+};
+
 const KIND_LABELS: Record<ImportRow["kind"], Localized> = {
   new: { cs: "Nová", en: "New" },
   changed: { cs: "Změna", en: "Change" },
@@ -155,8 +160,8 @@ export function ImportPage({
       {saved !== null ? (
         <p className="notice notice-success">
           {t(
-            `Do konceptu se uložilo ${saved} položek. Zkontrolujte je a publikujte v části`,
-            `${saved} items were saved to the draft. Review and publish them in`,
+            `Uloženo do konceptu: ${t.count(saved, ITEMS)}. Zkontrolujte je a publikujte v části`,
+            `Saved to the draft: ${t.count(saved, ITEMS)}. Review and publish them in`,
           )}{" "}
           <a href={href({ page: "draft" })}>{t("Koncept a publikování", "Draft & publish")}</a>.
         </p>
@@ -320,37 +325,39 @@ export function ImportPage({
               </div>
             ))}
           </div>
-          <table className="table import-table">
-            <thead>
-              <tr>
-                <th>{t("Převzít", "Take")}</th>
-                <th>{t("Řádek", "Row")}</th>
-                <th>{t("Stav", "State")}</th>
-                <th>{t("Kód", "Code")}</th>
-                <th>{t("Název", "Name")}</th>
-                <th className="num">{t("Nákup", "Purchase")}</th>
-                <th className="num">{t("Prodej", "Sale")}</th>
-                <th>{t("Co se mění", "What changes")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {result.preview.rows.map((row) => (
-                <ImportRowView
-                  key={row.line}
-                  row={row}
-                  chosen={chosen.has(row.line)}
-                  onToggle={() => toggle(row.line)}
-                  money={money}
-                />
-              ))}
-            </tbody>
-          </table>
+          <div className="table-scroll">
+            <table className="table import-table">
+              <thead>
+                <tr>
+                  <th>{t("Převzít", "Take")}</th>
+                  <th>{t("Řádek", "Row")}</th>
+                  <th>{t("Stav", "State")}</th>
+                  <th>{t("Kód", "Code")}</th>
+                  <th>{t("Název", "Name")}</th>
+                  <th className="num">{t("Nákup", "Purchase")}</th>
+                  <th className="num">{t("Prodej", "Sale")}</th>
+                  <th>{t("Co se mění", "What changes")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {result.preview.rows.map((row) => (
+                  <ImportRowView
+                    key={row.line}
+                    row={row}
+                    chosen={chosen.has(row.line)}
+                    onToggle={() => toggle(row.line)}
+                    money={money}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
           {result.preview.missing.length > 0 ? (
             <div className="notice notice-info">
               <strong>
                 {t(
-                  `V souboru chybí ${result.preview.missing.length} položek tohoto dodavatele.`,
-                  `The file lacks ${result.preview.missing.length} items of this supplier.`,
+                  `V souboru chybí položky tohoto dodavatele: ${result.preview.missing.length}.`,
+                  `Items of this supplier the file lacks: ${result.preview.missing.length}.`,
                 )}
               </strong>{" "}
               {t(
@@ -373,8 +380,8 @@ export function ImportPage({
               onClick={apply}
             >
               {t(
-                `Uložit ${f.number(chosen.size)} vybraných do konceptu`,
-                `Save the ${f.number(chosen.size)} chosen to the draft`,
+                `Uložit do konceptu (vybráno: ${f.number(chosen.size)})`,
+                `Save to the draft (chosen: ${f.number(chosen.size)})`,
               )}
             </button>
           </div>
