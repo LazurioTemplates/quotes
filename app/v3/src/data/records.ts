@@ -184,7 +184,7 @@ export function ordered<C extends CollectionName>(
         ),
       );
     case "items": {
-      const compare = compareItems(dataSetOf(snapshot).categories);
+      const compare = compareItems([...dataSetOf(snapshot).categories].sort(compareCategories));
       return entries.sort((left, right) =>
         compare(left.value as RecordOf["items"], right.value as RecordOf["items"]),
       );

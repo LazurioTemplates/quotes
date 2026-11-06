@@ -1,5 +1,5 @@
 import { type Locale, type Localized, pick } from "../i18n/locale.ts";
-import { type Category, ITEM_CODE, type Item, withPrice } from "./catalog.ts";
+import { type Category, compareCategories, ITEM_CODE, type Item, withPrice } from "./catalog.ts";
 import { slugify } from "./common.ts";
 import { parseCsv } from "./csv.ts";
 import { parseMoney, parsePercent, percentToBasisPoints, roundTo, withMarkup } from "./money.ts";
@@ -148,7 +148,7 @@ export function previewImport(input: ImportInput): ImportPreview {
   const bySupplierCode = new Map(ofSupplier.map((entry) => [entry.supplier_code ?? "", entry]));
   const taken = new Set(input.items.map((entry) => entry.code));
   const seen = new Set<string>();
-  const defaultCategory = options.category ?? input.categories[0]?.id;
+  const defaultCategory = options.category ?? [...input.categories].sort(compareCategories)[0]?.id;
   const markup =
     options.markup_percent === undefined ? null : percentToBasisPoints(options.markup_percent);
 

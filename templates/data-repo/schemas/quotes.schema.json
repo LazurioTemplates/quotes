@@ -1,0 +1,248 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "quotes.quote.v1",
+  "title": "Quotes quotes",
+  "$comment": "Generated from the Zod schemas of Quotes (app/v3/src/domain) by `bun run schema:export`. Do not edit.",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": "quotes.quote.v1"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "record": {
+      "type": "object",
+      "properties": {
+        "number": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,47}$"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 999
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "sent",
+            "accepted",
+            "rejected",
+            "expired"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "customer": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^C-[0-9]{4,6}$"
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "company_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "vat_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "street": {
+              "type": "string",
+              "minLength": 1
+            },
+            "city": {
+              "type": "string",
+              "minLength": 1
+            },
+            "postal_code": {
+              "type": "string",
+              "minLength": 1
+            },
+            "country": {
+              "type": "string",
+              "minLength": 1
+            },
+            "contact_person": {
+              "type": "string",
+              "minLength": 1
+            },
+            "email": {
+              "type": "string",
+              "minLength": 1
+            },
+            "phone": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "id",
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        "issue_date": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+        },
+        "valid_until": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "lines": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^l[0-9]{1,4}$"
+              },
+              "item_code": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1
+              },
+              "unit": {
+                "type": "string",
+                "minLength": 1
+              },
+              "quantity": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 1000000000,
+                "multipleOf": 0.001,
+                "description": "A quantity with at most three decimals."
+              },
+              "unit_price": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100000000000000,
+                "description": "An amount in minor units of the currency (haléře): 139000 = 1 390,00 Kč."
+              },
+              "purchase_price": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100000000000000,
+                "description": "An amount in minor units of the currency (haléře): 139000 = 1 390,00 Kč."
+              },
+              "vat_percent": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100,
+                "multipleOf": 0.01,
+                "description": "A percentage with at most two decimals."
+              },
+              "discount_percent": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100,
+                "multipleOf": 0.01,
+                "description": "A percentage with at most two decimals."
+              },
+              "to_check": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "unit",
+              "quantity",
+              "unit_price",
+              "vat_percent"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "discount_percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "multipleOf": 0.01,
+          "description": "A percentage with at most two decimals."
+        },
+        "introduction": {
+          "type": "string",
+          "minLength": 1
+        },
+        "terms": {
+          "type": "string",
+          "minLength": 1
+        },
+        "internal_note": {
+          "type": "string",
+          "minLength": 1
+        },
+        "prepared_by": {
+          "type": "string",
+          "minLength": 1
+        },
+        "created_at": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+        },
+        "updated_at": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+        },
+        "sent_at": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+        },
+        "closed_at": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+        },
+        "previous_version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "number",
+        "version",
+        "status",
+        "title",
+        "customer",
+        "issue_date",
+        "valid_until",
+        "currency",
+        "lines",
+        "created_at",
+        "updated_at"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "id",
+    "record"
+  ],
+  "additionalProperties": false
+}

@@ -307,7 +307,7 @@ export function SettingsPage({
                 }
               >
                 <option value="none">
-                  {t("Na haléře (bez zaokrouhlení)", "To the haléř (no rounding)")}
+                  {t("Na haléře (bez zaokrouhlení)", "Exact (no rounding)")}
                 </option>
                 <option value="whole">{t("Na celé koruny", "To whole crowns")}</option>
               </select>
