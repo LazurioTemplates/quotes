@@ -1,0 +1,65 @@
+{
+  "name": "design-system-app-v1",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "packageManager": "bun@1.4.4",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "prepare:app": "astro sync",
+    "check:prepared": "bun run src/prepared.ts",
+    "typecheck": "astro check",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "check": "bun run typecheck && bun run lint && bun run test",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@astrojs/markdown-remark": "7.3.5",
+    "@lazurio/module-kit": "github:Lazurio/module-kit#v0.2.0",
+    "astro": "7.4.5"
+  },
+  "devDependencies": {
+    "@astrojs/check": "0.9.12",
+    "@biomejs/biome": "2.6.4",
+    "@types/bun": "1.4.4",
+    "typescript": "6.0.3"
+  },
+  "lazurio": {
+    "runtime": {
+      "schema_version": "lazurio.runtime.v1",
+      "id": "replace-with-org-slug-design-system-v1",
+      "title": "Design system",
+      "company": "REPLACE-WITH-ORG-NAME",
+      "module": "design-system",
+      "surface": "internal",
+      "dev_script": "dev",
+      "build_script": "build",
+      "build_output": "dist",
+      "static_fallback": "404",
+      "tags": [
+        "design-system",
+        "brand"
+      ],
+      "listeners": [
+        {
+          "id": "app",
+          "role": "entrypoint",
+          "lease": "main",
+          "protocol": "http",
+          "health": {
+            "kind": "http",
+            "path": "/"
+          }
+        }
+      ]
+    },
+    "preparation": {
+      "schema_version": "lazurio.preparation.v1",
+      "owner_package": "app/v1/package.json",
+      "prepare_script": "prepare:app",
+      "check_script": "check:prepared"
+    }
+  }
+}

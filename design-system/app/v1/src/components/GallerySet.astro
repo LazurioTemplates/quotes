@@ -1,0 +1,153 @@
+---
+import Badge from "./ui/Badge.astro";
+import Button from "./ui/Button.astro";
+import Card from "./ui/Card.astro";
+import Dialog from "./ui/Dialog.astro";
+import EmptyState from "./ui/EmptyState.astro";
+import Input from "./ui/Input.astro";
+import Table from "./ui/Table.astro";
+import Toast from "./ui/Toast.astro";
+
+// Every reference component in its states, once. The gallery page renders it
+// inside a light and a dark panel; `prefix` keeps ids unique.
+interface Props {
+  prefix: string;
+}
+
+const { prefix } = Astro.props;
+---
+
+<h3><a href="/components/button/">Button</a></h3>
+<div class="specimen">
+  <Button variant="primary" icon="send">Publish</Button>
+  <Button>Save draft</Button>
+  <Button variant="ghost" icon="plus">Add source</Button>
+  <Button variant="danger">Stop experiment</Button>
+  <Button variant="primary" disabled>Publish</Button>
+  <Button variant="primary" loading>Publishing</Button>
+  <Button size="compact">Compact</Button>
+</div>
+
+<h3><a href="/components/input/">Input</a></h3>
+<div class="specimen">
+  <Input id={`${prefix}-in-default`} label="Weekly budget" placeholder="e.g. [amount]" hint="In EUR, before VAT." unit="EUR" align="end" />
+  <Input id={`${prefix}-in-filled`} label="Metric" value="Paid sign-ups per 100 visitors" />
+  <Input id={`${prefix}-in-error`} label="Stop condition" error="Enter a stop condition, for example a date or a metric threshold." />
+  <Input id={`${prefix}-in-optional`} label="Mechanism link" optional placeholder="https://" />
+  <Input id={`${prefix}-in-disabled`} label="Owner" value="Nora Weiss" disabled hint="Set by the research brief." />
+</div>
+
+<h3><a href="/components/card/">Card</a></h3>
+<div class="specimen">
+  <Card title="Localized spreadsheet templates" eyebrow="Experiment">
+    <p>Templates for invoicing and stock, in five languages. Scaling since 25 Oct.</p>
+    <Fragment slot="footer"><Badge status="scaling" /> Owner Leo Martin</Fragment>
+  </Card>
+  <Card title="Conversion" eyebrow="Metric">
+    <p class="metric">3.1 %</p>
+    <p>of 1,240 visits · verified 12 Oct 2026 · source: experiment log</p>
+  </Card>
+  <Card title="Price comparison pages" eyebrow="Selected" selected>
+    <p>Refurbished laptops, mobile-first.</p>
+  </Card>
+</div>
+
+<h3><a href="/components/badge/">Badge</a></h3>
+<div class="specimen">
+  <Badge status="hypothesis" />
+  <Badge status="running" />
+  <Badge status="verified" />
+  <Badge status="stopped" />
+  <Badge status="scaling" />
+  <Badge status="draft" />
+  <Badge status="new" />
+</div>
+
+<h3><a href="/components/table/">Table</a></h3>
+<Table
+  caption="Experiments · sorted by: needs a decision first"
+  columns={[
+    { label: "Experiment" },
+    { label: "Status" },
+    { label: "Conversion (%)", numeric: true },
+    { label: "Sample (visits)", numeric: true },
+  ]}
+>
+  <tr>
+    <td data-label="Experiment"><span class="row-name">Price comparison pages</span></td>
+    <td data-label="Status"><Badge status="verified" /></td>
+    <td data-label="Conversion (%)" class="num">3.1</td>
+    <td data-label="Sample (visits)" class="num">1,240</td>
+  </tr>
+  <tr class="selected">
+    <td data-label="Experiment"><span class="row-name">Weekly newsletter for small e-shops</span></td>
+    <td data-label="Status"><Badge status="running" /></td>
+    <td data-label="Conversion (%)" class="num">1.4</td>
+    <td data-label="Sample (visits)" class="num">380</td>
+  </tr>
+  <tr>
+    <td data-label="Experiment"><span class="row-name">Template packs for event planners</span></td>
+    <td data-label="Status"><Badge status="hypothesis" /></td>
+    <td data-label="Conversion (%)" class="num unknown">–</td>
+    <td data-label="Sample (visits)" class="num unknown">–</td>
+  </tr>
+</Table>
+
+<h3><a href="/components/dialog/">Dialog</a></h3>
+<div class="specimen">
+  <Button variant="primary" icon="send" opens={`${prefix}-dialog-modal`}>Open the real dialog</Button>
+</div>
+<Dialog id={`${prefix}-dialog-modal`} title="Publish the stop decision?">
+  <p>Publishing will:</p>
+  <ul>
+    <li>stop the experiment and its two ads;</li>
+    <li>release the remaining budget of [amount] EUR;</li>
+    <li>send the summary to 4 people.</li>
+  </ul>
+  <p>It can't be undone.</p>
+  <Fragment slot="footer">
+    <Button closes autofocus>Cancel</Button>
+    <Button variant="primary" icon="send" closes>Publish</Button>
+  </Fragment>
+</Dialog>
+<Dialog id={`${prefix}-dialog`} title="Publish the stop decision?" mode="specimen">
+  <p>Publishing will:</p>
+  <ul>
+    <li>stop the experiment and its two ads;</li>
+    <li>release the remaining budget of [amount] EUR;</li>
+    <li>send the summary to 4 people.</li>
+  </ul>
+  <p>It can't be undone.</p>
+  <Fragment slot="footer">
+    <Button visual>Cancel</Button>
+    <Button variant="primary" icon="send" visual>Publish</Button>
+  </Fragment>
+</Dialog>
+
+<h3><a href="/components/toast/">Toast</a></h3>
+<div class="specimen">
+  <Button toast={`${prefix}-toast-live`}>Show a live toast</Button>
+</div>
+<Toast mode="live" id={`${prefix}-toast-live`} variant="success">Draft saved 10:42.</Toast>
+<div class="specimen">
+  <Toast variant="info" action="View">Draft saved 10:42.</Toast>
+  <Toast variant="success">Decision published. The experiment is stopped.</Toast>
+  <Toast variant="warning">This budget exceeds the stop condition by 40 %.</Toast>
+  <Toast variant="error" action="Try again">Not published. The connection dropped.</Toast>
+</div>
+
+<h3><a href="/components/empty-state/">Empty state</a></h3>
+<div class="specimen">
+  <Card title="Competitor pricing">
+    <EmptyState title="No sources yet" icon="link">
+      Add the first link from research. Each source needs its date of verification.
+      <Button slot="action" icon="plus" visual>Add source</Button>
+    </EmptyState>
+  </Card>
+  <Card title="Search results">
+    <EmptyState title="No experiments match 'pricing'" icon="search">
+      Clear the filter to see all 12 experiments.
+      <Button slot="action" variant="ghost" visual>Clear filter</Button>
+    </EmptyState>
+  </Card>
+</div>

@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "quotes.item.v1",
+  "title": "Quotes items",
+  "$comment": "Generated from the Zod schemas of Quotes (app/v3/src/domain) by `bun run schema:export`. Do not edit.",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": "quotes.item.v1"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "record": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "category": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "purchase_price": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000000000000,
+          "description": "An amount in minor units of the currency (haléře): 139000 = 1 390,00 Kč."
+        },
+        "sale_price": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000000000000,
+          "description": "An amount in minor units of the currency (haléře): 139000 = 1 390,00 Kč."
+        },
+        "vat_rate": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+        },
+        "valid_from": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+        },
+        "valid_to": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "supplier": {
+          "type": "string",
+          "minLength": 1
+        },
+        "supplier_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "archived": {
+          "type": "boolean"
+        },
+        "price_history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "valid_from": {
+                "type": "string",
+                "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+              },
+              "purchase_price_before": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100000000000000,
+                "description": "An amount in minor units of the currency (haléře): 139000 = 1 390,00 Kč."
+              },
+              "purchase_price": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100000000000000,
+                "description": "An amount in minor units of the currency (haléře): 139000 = 1 390,00 Kč."
+              },
+              "sale_price_before": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100000000000000,
+                "description": "An amount in minor units of the currency (haléře): 139000 = 1 390,00 Kč."
+              },
+              "sale_price": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100000000000000,
+                "description": "An amount in minor units of the currency (haléře): 139000 = 1 390,00 Kč."
+              },
+              "source": {
+                "type": "string",
+                "enum": [
+                  "manual",
+                  "import"
+                ]
+              },
+              "note": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "valid_from",
+              "sale_price_before",
+              "sale_price",
+              "source"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "code",
+        "name",
+        "category",
+        "unit",
+        "sale_price",
+        "vat_rate",
+        "valid_from"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "id",
+    "record"
+  ],
+  "additionalProperties": false
+}

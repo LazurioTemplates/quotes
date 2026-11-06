@@ -1,0 +1,6 @@
+id: osvetleni
+record:
+  id: osvetleni
+  name: Osvětlení
+  order: 2
+schemaVersion: quotes.category.v1

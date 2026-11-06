@@ -1,0 +1,42 @@
+---
+import { getCollection, render } from "astro:content";
+import Viewer from "../layouts/Viewer.astro";
+import { REPOSITORY } from "../lib/routes";
+
+// Every Markdown file of content/ at its route (lib/routes.ts).
+export async function getStaticPaths() {
+  const docs = await getCollection("docs");
+  return docs.map((entry) => ({ params: { slug: entry.id || undefined }, props: { entry } }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+const { title, description, source, date, screen } = entry.data;
+const file = entry.filePath?.replace(/^.*?content\//, "content/");
+---
+
+<Viewer title={title} description={description}>
+  {
+    (source || date || screen) && (
+      <div class="meta">
+        {date && <span>Date {date.toISOString().slice(0, 10)}</span>}
+        {source && (
+          <span>
+            Source <code>{source}</code>
+          </span>
+        )}
+        {screen && <a href={screen}>Open the rendered screen</a>}
+      </div>
+    )
+  }
+  <article class="prose">
+    <Content />
+  </article>
+  {
+    file && (
+      <p class="meta">
+        <a href={`${REPOSITORY}/blob/main/${file}`}>Source of this page: {file}</a>
+      </p>
+    )
+  }
+</Viewer>

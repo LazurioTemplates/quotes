@@ -1,0 +1,47 @@
+id: settings
+record:
+  currency: CZK
+  default_introduction: Thank you for your inquiry. Following our conversation, here is our quote.
+  default_terms: Delivery within three weeks of the order's confirmation. Invoices are due in 14 days. Assembly on working days 8 am–5 pm.
+  default_vat_rate: standard
+  email:
+    body: |-
+      Hello {contact},
+
+      please find attached our quote {number} – {title}. It comes to {total} including VAT ({total_without_vat} excluding VAT) and is valid until {valid_until}.
+
+      If you would like to change anything, just reply to this e-mail.
+
+      Kind regards
+      {prepared_by}
+      {organization}
+    subject: "Quote {number}: {title}"
+  language: en
+  min_margin_percent: 20
+  quote_number_format: Q-{YYYY}-{NNNN}
+  supplier:
+    bank_account: 1000000000/0000
+    city: Prague 1
+    company_id: "00000000"
+    country: Czech Republic
+    email: obchod@example.com
+    name: Example s.r.o.
+    phone: +420 000 000 000
+    postal_code: 110 00
+    registration: A fictional company for the template's example; not in any register.
+    street: Model Street 1
+    vat_id: CZ00000000
+    web: example.com
+  total_rounding: none
+  validity_days: 30
+  vat_rates:
+    - id: standard
+      label: Standard
+      percent: 21
+    - id: reduced
+      label: Reduced
+      percent: 12
+    - id: zero
+      label: Zero
+      percent: 0
+schemaVersion: quotes.settings.v1

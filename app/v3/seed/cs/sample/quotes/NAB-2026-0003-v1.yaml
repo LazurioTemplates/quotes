@@ -1,0 +1,51 @@
+id: NAB-2026-0003-v1
+record:
+  closed_at: 2026-10-20
+  created_at: 2026-10-05
+  currency: CZK
+  customer:
+    city: Ostrava
+    company_id: "00000003"
+    contact_person: Alex Morgan
+    country: Česká republika
+    email: alex.morgan@demo-logistika.example
+    id: C-0003
+    name: Demo Logistika a.s.
+    postal_code: 702 00
+    street: Skladová 3
+  introduction: Děkujeme za Vaši poptávku. Na základě našeho rozhovoru Vám posíláme cenovou nabídku.
+  issue_date: 2026-10-05
+  lines:
+    - id: l1
+      item_code: SLU-SKOLENI
+      name: Školení ergonomie pracoviště
+      quantity: 4
+      unit: hod
+      unit_price: 180000
+      vat_percent: 21
+    - id: l2
+      item_code: SLU-OBCERSTVENI
+      name: Občerstvení na školení
+      purchase_price: 12000
+      quantity: 15
+      unit: os.
+      unit_price: 18000
+      vat_percent: 12
+    - id: l3
+      item_code: KNI-PRIRUCKA
+      name: Příručka Zdravé pracoviště (tištěná kniha)
+      purchase_price: 18000
+      quantity: 15
+      unit: ks
+      unit_price: 29000
+      vat_percent: 0
+  number: NAB-2026-0003
+  prepared_by: Jordan Blake
+  sent_at: 2026-10-05
+  status: rejected
+  terms: Školení proběhne u Vás na pracovišti v termínu podle dohody.
+  title: Školení ergonomie pro tým
+  updated_at: 2026-10-20
+  valid_until: 2026-11-04
+  version: 1
+schemaVersion: quotes.quote.v1

@@ -1,0 +1,12 @@
+id: C-0003
+record:
+  city: Ostrava
+  company_id: "00000003"
+  contact_person: Alex Morgan
+  country: Czech Republic
+  email: alex.morgan@demo-logistika.example
+  id: C-0003
+  name: Demo Logistics a.s.
+  postal_code: 702 00
+  street: Warehouse Street 3
+schemaVersion: quotes.customer.v1

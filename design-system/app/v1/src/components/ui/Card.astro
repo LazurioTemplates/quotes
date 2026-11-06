@@ -1,0 +1,19 @@
+---
+// content/components/card.md
+interface Props {
+  title: string;
+  eyebrow?: string;
+  href?: string;
+  selected?: boolean;
+}
+
+const { title, eyebrow, href, selected = false } = Astro.props;
+const hasFooter = Astro.slots.has("footer");
+---
+
+<article class:list={["card", href && "card-interactive", selected && "card-selected"]}>
+  {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+  <h3>{href ? <a href={href}>{title}</a> : title}</h3>
+  <div class="card-body"><slot /></div>
+  {hasFooter && <footer class="card-footer"><slot name="footer" /></footer>}
+</article>

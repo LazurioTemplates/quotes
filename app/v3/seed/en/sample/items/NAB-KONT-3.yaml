@@ -1,0 +1,13 @@
+id: NAB-KONT-3
+record:
+  category: furniture
+  code: NAB-KONT-3
+  name: Three-drawer pedestal
+  purchase_price: 220000
+  sale_price: 329000
+  supplier: Sample Furniture Wholesale
+  supplier_code: UV-4103
+  unit: pc
+  valid_from: 2026-01-01
+  vat_rate: standard
+schemaVersion: quotes.item.v1

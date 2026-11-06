@@ -1,0 +1,73 @@
+---
+import Icon from "./Icon.astro";
+import type { IconName } from "./types";
+
+// content/components/button.md
+interface Props {
+  variant?: "primary" | "secondary" | "ghost" | "danger";
+  size?: "default" | "compact";
+  icon?: IconName;
+  disabled?: boolean;
+  loading?: boolean;
+  type?: "button" | "submit";
+  class?: string;
+  // Opens the modal Dialog with this id.
+  opens?: string;
+  // Closes the modal Dialog it is in.
+  closes?: boolean;
+  autofocus?: boolean;
+  // A picture of the button inside a specimen: looks the same, does nothing,
+  // is not focusable and is not announced as a control.
+  visual?: boolean;
+  // Navigates: a link that looks like a button.
+  href?: string;
+  // Shows the live Toast with this id (ToastRegion).
+  toast?: string;
+}
+
+const {
+  variant = "secondary",
+  size = "default",
+  icon,
+  disabled = false,
+  loading = false,
+  type = "button",
+  class: extra,
+  opens,
+  closes = false,
+  autofocus = false,
+  visual = false,
+  href,
+  toast,
+} = Astro.props;
+const classes = ["btn", `btn-${variant}`, size === "compact" && "btn-compact", extra];
+---
+
+{
+  visual ? (
+    <span class:list={classes}>
+      {icon && <Icon name={icon} size="md" />}
+      <slot />
+    </span>
+  ) : href ? (
+    <a class:list={classes} href={href}>
+      {icon && <Icon name={icon} size="md" />}
+      <slot />
+    </a>
+  ) : (
+    <button
+      type={type}
+      class:list={classes}
+      disabled={disabled || loading}
+      aria-busy={loading ? "true" : undefined}
+      aria-haspopup={opens ? "dialog" : undefined}
+      data-dialog-open={opens}
+      data-dialog-close={closes ? "" : undefined}
+      data-toast={toast}
+      autofocus={autofocus}
+    >
+      {loading ? <span class="spinner" aria-hidden="true" /> : icon && <Icon name={icon} size="md" />}
+      <slot />
+    </button>
+  )
+}

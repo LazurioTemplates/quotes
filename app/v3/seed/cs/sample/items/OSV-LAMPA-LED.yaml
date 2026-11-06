@@ -1,0 +1,11 @@
+id: OSV-LAMPA-LED
+record:
+  category: osvetleni
+  code: OSV-LAMPA-LED
+  name: Stolní LED lampa se stmíváním
+  purchase_price: 89000
+  sale_price: 139000
+  unit: ks
+  valid_from: 2026-01-01
+  vat_rate: standard
+schemaVersion: quotes.item.v1

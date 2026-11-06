@@ -1,0 +1,64 @@
+---
+// content/components/input.md
+interface Props {
+  id: string;
+  label: string;
+  value?: string;
+  placeholder?: string;
+  hint?: string;
+  error?: string;
+  unit?: string;
+  optional?: boolean;
+  disabled?: boolean;
+  multiline?: boolean;
+  type?: "text" | "number" | "date";
+  align?: "start" | "end";
+}
+
+const {
+  id,
+  label,
+  value,
+  placeholder,
+  hint,
+  error,
+  unit,
+  optional = false,
+  disabled = false,
+  multiline = false,
+  type = "text",
+  align = "start",
+} = Astro.props;
+const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
+---
+
+<div class:list={["field", error && "field-error", disabled && "field-disabled"]}>
+  <label for={id}>{label}{optional && <span class="optional"> (optional)</span>}</label>
+  <div class="control">
+    {
+      multiline ? (
+        <textarea
+          id={id}
+          rows="3"
+          placeholder={placeholder}
+          disabled={disabled}
+          aria-invalid={error ? "true" : undefined}
+          aria-describedby={describedBy}
+        >{value}</textarea>
+      ) : (
+        <input
+          id={id}
+          type={type}
+          value={value}
+          placeholder={placeholder}
+          disabled={disabled}
+          class:list={[align === "end" && "align-end"]}
+          aria-invalid={error ? "true" : undefined}
+          aria-describedby={describedBy}
+        />
+      )
+    }
+    {unit && <span class="unit">{unit}</span>}
+  </div>
+  {error ? <p class="message error" id={`${id}-error`}>{error}</p> : hint && <p class="message" id={`${id}-hint`}>{hint}</p>}
+</div>

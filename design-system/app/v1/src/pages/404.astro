@@ -1,0 +1,11 @@
+---
+import EmptyState from "../components/ui/EmptyState.astro";
+import Viewer from "../layouts/Viewer.astro";
+---
+
+<Viewer title="Not found">
+  <EmptyState title="This page doesn't exist" page>
+    The design system has no page at this address. It may have moved when a layer was reorganised.
+    <a slot="action" class="btn btn-primary" href="/">Go to the overview</a>
+  </EmptyState>
+</Viewer>

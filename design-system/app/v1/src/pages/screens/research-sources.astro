@@ -1,0 +1,82 @@
+---
+import Button from "../../components/ui/Button.astro";
+import Card from "../../components/ui/Card.astro";
+import EmptyState from "../../components/ui/EmptyState.astro";
+import Icon from "../../components/ui/Icon.astro";
+import Table from "../../components/ui/Table.astro";
+import AppFrame from "../../layouts/AppFrame.astro";
+
+// Partial, error and empty states on one page. The source that could not be
+// read shows "–" and the reason, never 0.
+---
+
+<AppFrame title="Research sources" screen="Research sources" active="Research" about="/examples/screens/research-sources/">
+  <header class="page-header">
+    <div>
+      <h1>Sources: agency job lists for freelance translators</h1>
+      <p>Mechanism research · 3 groups · last verified 26 Oct 2026</p>
+    </div>
+    <Button variant="primary" icon="plus" visual>Add source</Button>
+  </header>
+
+  <section class="source-group">
+    <h2>Marketplace listings</h2>
+    <div class="notice notice-warning" role="status">
+      <Icon name="alert" size="md" />
+      <p>
+        <strong>1 of 3 sources not verified.</strong> The listing page asked for a sign-in. Open it in the
+        browser and add the figures by hand, or try again later.
+      </p>
+    </div>
+    <Table
+      caption="Paid job lists in this market"
+      columns={[
+        { label: "Source" },
+        { label: "Price per month", numeric: true },
+        { label: "Subscribers", numeric: true },
+        { label: "Verified", numeric: true },
+      ]}
+    >
+      <tr>
+        <td data-label="Source"><span class="row-name">Translator job digest A</span><span class="sub">public pricing page</span></td>
+        <td data-label="Price per month" class="num">[amount] EUR</td>
+        <td data-label="Subscribers" class="num">1,900</td>
+        <td data-label="Verified" class="num">26 Oct 2026</td>
+      </tr>
+      <tr>
+        <td data-label="Source"><span class="row-name">Language pair newsletter B</span><span class="sub">public pricing page</span></td>
+        <td data-label="Price per month" class="num">[amount] EUR</td>
+        <td data-label="Subscribers" class="num">640</td>
+        <td data-label="Verified" class="num">26 Oct 2026</td>
+      </tr>
+      <tr>
+        <td data-label="Source"><span class="row-name">Agency board C</span><span class="sub">not verified: the page asked for a sign-in</span></td>
+        <td data-label="Price per month" class="num unknown">–</td>
+        <td data-label="Subscribers" class="num unknown">–</td>
+        <td data-label="Verified" class="num unknown">–</td>
+      </tr>
+    </Table>
+  </section>
+
+  <section class="source-group">
+    <h2>Search demand</h2>
+    <div class="notice notice-error" role="alert">
+      <Icon name="error" size="md" />
+      <p>
+        <strong>The search volumes could not be loaded.</strong> The keyword tool did not answer in time.
+        The rest of this page is unaffected. <span class="unknown">Code: source-timeout</span>
+      </p>
+      <Button size="compact" visual>Try again</Button>
+    </div>
+  </section>
+
+  <section class="source-group">
+    <h2>Competitor pricing</h2>
+    <Card title="Competitor pricing">
+      <EmptyState title="No sources yet" icon="link">
+        Add a link to a public pricing page. Each source needs its date of verification.
+        <Button slot="action" icon="plus" visual>Add source</Button>
+      </EmptyState>
+    </Card>
+  </section>
+</AppFrame>

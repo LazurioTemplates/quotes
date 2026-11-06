@@ -1,0 +1,62 @@
+id: Q-2026-0005-v1
+record:
+  closed_at: 2026-09-25
+  created_at: 2026-08-20
+  currency: CZK
+  customer:
+    city: Brno
+    company_id: "00000001"
+    contact_person: Robin Lee
+    country: Czech Republic
+    email: robin.lee@atelier-ukazka.example
+    id: C-0001
+    name: Sample Studio s.r.o.
+    phone: +420 000 000 101
+    postal_code: 602 00
+    street: Sample Street 12
+    vat_id: CZ00000001
+  introduction: Thank you for your inquiry. Following our conversation, here is our quote.
+  issue_date: 2026-08-20
+  lines:
+    - id: l1
+      item_code: NAB-STUL-160
+      name: Height-adjustable desk 160 × 80 cm
+      purchase_price: 940000
+      quantity: 2
+      unit: pc
+      unit_price: 1390000
+      vat_percent: 21
+    - id: l2
+      item_code: NAB-ZIDLE-ERGO
+      name: Ergonomic office chair
+      purchase_price: 410000
+      quantity: 2
+      unit: pc
+      unit_price: 649000
+      vat_percent: 21
+    - id: l3
+      item_code: AKU-PARAVAN
+      name: Desk acoustic screen
+      purchase_price: 135000
+      quantity: 2
+      unit: pc
+      unit_price: 209000
+      vat_percent: 21
+    - id: l4
+      item_code: SLU-MONTAZ
+      name: Furniture assembly
+      purchase_price: 38000
+      quantity: 2
+      unit: h
+      unit_price: 65000
+      vat_percent: 21
+  number: Q-2026-0005
+  prepared_by: Jordan Blake
+  sent_at: 2026-08-20
+  status: expired
+  terms: Delivery within three weeks of the order's confirmation. Invoices are due in 14 days. Assembly on working days 8 am–5 pm.
+  title: Two new workplaces
+  updated_at: 2026-09-25
+  valid_until: 2026-09-19
+  version: 1
+schemaVersion: quotes.quote.v1

@@ -1,0 +1,12 @@
+id: OSV-PANEL-6060
+record:
+  category: lighting
+  code: OSV-PANEL-6060
+  name: LED ceiling panel 60 × 60 cm
+  purchase_price: 145000
+  sale_price: 219000
+  unit: pc
+  valid_from: 2026-01-01
+  valid_to: 2026-12-31
+  vat_rate: standard
+schemaVersion: quotes.item.v1

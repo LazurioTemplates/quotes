@@ -1,0 +1,11 @@
+id: SLU-OBCERSTVENI
+record:
+  category: sluzby
+  code: SLU-OBCERSTVENI
+  name: Občerstvení na školení
+  purchase_price: 12000
+  sale_price: 18000
+  unit: os.
+  valid_from: 2026-01-01
+  vat_rate: reduced
+schemaVersion: quotes.item.v1

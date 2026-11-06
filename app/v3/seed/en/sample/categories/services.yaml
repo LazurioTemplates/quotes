@@ -1,0 +1,6 @@
+id: services
+record:
+  id: services
+  name: Assembly and services
+  order: 4
+schemaVersion: quotes.category.v1

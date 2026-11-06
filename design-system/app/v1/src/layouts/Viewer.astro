@@ -1,0 +1,65 @@
+---
+import Icon from "../components/ui/Icon.astro";
+import ToastRegion from "../components/ui/ToastRegion.astro";
+import { navigation } from "../lib/nav";
+import { tokens } from "../tokens";
+import Head from "./Head.astro";
+import MenuToggle from "./MenuToggle.astro";
+import ThemeSwitch from "./ThemeSwitch.astro";
+
+// The read-only design system viewer: the wordmark, the layers in the sidebar
+// and the page.
+interface Props {
+  title: string;
+  description?: string;
+  wide?: boolean;
+}
+
+const { title, description, wide = false } = Astro.props;
+const groups = await navigation();
+const here = Astro.url.pathname.endsWith("/") ? Astro.url.pathname : `${Astro.url.pathname}/`;
+---
+
+<!doctype html>
+<html lang="en">
+  <head><Head title={title} description={description} /></head>
+  <body>
+    <a class="skip" href="#main-content">Skip to content</a>
+    <header class="topbar">
+      <a class="wordmark" href="/">Example<span class="signal-dot" aria-hidden="true"></span></a>
+      <span class="topbar-label">Design system <small>({tokens.status})</small></span>
+      <button type="button" class="btn btn-ghost btn-compact menu-button" aria-expanded="false" aria-controls="viewer-sections" data-menu-toggle>
+        <Icon name="list" size="md" />
+        Menu
+      </button>
+      <ThemeSwitch />
+    </header>
+    <div class="viewer">
+      <nav class="sidebar collapsible" id="viewer-sections" aria-label="Design system">
+        {
+          groups.map((group) => (
+            <section>
+              <a class:list={["nav-group", here === group.href && "active"]} href={group.href} aria-current={here === group.href ? "page" : undefined}>
+                {group.title}
+              </a>
+              <ul>
+                {group.items.map((item) => (
+                  <li>
+                    <a class:list={[here === item.href && "active"]} href={item.href} aria-current={here === item.href ? "page" : undefined}>
+                      {item.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))
+        }
+      </nav>
+      <main id="main-content" tabindex="-1" class:list={["page", wide && "page-wide"]}>
+        <slot />
+      </main>
+    </div>
+    <ToastRegion />
+    <MenuToggle />
+  </body>
+</html>

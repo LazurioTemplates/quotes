@@ -1,0 +1,82 @@
+---
+import Icon from "./Icon.astro";
+
+// content/components/dialog.md.
+//
+// `modal` (default): the real dialog, a native <dialog> opened with
+// showModal() by any element with `data-dialog-open="<id>"`. The browser makes
+// the rest of the page inert and closes it on Escape; focus starts on the
+// element marked `autofocus` (the least destructive action) and returns to the
+// trigger when it closes. Elements with `data-dialog-close` close it.
+//
+// `specimen`: a static, non-modal picture of the same dialog for the gallery
+// and the screens, inside a <figure> that says so. It claims no dialog role and
+// holds no control: its buttons are passed with `visual`.
+interface Props {
+  id: string;
+  title: string;
+  mode?: "modal" | "specimen";
+  // `width-dialog-wide`, for a dialog with a list.
+  wide?: boolean;
+}
+
+const { id, title, mode = "modal", wide = false } = Astro.props;
+---
+
+{
+  mode === "modal" ? (
+    <dialog class:list={["dialog", wide && "dialog-wide"]} id={id} aria-labelledby={`${id}-title`}>
+      <header class="dialog-header">
+        <h3 id={`${id}-title`}>{title}</h3>
+        <button type="button" class="icon-button" aria-label="Close" data-dialog-close>
+          <Icon name="close" size="md" />
+        </button>
+      </header>
+      <div class="dialog-body">
+        <slot />
+      </div>
+      <footer class="dialog-footer">
+        <slot name="footer" />
+      </footer>
+    </dialog>
+  ) : (
+    <figure class="dialog-specimen">
+      <figcaption class="specimen-label">Specimen of a dialog, shown inline. The real one is modal.</figcaption>
+      <div class="overlay overlay-inline">
+      <section class:list={["dialog", wide && "dialog-wide"]} aria-labelledby={`${id}-title`}>
+        <header class="dialog-header">
+          <h3 id={`${id}-title`}>{title}</h3>
+          <span class="icon-button" aria-hidden="true">
+            <Icon name="close" size="md" />
+          </span>
+        </header>
+        <div class="dialog-body">
+          <slot />
+        </div>
+        <footer class="dialog-footer">
+          <slot name="footer" />
+        </footer>
+      </section>
+      </div>
+    </figure>
+  )
+}
+
+<script>
+  // Opening and closing every modal Dialog of the page (see above).
+  const triggers = new WeakMap<HTMLDialogElement, HTMLElement>();
+  for (const trigger of document.querySelectorAll<HTMLElement>("[data-dialog-open]")) {
+    trigger.addEventListener("click", () => {
+      const dialog = document.getElementById(trigger.dataset.dialogOpen ?? "");
+      if (!(dialog instanceof HTMLDialogElement)) return;
+      triggers.set(dialog, trigger);
+      dialog.showModal();
+    });
+  }
+  for (const dialog of document.querySelectorAll<HTMLDialogElement>("dialog.dialog")) {
+    for (const close of dialog.querySelectorAll<HTMLElement>("[data-dialog-close]")) {
+      close.addEventListener("click", () => dialog.close());
+    }
+    dialog.addEventListener("close", () => triggers.get(dialog)?.focus());
+  }
+</script>

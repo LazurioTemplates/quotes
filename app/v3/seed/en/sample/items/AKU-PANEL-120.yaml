@@ -1,0 +1,11 @@
+id: AKU-PANEL-120
+record:
+  category: acoustics
+  code: AKU-PANEL-120
+  name: Acoustic panel 120 × 60 cm
+  purchase_price: 190000
+  sale_price: 285000
+  unit: pc
+  valid_from: 2026-01-01
+  vat_rate: standard
+schemaVersion: quotes.item.v1

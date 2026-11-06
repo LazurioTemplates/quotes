@@ -1,0 +1,20 @@
+---
+import Icon from "./Icon.astro";
+import type { IconName } from "./types";
+
+// content/components/empty-state.md
+interface Props {
+  title: string;
+  icon?: IconName;
+  page?: boolean;
+}
+
+const { title, icon = "search", page = false } = Astro.props;
+---
+
+<div class:list={["empty", page && "empty-page"]}>
+  <span class="empty-icon"><Icon name={icon} size={page ? "xl" : "lg"} /></span>
+  <h4>{title}</h4>
+  <p><slot /></p>
+  <div class="empty-action"><slot name="action" /></div>
+</div>

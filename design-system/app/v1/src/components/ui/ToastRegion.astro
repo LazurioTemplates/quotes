@@ -1,0 +1,79 @@
+---
+import { tokens } from "../../tokens";
+
+// The one place where live toasts appear (content/components/toast.md): a
+// polite live region, bottom right. At most three toasts; the oldest leaves
+// first.
+---
+
+<div class="toast-region" aria-live="polite" data-toast-region data-dismiss={tokens.motion["toast-dismiss"]}></div>
+
+<script>
+  import { dismissTimer } from "../../lib/dismiss-timer";
+  import { focusReturn } from "../../lib/focus-return";
+
+  const region = document.querySelector<HTMLElement>("[data-toast-region]");
+  const dismissAfter = Number(region?.dataset.dismiss ?? 0);
+  const closers = new WeakMap<Element, () => void>();
+
+  // When a toast that holds focus leaves, focus goes back to where it came
+  // from, or to the page's main region if that is gone or inside a closed
+  // dialog; it is never dropped on <body>.
+  function restoreFocus(from: HTMLElement | null) {
+    const origin = from && {
+      connected: from.isConnected,
+      inClosedDialog: from.closest("dialog:not([open])") !== null,
+      disabled: from.matches(":disabled"),
+    };
+    (focusReturn(origin) === "origin" ? from : document.getElementById("main-content"))?.focus();
+  }
+
+  function show(templateId: string) {
+    const template = document.getElementById(templateId);
+    if (!region || !(template instanceof HTMLTemplateElement)) return;
+    const toast = template.content.firstElementChild?.cloneNode(true);
+    if (!(toast instanceof HTMLElement)) return;
+    let stop = () => {};
+    let cameFrom: HTMLElement | null = null;
+    toast.addEventListener("focusin", (event) => {
+      if (!cameFrom && event.relatedTarget instanceof HTMLElement && !toast.contains(event.relatedTarget)) {
+        cameFrom = event.relatedTarget;
+      }
+    });
+    const close = () => {
+      const hadFocus = toast.contains(document.activeElement);
+      stop();
+      toast.remove();
+      if (hadFocus) restoreFocus(cameFrom);
+    };
+    closers.set(toast, close);
+    toast.querySelector("[data-toast-close]")?.addEventListener("click", close);
+    if (toast.dataset.variant === "info" || toast.dataset.variant === "success") {
+      // Leaves after the dismiss time, but never while the reader hovers it or
+      // has focus inside it (lib/dismiss-timer.ts).
+      const timer = dismissTimer(dismissAfter, close, {
+        set: (run, ms) => window.setTimeout(run, ms),
+        clear: (id) => window.clearTimeout(id),
+      });
+      stop = timer.stop;
+      toast.addEventListener("mouseenter", () => timer.hover(true));
+      toast.addEventListener("mouseleave", () => timer.hover(false));
+      toast.addEventListener("focusin", () => timer.focus(true));
+      toast.addEventListener("focusout", (event) =>
+        timer.focus(event.relatedTarget instanceof Node && toast.contains(event.relatedTarget)),
+      );
+    }
+    region.append(toast);
+    while (region.children.length > 3) {
+      const oldest = region.firstElementChild;
+      if (!oldest) break;
+      const closeOldest = closers.get(oldest);
+      if (closeOldest) closeOldest();
+      else oldest.remove();
+    }
+  }
+
+  for (const trigger of document.querySelectorAll<HTMLElement>("[data-toast]")) {
+    trigger.addEventListener("click", () => show(trigger.dataset.toast ?? ""));
+  }
+</script>

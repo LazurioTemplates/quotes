@@ -1,0 +1,27 @@
+name: Check
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: app/v1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - run: test "$(bun --version)" = "1.4.4"
+      - run: bun install --frozen-lockfile
+      # Types (astro check), Biome, and the tests: tokens, content, paths
+      # that check out on Windows, the template contract, start and build.
+      - run: bun run check

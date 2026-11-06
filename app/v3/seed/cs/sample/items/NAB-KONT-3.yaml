@@ -1,0 +1,13 @@
+id: NAB-KONT-3
+record:
+  category: nabytek
+  code: NAB-KONT-3
+  name: Kontejner se třemi zásuvkami
+  purchase_price: 220000
+  sale_price: 329000
+  supplier: Ukázkový velkoobchod nábytku
+  supplier_code: UV-4103
+  unit: ks
+  valid_from: 2026-01-01
+  vat_rate: standard
+schemaVersion: quotes.item.v1

@@ -1,0 +1,21 @@
+id: NAB-ZIDLE-ERGO
+record:
+  category: nabytek
+  code: NAB-ZIDLE-ERGO
+  name: Ergonomická kancelářská židle
+  price_history:
+    - note: Ceník dodavatele 2026-07
+      purchase_price: 430000
+      purchase_price_before: 410000
+      sale_price: 679000
+      sale_price_before: 649000
+      source: import
+      valid_from: 2026-07-01
+  purchase_price: 430000
+  sale_price: 679000
+  supplier: Ukázkový velkoobchod nábytku
+  supplier_code: UV-3301
+  unit: ks
+  valid_from: 2026-07-01
+  vat_rate: standard
+schemaVersion: quotes.item.v1

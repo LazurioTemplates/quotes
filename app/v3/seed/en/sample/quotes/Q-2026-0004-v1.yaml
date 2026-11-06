@@ -1,0 +1,81 @@
+id: Q-2026-0004-v1
+record:
+  created_at: 2026-11-05
+  currency: CZK
+  customer:
+    city: Ostrava
+    company_id: "00000003"
+    contact_person: Alex Morgan
+    country: Czech Republic
+    email: alex.morgan@demo-logistika.example
+    id: C-0003
+    name: Demo Logistics a.s.
+    postal_code: 702 00
+    street: Warehouse Street 3
+  internal_note: "Inquiry of 5 Nov: two desks, four chairs, two cabinets, something to sit on in the break area, refreshments for the handover."
+  introduction: Thank you for your inquiry. Following our conversation, here is our quote.
+  issue_date: 2026-11-05
+  lines:
+    - id: l1
+      item_code: NAB-STUL-160
+      name: Height-adjustable desk 160 × 80 cm
+      purchase_price: 940000
+      quantity: 2
+      unit: pc
+      unit_price: 1349000
+      vat_percent: 21
+    - id: l2
+      item_code: NAB-ZIDLE-ERGO
+      name: Ergonomic office chair
+      purchase_price: 430000
+      quantity: 4
+      unit: pc
+      unit_price: 679000
+      vat_percent: 21
+    - id: l3
+      item_code: NAB-SKRIN-80
+      name: Lockable cabinet 80 cm
+      purchase_price: 530000
+      quantity: 2
+      unit: pc
+      unit_price: 769000
+      vat_percent: 21
+    - id: l4
+      item_code: SLU-OBCERSTVENI
+      name: Refreshments for the training
+      purchase_price: 12000
+      quantity: 4
+      unit: person
+      unit_price: 18000
+      vat_percent: 12
+    - id: l5
+      name: Bean bag for the break area
+      quantity: 2
+      to_check: "Not in the price list: add a price or drop the line."
+      unit: pc
+      unit_price: 0
+      vat_percent: 21
+    - id: l6
+      item_code: SLU-MONTAZ
+      name: Furniture assembly
+      purchase_price: 38000
+      quantity: 3
+      unit: h
+      unit_price: 65000
+      vat_percent: 21
+    - id: l7
+      item_code: SLU-DOPRAVA
+      name: Delivery and carrying within the city
+      quantity: 1
+      unit: flat
+      unit_price: 120000
+      vat_percent: 21
+  number: Q-2026-0004
+  prepared_by: Jordan Blake
+  status: draft
+  terms: Delivery within three weeks of the order's confirmation. Invoices are due in 14 days. Assembly on working days 8 am–5 pm.
+  title: Warehouse office furniture
+  updated_at: 2026-11-05
+  valid_until: 2026-12-05
+  version: 1
+schemaVersion: quotes.quote.v1

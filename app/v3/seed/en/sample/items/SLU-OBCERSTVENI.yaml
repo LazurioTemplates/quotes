@@ -1,0 +1,11 @@
+id: SLU-OBCERSTVENI
+record:
+  category: services
+  code: SLU-OBCERSTVENI
+  name: Refreshments for the training
+  purchase_price: 12000
+  sale_price: 18000
+  unit: person
+  valid_from: 2026-01-01
+  vat_rate: reduced
+schemaVersion: quotes.item.v1

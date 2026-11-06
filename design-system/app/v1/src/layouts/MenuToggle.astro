@@ -1,0 +1,17 @@
+---
+// Below `breakpoint-tablet` the navigation collapses behind a "Menu" button
+// (content/patterns/navigation.md). The button shows or hides the element it
+// controls; above the breakpoint the button is hidden and the navigation is
+// always visible (global.css).
+---
+
+<script>
+  for (const button of document.querySelectorAll<HTMLButtonElement>("[data-menu-toggle]")) {
+    const target = document.getElementById(button.getAttribute("aria-controls") ?? "");
+    button.addEventListener("click", () => {
+      const open = button.getAttribute("aria-expanded") !== "true";
+      button.setAttribute("aria-expanded", String(open));
+      target?.classList.toggle("open", open);
+    });
+  }
+</script>

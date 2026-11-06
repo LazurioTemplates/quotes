@@ -1,0 +1,22 @@
+---
+// content/components/badge.md: the statuses of the method, each with a fixed
+// role and a fixed word.
+import type { Status } from "./types";
+
+interface Props {
+  status: Status;
+}
+
+const words: Record<Status, string> = {
+  hypothesis: "Hypothesis",
+  running: "Running",
+  verified: "Verified signal",
+  stopped: "Stopped",
+  scaling: "Scaling",
+  draft: "Draft",
+  new: "New",
+};
+const { status } = Astro.props;
+---
+
+<span class:list={["badge", `badge-${status}`]}>{words[status]}</span>

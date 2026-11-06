@@ -1,0 +1,6 @@
+id: furniture
+record:
+  id: furniture
+  name: Office furniture
+  order: 1
+schemaVersion: quotes.category.v1

@@ -1,0 +1,17 @@
+---
+import html from "../../../../../content/templates/email/experiment-update.html?raw";
+import AppFrame from "../../layouts/AppFrame.astro";
+
+// The e-mail template rendered as a mail client would show it, isolated in an
+// iframe so that its inline styles stay its own.
+---
+
+<AppFrame title="Experiment update e-mail" screen="Experiment update e-mail" active="Decisions" about="/templates/email/experiment-update/">
+  <header class="page-header">
+    <div>
+      <h1>Experiment update e-mail</h1>
+      <p>Template <code>content/templates/email/experiment-update.html</code> · light theme only, as e-mail clients need</p>
+    </div>
+  </header>
+  <iframe class="email-frame" title="Experiment update e-mail, rendered" srcdoc={html} sandbox=""></iframe>
+</AppFrame>

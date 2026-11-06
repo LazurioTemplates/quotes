@@ -1,0 +1,6 @@
+id: nabytek
+record:
+  id: nabytek
+  name: Kancelářský nábytek
+  order: 1
+schemaVersion: quotes.category.v1

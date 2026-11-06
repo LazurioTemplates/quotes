@@ -1,0 +1,11 @@
+id: AKU-PARAVAN
+record:
+  category: acoustics
+  code: AKU-PARAVAN
+  name: Desk acoustic screen
+  purchase_price: 135000
+  sale_price: 209000
+  unit: pc
+  valid_from: 2026-01-01
+  vat_rate: standard
+schemaVersion: quotes.item.v1
