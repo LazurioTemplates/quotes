@@ -1,0 +1,94 @@
+---
+import Badge from "../../components/ui/Badge.astro";
+import Button from "../../components/ui/Button.astro";
+import Card from "../../components/ui/Card.astro";
+import Dialog from "../../components/ui/Dialog.astro";
+import Input from "../../components/ui/Input.astro";
+import Toast from "../../components/ui/Toast.astro";
+import AppFrame from "../../layouts/AppFrame.astro";
+
+// Draft and Publish in three steps: review the draft, confirm in the dialog,
+// see the result.
+---
+
+<AppFrame title="Stop or scale decision" screen="Stop or scale decision" active="Decisions" about="/examples/screens/stop-or-scale/">
+  <header class="page-header">
+    <div>
+      <h1>Comparison reviews of standing desks <Badge status="draft" /></h1>
+      <p>Stop or scale decision · stop condition reached on 2 Oct 2026 · owner Mia Chen</p>
+    </div>
+  </header>
+
+  <div class="steps">
+    <section>
+      <p class="step-label">1 · Review the draft</p>
+      <div class="split">
+        <Card title="Result" eyebrow="Evidence">
+          <p class="metric">0.3 %</p>
+          <p>conversion of 2,010 visits against a target of 2 % · verified 2 Oct 2026 · source: experiment log</p>
+          <Fragment slot="footer"><Badge status="stopped" /> The stop condition was reached.</Fragment>
+        </Card>
+        <div>
+          <Input
+            id="decision"
+            label="Decision"
+            multiline
+            value="Stop. The traffic converts at a sixth of the target, and the remaining budget does not change the trend."
+          />
+          <Card title="Publishing will">
+            <ul class="consequences">
+              <li>stop the experiment and its two ads;</li>
+              <li>release the remaining budget of [amount] EUR;</li>
+              <li>send the summary to 4 people: Leo Martin, Nora Weiss, Mia Chen and Finance.</li>
+            </ul>
+            <p>It can't be undone. The draft stays editable until then.</p>
+            <Fragment slot="footer">
+              <Button visual>Save draft</Button>
+              <Button variant="primary" icon="send" opens="publish-confirm">Publish</Button>
+            </Fragment>
+          </Card>
+          <Dialog id="publish-confirm" title="Publish the stop decision?" wide>
+            <p>Publishing will:</p>
+            <ul>
+              <li>stop the experiment and its two ads;</li>
+              <li>release the remaining budget of [amount] EUR;</li>
+              <li>send the summary to 4 people.</li>
+            </ul>
+            <p>It can't be undone.</p>
+            <Fragment slot="footer">
+              <Button closes autofocus>Cancel</Button>
+              <Button variant="primary" icon="send" closes toast="published-toast">Publish</Button>
+            </Fragment>
+          </Dialog>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <p class="step-label">2 · Confirm</p>
+      <Dialog id="confirm" title="Publish the stop decision?" mode="specimen" wide>
+        <p>Publishing will:</p>
+        <ul>
+          <li>stop the experiment and its two ads;</li>
+          <li>release the remaining budget of [amount] EUR;</li>
+          <li>send the summary to 4 people.</li>
+        </ul>
+        <p>It can't be undone.</p>
+        <Fragment slot="footer">
+          <Button visual>Cancel</Button>
+          <Button variant="primary" icon="send" visual>Publish</Button>
+        </Fragment>
+      </Dialog>
+    </section>
+
+    <section>
+      <p class="step-label">3 · Result</p>
+      <Toast variant="success" caption="Picture of the toast that Publish in the dialog shows. Try it in step 1.">
+        Decision published. The experiment is stopped and 4 people have the summary.
+      </Toast>
+      <Toast mode="live" id="published-toast" variant="success">
+        Decision published. The experiment is stopped and 4 people have the summary.
+      </Toast>
+    </section>
+  </div>
+</AppFrame>

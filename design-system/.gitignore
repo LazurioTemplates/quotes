@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.astro/
+*.tsbuildinfo
+.env*
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.worktrees/
+# Former viewer location before app/v1, kept ignored for old checkouts.
+/app/node_modules/
+/app/dist/
+/app/.astro/
+.DS_Store

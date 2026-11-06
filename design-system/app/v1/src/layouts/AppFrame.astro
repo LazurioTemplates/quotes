@@ -1,0 +1,77 @@
+---
+import Icon from "../components/ui/Icon.astro";
+import ToastRegion from "../components/ui/ToastRegion.astro";
+import MenuToggle from "./MenuToggle.astro";
+import type { IconName } from "../components/ui/types";
+import Head from "./Head.astro";
+import ThemeSwitch from "./ThemeSwitch.astro";
+
+// An example screen of a fictional App of the Organization: the App's own
+// chrome (sidebar, header, page title), built only from the tokens and the
+// reference components. A thin strip above says that it is an example and
+// leads back to the viewer.
+interface Props {
+  title: string;
+  screen: string;
+  active: "Experiments" | "Research" | "Playbooks" | "Decisions";
+  // The Markdown page that explains what the screen shows.
+  about: string;
+  notes?: string;
+}
+
+const { title, screen, active, about, notes } = Astro.props;
+// The App's sections lead to the example screen that shows them; Playbooks has
+// none, so it is shown but leads nowhere.
+const sections: { label: Props["active"]; icon: IconName; href?: string }[] = [
+  { label: "Experiments", icon: "flask", href: "/screens/experiments/" },
+  { label: "Research", icon: "search", href: "/screens/research-sources/" },
+  { label: "Decisions", icon: "fork", href: "/screens/stop-or-scale/" },
+  { label: "Playbooks", icon: "book" },
+];
+---
+
+<!doctype html>
+<html lang="en">
+  <head><Head title={`Screen: ${title}`} description={notes} /></head>
+  <body>
+    <a class="skip" href="#main-content">Skip to content</a>
+    <div class="example-strip">
+      <span>Example screen · <strong>{screen}</strong> · fictional data</span>
+      <a href={about}>What to notice</a>
+      <a href="/">Back to the design system</a>
+      <ThemeSwitch />
+    </div>
+    <div class="app">
+      <nav class="app-nav" aria-label="Main">
+        <a class="wordmark" href="/screens/experiments/">Example<span class="signal-dot" aria-hidden="true"></span></a>
+        <button type="button" class="btn btn-ghost btn-compact menu-button" aria-expanded="false" aria-controls="app-sections" data-menu-toggle>
+          <Icon name="list" size="md" />
+          Menu
+        </button>
+        <ul id="app-sections" class="collapsible">
+          {sections.map((s) => (
+            <li>
+              {s.href ? (
+                <a href={s.href} class:list={[s.label === active && "active"]} aria-current={s.label === active ? "page" : undefined}>
+                  <Icon name={s.icon} size="md" />
+                  {s.label}
+                </a>
+              ) : (
+                <span class="nav-unavailable">
+                  <Icon name={s.icon} size="md" />
+                  {s.label}
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+        <p class="app-org">Example</p>
+      </nav>
+      <main class="app-main" id="main-content" tabindex="-1">
+        <slot />
+      </main>
+    </div>
+    <ToastRegion />
+    <MenuToggle />
+  </body>
+</html>

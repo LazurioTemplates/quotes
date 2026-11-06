@@ -1,0 +1,64 @@
+---
+import Icon from "./Icon.astro";
+import type { IconName } from "./types";
+
+// content/components/toast.md.
+//
+// `live`: a <template> that ToastRegion shows when an element with
+// `data-toast="<id>"` is activated. Info and success leave after
+// `motion-toast-dismiss` unless hovered or focused; warning and error stay
+// until closed. Its only control is Close, which works.
+//
+// `picture` (default): a static picture of a toast for the gallery and the
+// screens, in a <figure>. It is no live region and holds no control.
+interface Props {
+  variant?: "info" | "success" | "warning" | "error";
+  mode?: "picture" | "live";
+  id?: string;
+  action?: string;
+  caption?: string;
+}
+
+const { variant = "info", mode = "picture", id, action, caption } = Astro.props;
+const icons: Record<NonNullable<Props["variant"]>, IconName> = {
+  info: "book",
+  success: "check",
+  warning: "alert",
+  error: "error",
+};
+const role = variant === "warning" || variant === "error" ? "alert" : "status";
+---
+
+{
+  mode === "live" ? (
+    <template id={id}>
+      <div class:list={["toast", `toast-${variant}`]} role={role} data-variant={variant}>
+        <span class="toast-icon">
+          <Icon name={icons[variant]} size="md" />
+        </span>
+        <p>
+          <slot />
+        </p>
+        <button type="button" class="icon-button" aria-label="Close" data-toast-close>
+          <Icon name="close" size="sm" />
+        </button>
+      </div>
+    </template>
+  ) : (
+    <figure class="picture">
+      {caption && <figcaption class="specimen-label">{caption}</figcaption>}
+      <div class:list={["toast", `toast-${variant}`]}>
+        <span class="toast-icon">
+          <Icon name={icons[variant]} size="md" />
+        </span>
+        <p>
+          <slot />
+        </p>
+        {action && <span class="toast-action">{action}</span>}
+        <span class="icon-button" aria-hidden="true">
+          <Icon name="close" size="sm" />
+        </span>
+      </div>
+    </figure>
+  )
+}

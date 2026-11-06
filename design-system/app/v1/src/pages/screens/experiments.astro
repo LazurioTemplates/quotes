@@ -1,0 +1,128 @@
+---
+import Badge from "../../components/ui/Badge.astro";
+import type { Status } from "../../components/ui/types";
+import Button from "../../components/ui/Button.astro";
+import EmptyState from "../../components/ui/EmptyState.astro";
+import Icon from "../../components/ui/Icon.astro";
+import Input from "../../components/ui/Input.astro";
+import Table from "../../components/ui/Table.astro";
+import AppFrame from "../../layouts/AppFrame.astro";
+
+// Fictional data. A rate always comes with its sample; unknown values are "–".
+const rows: {
+  name: string;
+  mechanism: string;
+  status: Status;
+  rate?: string;
+  sample?: string;
+  verified?: string;
+  owner: string;
+  next: string;
+  changed?: boolean;
+  href?: string;
+  // Where the result comes from: the experiment log in workspace/experiments.
+  source?: string;
+}[] = [
+  { name: "Price comparison pages", mechanism: "Refurbished laptops, mobile-first", status: "verified", rate: "3.1", sample: "1,240", verified: "12 Oct 2026", owner: "Mia Chen", next: "Stop or scale decision due", source: "price-comparison/log.md" },
+  { name: "Weekly newsletter for small e-shops", mechanism: "Paid curation", status: "running", rate: "1.4", sample: "380", verified: "20 Oct 2026", owner: "Leo Martin", next: "Stop condition on 3 Nov", source: "shop-newsletter/log.md" },
+  { name: "Localized spreadsheet templates", mechanism: "Template marketplace", status: "scaling", rate: "4.8", sample: "5,400", verified: "25 Oct 2026", owner: "Leo Martin", next: "Review budget on 15 Nov", changed: true, source: "spreadsheet-templates/log.md" },
+  { name: "Template packs for event planners", mechanism: "Digital downloads", status: "hypothesis", owner: "Nora Weiss", next: "Write the smallest test" },
+  { name: "Paid community for freelance translators", mechanism: "Membership", status: "draft", owner: "Nora Weiss", next: "Publish the experiment plan" },
+  { name: "Comparison reviews of standing desks", mechanism: "Affiliate content", status: "stopped", rate: "0.3", sample: "2,010", verified: "2 Oct 2026", owner: "Mia Chen", next: "Decision published", href: "/screens/stop-or-scale/", source: "standing-desk-reviews/log.md" },
+];
+---
+
+<AppFrame title="Experiments" screen="Experiments" active="Experiments" about="/examples/screens/experiments/">
+  <header class="page-header">
+    <div>
+      <h1>Experiments</h1>
+      <p>12 experiments · 3 with a verified signal · 1 decision due</p>
+    </div>
+    <Button variant="primary" icon="plus" href="/screens/new-experiment/">New experiment</Button>
+  </header>
+
+  <div class="toolbar">
+    <Input id="search" label="Search experiments" placeholder="Name or mechanism" />
+  </div>
+
+  <Table
+    caption="Experiments, in the order of the next decision: due now, then by date, then undated and finished"
+    columns={[
+      { label: "Experiment" },
+      { label: "Status" },
+      { label: "Conversion (%)", numeric: true },
+      { label: "Sample (visits)", numeric: true },
+      { label: "Verified", numeric: true },
+      { label: "Source" },
+      { label: "Owner" },
+      { label: "Next step" },
+    ]}
+  >
+    {
+      rows.map((r) => (
+        <tr data-search-row={`${r.name} ${r.mechanism}`.toLowerCase()}>
+          <td data-label="Experiment">
+            {r.href ? (
+              <a href={r.href}>{r.name}</a>
+            ) : (
+              <span class:list={["row-name", r.changed && "changed"]}>{r.name}</span>
+            )}
+            <span class="sub">{r.mechanism}</span>
+          </td>
+          <td data-label="Status">
+            <Badge status={r.status} /> {r.changed && <Badge status="new" />}
+          </td>
+          <td data-label="Conversion (%)" class:list={["num", !r.rate && "unknown"]}>{r.rate ?? "–"}</td>
+          <td data-label="Sample (visits)" class:list={["num", !r.sample && "unknown"]}>{r.sample ?? "–"}</td>
+          <td data-label="Verified" class:list={["num", !r.verified && "unknown"]}>{r.verified ?? "–"}</td>
+          <td data-label="Source" class:list={[!r.source && "unknown"]}>
+            {r.source ? <code>workspace/experiments/{r.source}</code> : "–"}
+          </td>
+          <td data-label="Owner">{r.owner}</td>
+          <td data-label="Next step">{r.next}</td>
+        </tr>
+      ))
+    }
+    <tr data-search-empty hidden>
+      <td colspan="8">
+        <EmptyState title="No experiments match the search" icon="search">
+          Clear the search to see every experiment on this page.
+          <button slot="action" type="button" class="btn btn-secondary" data-search-clear>Clear search</button>
+        </EmptyState>
+      </td>
+    </tr>
+  </Table>
+  <p class="meta">
+    <span aria-live="polite"><Icon name="list" size="sm" /> Showing <span data-search-count>6</span> of 12 · page 1 of 2</span>
+    <span>Every rate has its sample, its date and its source; without them it would be a hypothesis.</span>
+  </p>
+</AppFrame>
+
+<script>
+  import { rowsMatching } from "../../lib/search";
+
+  // The search filters the rows of this page by name and mechanism, says how
+  // many are shown, and offers "Clear search" when none match.
+  const input = document.querySelector<HTMLInputElement>("#search");
+  const rows = [...document.querySelectorAll<HTMLElement>("[data-search-row]")];
+  const empty = document.querySelector<HTMLElement>("[data-search-empty]");
+  const count = document.querySelector<HTMLElement>("[data-search-count]");
+  const apply = () => {
+    const matches = rowsMatching(
+      rows.map((row) => row.dataset.searchRow ?? ""),
+      input?.value ?? "",
+    );
+    rows.forEach((row, i) => {
+      row.hidden = !matches[i];
+    });
+    const shown = matches.filter(Boolean).length;
+    if (empty) empty.hidden = shown > 0;
+    if (count) count.textContent = String(shown);
+  };
+  input?.addEventListener("input", apply);
+  document.querySelector("[data-search-clear]")?.addEventListener("click", () => {
+    if (input) input.value = "";
+    apply();
+    input?.focus();
+  });
+</script>

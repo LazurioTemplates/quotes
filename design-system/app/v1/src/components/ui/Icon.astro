@@ -1,0 +1,52 @@
+---
+// Outline icons drawn for this viewer: 24 × 24 grid, 1.5 px stroke, round caps
+// and joins, `currentColor` (content/brand/iconography/iconography.md).
+// Decorative unless `label` is given.
+import { tokens } from "../../tokens";
+import type { IconName } from "./types";
+
+// Sizes and the stroke are tokens: `size-icon-*` and `stroke-icon`.
+interface Props {
+  name: IconName;
+  size?: "sm" | "md" | "lg" | "xl";
+  label?: string;
+}
+
+const { name, size: step = "md", label } = Astro.props;
+const size = tokens.size[`icon-${step}`];
+const strokeWidth = tokens.stroke.icon;
+
+const paths: Record<IconName, string> = {
+  flask: "M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3M7.5 14h9",
+  check: "M12 3l2.4 1.6 2.9-.2.9 2.8 2.3 1.8-1 2.7 1 2.7-2.3 1.8-.9 2.8-2.9-.2L12 21l-2.4-1.6-2.9.2-.9-2.8-2.3-1.8 1-2.7-1-2.7 2.3-1.8.9-2.8 2.9.2zM8.5 12l2.5 2.5 4.5-5",
+  shield: "M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z",
+  fork: "M6 3v6a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3M12 15v6M4 5l2-2 2 2M16 5l2-2 2 2",
+  send: "M21 3L3 10.5l7 3 3 7zM10 13.5L21 3",
+  draft: "M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8zM14 3v5h5M9 17l1-3 5.5-5.5 2 2L12 16z",
+  link: "M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1",
+  alert: "M12 4l9 16H3zM12 10v4M12 17h.01",
+  error: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM9 9l6 6M15 9l-6 6",
+  plus: "M12 5v14M5 12h14",
+  search: "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM16 16l4 4",
+  close: "M6 6l12 12M18 6L6 18",
+  grid: "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z",
+  list: "M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01",
+  book: "M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 21V5M8 7h7",
+  theme: "M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z",
+};
+---
+
+<svg
+  class="icon"
+  width={size}
+  height={size}
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width={strokeWidth}
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  role={label ? "img" : undefined}
+  aria-label={label}
+  aria-hidden={label ? undefined : "true"}
+><path d={paths[name]}></path></svg>

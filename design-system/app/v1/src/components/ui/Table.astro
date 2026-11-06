@@ -1,0 +1,27 @@
+---
+// content/components/table.md. Rows come from the slot as <tr> elements; the
+// columns say how their cells align.
+interface Props {
+  caption: string;
+  columns: { label: string; numeric?: boolean; sort?: "ascending" | "descending" }[];
+  compact?: boolean;
+}
+
+const { caption, columns, compact = false } = Astro.props;
+---
+
+<div class="table-wrap">
+  <table class:list={["table", compact && "table-compact"]}>
+    <caption>{caption}</caption>
+    <thead>
+      <tr>
+        {columns.map((c) => (
+          <th scope="col" class:list={[c.numeric && "num"]} aria-sort={c.sort}>
+            {c.label}
+          </th>
+        ))}
+      </tr>
+    </thead>
+    <tbody><slot /></tbody>
+  </table>
+</div>

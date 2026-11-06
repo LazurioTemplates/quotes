@@ -1,0 +1,124 @@
+---
+import Viewer from "../../layouts/Viewer.astro";
+import { contrastRatio, ROLES, type Role, roleColor, THEMES, tokens } from "../../tokens";
+
+// content/brand/colors/tokens.json rendered: the roles of both themes with
+// their contrast against the page, the primitives and the scales.
+const textRoles = new Set<Role>(["text", "text-muted", "text-subtle", "accent-text", "success", "warning", "danger"]);
+const background: Partial<Record<Role, Role>> = {
+  "on-accent": "accent",
+  "on-highlight": "highlight",
+};
+function contrastNote(theme: (typeof THEMES)[number], role: Role): string | undefined {
+  const against = background[role] ?? (textRoles.has(role) ? "surface" : undefined);
+  if (!against) return undefined;
+  const ratio = contrastRatio(roleColor(tokens, theme, role), roleColor(tokens, theme, against));
+  return `${ratio.toFixed(1)}:1 on ${against}`;
+}
+---
+
+<Viewer title="Tokens" description="Every token of the design system, rendered from tokens.json." wide>
+  <p class="eyebrow">Foundations</p>
+  <h1>Tokens</h1>
+  <p class="lead">
+    Rendered from <code>content/brand/colors/tokens.json</code>, status <strong>{tokens.status}</strong>.
+    Components use roles only; the primitives below exist so that roles have something to point at.
+  </p>
+
+  {
+    THEMES.map((theme) => (
+      <section class="theme-panel" data-theme={theme}>
+        <h2>Colour roles: {theme}</h2>
+        <div class="roles">
+          {ROLES.map((role) => (
+            <div class="role">
+              <span class="chip" style={`background:var(--${role})`} />
+              <div>
+                <strong>{role}</strong>
+                <code>
+                  {tokens.themes[theme][role]} · {roleColor(tokens, theme, role)}
+                </code>
+                {contrastNote(theme, role) && <small>{contrastNote(theme, role)}</small>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    ))
+  }
+
+  <h2>Primitives</h2>
+  <div class="roles">
+    {
+      Object.entries(tokens.colors).map(([name, hex]) => (
+        <div class="role">
+          <span class="chip" style={`background:${hex}`} />
+          <div>
+            <strong>{name}</strong>
+            <code>{hex}</code>
+          </div>
+        </div>
+      ))
+    }
+  </div>
+
+  <h2>Type scale</h2>
+  <p>
+    Sans: <code>{tokens.typography.families.sans}</code><br />
+    Mono: <code>{tokens.typography.families.mono}</code>
+  </p>
+  {
+    Object.entries(tokens.typography.scale).map(([name, style]) => (
+      <div class="type-row">
+        <code>
+          {name} {style.size}/{style.lineHeight} · {style.weight}
+        </code>
+        <span style={`font: var(--type-${name})${name === "data" ? "; font-family: var(--font-mono)" : ""}`}>
+          {name === "data" ? "3.1 % of 1,240 · 2026-10-12" : "Verified signal on mobile"}
+        </span>
+      </div>
+    ))
+  }
+
+  <h2>Spacing</h2>
+  {
+    Object.entries(tokens.space).map(([name, px]) => (
+      <div class="type-row">
+        <code>
+          space-{name} · {px} px
+        </code>
+        <span class="bar" style={`width:${Math.max(px, 1)}px`} />
+      </div>
+    ))
+  }
+
+  <h2>Sizes, strokes, widths, breakpoints and motion</h2>
+  {
+    (["size", "stroke", "width", "breakpoint", "motion"] as const).map((group) =>
+      Object.entries(tokens[group]).map(([name, value]) => (
+        <div class="type-row">
+          <code>
+            {group}-{name}
+          </code>
+          <span>
+            {value} {group === "motion" ? "ms" : "px"}
+          </span>
+        </div>
+      )),
+    )
+  }
+
+  <h2>Radius</h2>
+  <div class="specimen">
+    {
+      Object.entries(tokens.radius).map(([name, px]) => (
+        <div>
+          <span class="specimen-label">
+            radius-{name} · {px} px
+          </span>
+          <div class="radius-sample" style={`border-radius:var(--radius-${name})`} />
+        </div>
+      ))
+    }
+  </div>
+</Viewer>

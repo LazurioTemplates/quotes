@@ -1,0 +1,54 @@
+---
+import Badge from "../../components/ui/Badge.astro";
+import Button from "../../components/ui/Button.astro";
+import Input from "../../components/ui/Input.astro";
+import AppFrame from "../../layouts/AppFrame.astro";
+
+// The state after "Start experiment" was pressed with two fields missing: a
+// summary at the top, a message under each wrong field, nothing lost.
+---
+
+<AppFrame title="New experiment" screen="New experiment" active="Experiments" about="/examples/screens/new-experiment/">
+  <header class="page-header">
+    <div>
+      <h1>New experiment <Badge status="draft" /></h1>
+      <p>From the research brief "Agency job lists for freelance translators" · draft saved 10:42</p>
+    </div>
+  </header>
+
+  <form class="form" novalidate>
+    <section class="error-summary" role="alert" tabindex="-1">
+      <h2>2 things need fixing before the experiment can start</h2>
+      <ul>
+        <li><a href="#stop">Enter a stop condition</a></li>
+        <li><a href="#owner">Choose an owner</a></li>
+      </ul>
+    </section>
+
+    <h4>What we test</h4>
+    <Input
+      id="hypothesis"
+      label="Hypothesis"
+      multiline
+      value="Freelance translators pay for a curated weekly list of agency jobs in their language pair."
+      hint="One falsifiable sentence. Start with who does what."
+    />
+    <Input id="mechanism" label="Mechanism link" optional value="workspace/research/agency-job-lists.md" />
+
+    <h4>How we decide</h4>
+    <Input id="metric" label="Metric" value="Paid sign-ups per 100 visitors" hint="The one number that decides the experiment." />
+    <Input id="target" label="Target" value="2" unit="%" align="end" />
+
+    <h4>What it may cost and when it ends</h4>
+    <Input id="budget" label="Weekly budget" value="[amount]" unit="EUR" align="end" hint="Before VAT. Examples keep amounts as placeholders." />
+    <Input id="stop" label="Stop condition" error="Enter a stop condition, for example a date or a metric threshold." placeholder="e.g. 3 Nov 2026, or 500 visitors" />
+
+    <h4>Who owns it</h4>
+    <Input id="owner" label="Owner" error="Choose an owner. Every experiment has one." placeholder="Choose a person" />
+
+    <div class="form-footer">
+      <Button visual>Save draft</Button>
+      <Button variant="primary" visual>Start experiment</Button>
+    </div>
+  </form>
+</AppFrame>
