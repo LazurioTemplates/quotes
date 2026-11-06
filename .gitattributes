@@ -1,0 +1,4 @@
+# Keep every text file LF on every platform, so Windows checkouts with
+# core.autocrlf=true do not change YAML records or generated schemas.
+* text=auto eol=lf
+*.webp binary

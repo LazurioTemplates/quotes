@@ -22,7 +22,7 @@ body { padding: var(--space-8) var(--space-4); }
 .doc-eyebrow { font: var(--type-caption); text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
 .doc-number { font: var(--type-h3); }
 .doc-version { color: var(--text-muted); }
-.doc-draft { display: inline-block; margin-top: var(--space-1); padding: 0 var(--space-2); border-radius: var(--radius-sm); background: var(--warning-subtle); color: var(--warning); font: var(--type-caption); text-transform: uppercase; letter-spacing: 0.06em; }
+.toolbar .draft { padding: 0 var(--space-2); border-radius: var(--radius-sm); background: var(--warning-subtle); color: var(--warning); }
 .doc-parties { display: grid; grid-template-columns: 1fr 1fr 0.8fr; gap: var(--space-6); padding: var(--space-5) 0; border-bottom: var(--stroke-hairline) solid var(--border); }
 .doc-parties h2 { font: var(--type-caption); text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: var(--space-1); }
 .doc-party-name { font-weight: 600; }

@@ -41,7 +41,6 @@ export function QuoteDocument({
           <p className="doc-version">
             {t("Verze", "Version")} {quote.version}
           </p>
-          {quote.status === "draft" ? <p className="doc-draft">{t("Koncept", "Draft")}</p> : null}
         </div>
       </header>
 

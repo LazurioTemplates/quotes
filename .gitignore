@@ -1,11 +1,10 @@
 node_modules/
 dist/
-.astro/
-*.tsbuildinfo
-.env*
-.venv/
-__pycache__/
-.pytest_cache/
-.ruff_cache/
 .worktrees/
+*.tsbuildinfo
+.DS_Store
+.env*
+# The Module's data checkout: its own repository (repository-db), never tracked here.
 /db/
+/.cache/
+/app/v3/.cache/

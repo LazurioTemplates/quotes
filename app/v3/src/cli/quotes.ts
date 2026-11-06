@@ -13,7 +13,16 @@ import { type QuotesStore, StoreError } from "../data/store.ts";
 import { calculateQuote } from "../domain/calculate.ts";
 import { customer } from "../domain/customer.ts";
 import { formatMoney, formatNumber, formatPercent, parseMoney, percent } from "../domain/money.ts";
-import { idOfQuote, type Quote, type QuoteLine, STATUS_LABELS } from "../domain/quote.ts";
+import {
+  idOfQuote,
+  latestVersions,
+  QUOTE_ACTIONS,
+  QUOTE_STATUSES,
+  type Quote,
+  type QuoteAction,
+  type QuoteLine,
+  STATUS_LABELS,
+} from "../domain/quote.ts";
 import { vatRateById } from "../domain/settings.ts";
 import { type Locale, parseLocale, pick } from "../i18n/locale.ts";
 import { createService, type QuotesService } from "../service/quotes-service.ts";
@@ -24,11 +33,13 @@ export const USAGE = `Usage: bun run quotes <command> [options]
 Commands
   items [--search <text>] [--category <id>]      the price list, or the items that match
   customers [--search <text>]                    the customers
+  quotes [--status draft|sent|accepted|rejected|expired]   the latest version of every quote
   quote:new --input <file.json>                  a new draft quote (see docs/agents.md)
   quote:show <number|id>                         a quote with its lines and totals
   quote:check <number|id>                        the check before sending (exit 1 on an error)
   quote:email <number|id>                        the e-mail text and the PDF's file name
   quote:print <number|id>                        the path of the print page (append it to the App's runtime.url)
+  quote:act <number|id> send|accept|reject|expire   the quote's next state, saved as a draft
   import:preview --csv <file> --supplier <name> [--valid-from YYYY-MM-DD] [--markup <percent>]
                  [--round-crowns] [--category <id>] [--encoding utf-8|windows-1250]
   import:apply   the same options and [--rows 2,3,7]  writes the chosen rows as a draft
@@ -203,6 +214,47 @@ export async function run(options: Options, context: Context): Promise<number> {
                 `${entry.id}  ${entry.name}  ${entry.email ?? ""}  ${entry.company_id ?? ""}`,
             )
             .join("\n") || t("Nic nenalezeno.", "Nothing found."),
+      );
+      return 0;
+    }
+    case "quotes": {
+      const status = flag("status");
+      if (status && !QUOTE_STATUSES.includes(status as Quote["status"])) {
+        fail(`Neznámý stav ${status}.`, `Unknown state ${status}.`);
+      }
+      const [all, settings] = await Promise.all([store.listQuotes(), store.settings()]);
+      const found = latestVersions(all.map((entry) => entry.value)).filter(
+        (quote) => !status || quote.status === status,
+      );
+      print(
+        found.map((quote) => ({ id: idOfQuote(quote), ...quote })),
+        () =>
+          found
+            .map(
+              (quote) =>
+                `${quote.number} v${quote.version}  ${STATUS_LABELS[quote.status][locale]}  ${quote.customer.name}  ${quote.title}  ${formatMoney(calculateQuote(quote, settings.value).payable, quote.currency, locale)}  ${t("platí do", "valid until")} ${quote.valid_until}`,
+            )
+            .join("\n") || t("Nic nenalezeno.", "Nothing found."),
+      );
+      return 0;
+    }
+    case "quote:act": {
+      const quote = await quoteOf(context, options.args[0]);
+      const action = options.args[1] as QuoteAction | undefined;
+      if (!action || !QUOTE_ACTIONS.includes(action)) {
+        fail(
+          `Krok je jeden z: ${QUOTE_ACTIONS.join(", ")}.`,
+          `The step is one of: ${QUOTE_ACTIONS.join(", ")}.`,
+        );
+      }
+      const current = await store.getQuote(idOfQuote(quote));
+      if (!current) fail("Nabídka zmizela.", "The quote is gone.");
+      const saved = await service.act(idOfQuote(quote), action, current.revision);
+      print({ id: idOfQuote(saved.value), status: saved.value.status }, () =>
+        t(
+          `${saved.value.number} v${saved.value.version} je teď „${STATUS_LABELS[saved.value.status].cs}“ (koncept; publikuje ho člověk).`,
+          `${saved.value.number} v${saved.value.version} is now “${STATUS_LABELS[saved.value.status].en}” (a draft; a person publishes it).`,
+        ),
       );
       return 0;
     }

@@ -101,6 +101,18 @@ describe("the agent's command line", () => {
     expect(JSON.parse(english.output.join("")).ready).toBe(false);
   });
 
+  test("lists the quotes and moves one to its next state as a draft", async () => {
+    const { value, output, store } = context();
+    expect(await run(parseArgs(["quotes", "--status", "sent"]), value)).toBe(0);
+    expect(output.join("\n")).toContain("NAB-2026-0002 v2");
+    expect(output.join("\n")).not.toContain("NAB-2026-0004");
+    expect(await run(parseArgs(["quote:act", "NAB-2026-0002", "accept"]), value)).toBe(0);
+    expect((await store.getQuote("NAB-2026-0002-v2"))?.value.status).toBe("accepted");
+    await expect(run(parseArgs(["quote:act", "NAB-2026-0004", "send"]), value)).rejects.toThrow(
+      "cannot go out",
+    );
+  });
+
   test("prepares the e-mail and names the print page", async () => {
     const { value, output } = context("en");
     expect(await run(parseArgs(["quote:email", "Q-2026-0002"]), value)).toBe(0);

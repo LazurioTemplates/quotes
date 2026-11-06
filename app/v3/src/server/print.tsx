@@ -51,6 +51,7 @@ export function createPrintHandler(store: QuotesStore) {
 <body>
 <nav class="toolbar" aria-label="${t("Tisk", "Print")}">
 <a href="/#/quotes/${encodeURIComponent(id)}">${t("← Zpět na nabídku", "← Back to the quote")}</a>
+${quote.status === "draft" ? `<span class="draft">${t("Koncept: po odeslání ho v aplikaci označte jako odeslaný.", "Draft: once it is sent, mark it as sent in the App.")}</span>` : ""}
 <span class="hint">${t("V dialogu tisku zvolte „Uložit jako PDF“.", "In the print dialog choose “Save as PDF”.")}</span>
 <button type="button" onclick="window.print()">${t("Vytisknout nebo uložit PDF", "Print or save as PDF")}</button>
 </nav>
