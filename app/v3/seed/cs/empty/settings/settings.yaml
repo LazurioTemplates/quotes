@@ -15,6 +15,7 @@ record:
       {prepared_by}
       {organization}
     subject: "Cenová nabídka {number}: {title}"
+  language: cs
   quote_number_format: NAB-{YYYY}-{NNNN}
   supplier:
     bank_account: REPLACE-WITH-ORG-BANK-ACCOUNT

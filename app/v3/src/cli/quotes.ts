@@ -46,7 +46,7 @@ Commands
   check                                          the rules across the data (draft included)
 
 Options
-  --lang cs|en   the language of the output (default cs; use your Folder's language)
+  --lang cs|en   the language of the output (default: the Module's settings, else cs; use your Folder's language)
   --json         machine-readable output
   --db <path>    the data checkout (default: the Module's db/)
   --demo         the fictional example data in memory instead of db/; nothing is kept`;
@@ -499,12 +499,12 @@ export async function run(options: Options, context: Context): Promise<number> {
 
 if (import.meta.main) {
   const options = parseArgs(process.argv.slice(2));
-  const locale = parseLocale(options.flags.get("lang")) ?? "cs";
+  const asked = parseLocale(options.flags.get("lang"));
   const demo = options.flags.has("demo");
   const db = options.flags.get("db");
   let store: QuotesStore;
   if (demo) {
-    const sample = readDataDirectory(seedDirectory(locale, "sample"));
+    const sample = readDataDirectory(seedDirectory(asked ?? "cs", "sample"));
     store = createMemoryStore(sample.data);
   } else {
     store = createRepositoryDbStore({
@@ -513,6 +513,13 @@ if (import.meta.main) {
       intervalMs: 0,
     });
   }
+  const locale =
+    asked ??
+    (await store
+      .settings()
+      .then((entry) => entry.value.language)
+      .catch(() => undefined)) ??
+    "cs";
   const context: Context = {
     store,
     service: createService(store),

@@ -33,6 +33,7 @@ describe("the starts this template ships", () => {
       expect(data.categories.length).toBe(2);
       expect(data.settings && hasPlaceholders(data.settings.supplier)).toBe(true);
       expect(data.settings?.vat_rates.map((rate) => rate.percent)).toEqual([21, 12, 0]);
+      expect(data.settings?.language).toBe(locale);
     });
   }
 

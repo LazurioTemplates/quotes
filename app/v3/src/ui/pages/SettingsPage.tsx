@@ -253,7 +253,22 @@ export function SettingsPage({
         </article>
 
         <article className="panel">
-          <h2>{t("Číslování a platnost", "Numbering and validity")}</h2>
+          <h2>{t("Jazyk, číslování a platnost", "Language, numbering and validity")}</h2>
+          <Field
+            label={t("Jazyk aplikace", "Language of the App")}
+            hint={t(
+              "Platí, dokud Lazurio aplikaci nepředá jazyk vašeho profilu.",
+              "It applies while Lazurio does not hand the App the language of your profile.",
+            )}
+          >
+            <select
+              value={form.language ?? "cs"}
+              onChange={(event) => update({ language: event.target.value === "en" ? "en" : "cs" })}
+            >
+              <option value="cs">{t("Čeština", "Czech")}</option>
+              <option value="en">{t("Angličtina", "English")}</option>
+            </select>
+          </Field>
           <div className="form-row">
             <Field
               label={t("Formát čísla nabídky", "Quote number format")}

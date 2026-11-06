@@ -16,6 +16,15 @@ describe("the language of the App", () => {
     );
   });
 
+  test("takes the Module's setting when the shell does not answer, as on a module's origin", async () => {
+    const load = (path: string) =>
+      path === "/api/settings"
+        ? json({ value: { language: "en" }, revision: "r" })
+        : Promise.resolve(new Response("Not found", { status: 404 }));
+    expect(await resolveLocale("", load)).toBe("en");
+    expect(await resolveLocale("?lang=cs", load)).toBe("cs");
+  });
+
   test("is Czech outside Lazurio, unless the address asks for English", async () => {
     const page = () =>
       Promise.resolve(

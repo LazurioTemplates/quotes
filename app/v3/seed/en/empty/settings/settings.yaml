@@ -15,6 +15,7 @@ record:
       {prepared_by}
       {organization}
     subject: "Quote {number}: {title}"
+  language: en
   quote_number_format: Q-{YYYY}-{NNNN}
   supplier:
     bank_account: REPLACE-WITH-ORG-BANK-ACCOUNT

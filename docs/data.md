@@ -25,7 +25,7 @@ schemaVersion: quotes.item.v1
 
 | Collection | Id | `schemaVersion` | Holds |
 | --- | --- | --- | --- |
-| `settings` | `settings` | `quotes.settings.v1` | currency, VAT rates and the default one, the quote number format, validity in days, rounding of the total, the minimum margin, the Organization's details on a quote, default texts, the e-mail template |
+| `settings` | `settings` | `quotes.settings.v1` | the App's language while Lazurio does not hand it the person's, currency, VAT rates and the default one, the quote number format, validity in days, rounding of the total, the minimum margin, the Organization's details on a quote, default texts, the e-mail template |
 | `categories` | a slug | `quotes.category.v1` | name and order |
 | `items` | the item's code | `quotes.item.v1` | name, category, unit, purchase and sale price, VAT rate id, valid from and until, supplier and the supplier's code, retired, the price history |
 | `customers` | `C-0001` | `quotes.customer.v1` | name, company ID, VAT ID, address, contact person, e-mail, phone, an internal note |

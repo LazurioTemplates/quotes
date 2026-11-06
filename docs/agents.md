@@ -13,7 +13,8 @@ same rules as the App, and neither publishes or sends anything:
 ## The command line
 
 Run it in `app/v3` of the Module. `--lang cs|en` sets the language of the
-output, the checks and the e-mail (use your Folder's language); `--json`
+output, the checks and the e-mail (use your Folder's language; without it the
+language of the Module's settings); `--json`
 prints machine-readable output; `--demo` works on the fictional example in
 memory, for trying a step without touching `db/`.
 

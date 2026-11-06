@@ -34,7 +34,11 @@ called „Cenové nabídky“.
   records in business language and publishes them as one change to the
   Organization's data repository, or returns them.
 
-The App speaks Czech or English, the language of the person's Lazurio profile.
+The App speaks Czech or English: the language of the person's Lazurio profile
+where Lazurio hands it to the page (`/.lazurio/shell.json`), otherwise the
+language of the Module's settings, which the adoption sets from the start it
+chose (Lazurio does not hand a module its language yet,
+[LazurioPlatform#909](https://github.com/Lazurio/LazurioPlatform/issues/909)).
 The records hold whatever language the Organization writes in; both starts
 ship in both languages.
 

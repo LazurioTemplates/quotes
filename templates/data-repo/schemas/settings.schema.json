@@ -15,6 +15,14 @@
     "record": {
       "type": "object",
       "properties": {
+        "language": {
+          "description": "The language of the App while Lazurio does not hand it the person's (LazurioPlatform#909).",
+          "type": "string",
+          "enum": [
+            "cs",
+            "en"
+          ]
+        },
         "currency": {
           "type": "string",
           "pattern": "^[A-Z]{3}$"

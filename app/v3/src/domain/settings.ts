@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { LOCALES } from "../i18n/locale.ts";
 import { currencyCode, optionalText, slug, text } from "./common.ts";
 import { percent } from "./money.ts";
 
@@ -42,6 +43,12 @@ export const TOTAL_ROUNDINGS = ["none", "whole"] as const;
 export const NUMBER_FORMAT = /^(?:[A-Za-z0-9._-]|\{YYYY\}|\{YY\}|\{MM\}|\{N{1,8}\})+$/;
 
 export const settings = z.strictObject({
+  language: z
+    .enum(LOCALES)
+    .optional()
+    .describe(
+      "The language of the App while Lazurio does not hand it the person's (LazurioPlatform#909).",
+    ),
   currency: currencyCode,
   vat_rates: z.array(vatRate).min(1),
   default_vat_rate: slug,

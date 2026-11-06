@@ -16,6 +16,7 @@ record:
       {prepared_by}
       {organization}
     subject: "Cenová nabídka {number}: {title}"
+  language: cs
   min_margin_percent: 20
   quote_number_format: NAB-{YYYY}-{NNNN}
   supplier:

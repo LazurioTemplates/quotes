@@ -140,7 +140,8 @@ In a worktree of `<Org>/<slug>-data`, on a branch from `v3`:
   `validate` from the template;
 - copy the start into `data/`: `app/v3/seed/<cs|en>/<empty|sample>/` of the
   release becomes `data/` (`settings/`, `categories/`, `items/`, `customers/`,
-  `quotes/`);
+  `quotes/`). Its settings name the language (`record.language`), which the
+  App speaks while Lazurio does not hand it the person's (LazurioPlatform#909);
 - for the `empty` start, put the Organization's details the person gave you
   into `data/settings/settings.yaml` (`record.supplier`) and leave the rest as
   placeholders; the number format, VAT rates, validity and texts can stay as

@@ -28,7 +28,9 @@ from the scaffold of `lazurio module create --stack vite-react --data`.
   as PDF by the browser, and the e-mail text from the Organization's template.
 - **Draft & Publish** on every save, with the changed fields named and amounts
   shown in crowns.
-- The interface, the starts and the example in **Czech and English**.
+- The interface, the starts and the example in **Czech and English**: the
+  person's language from Lazurio's shell document where it arrives, otherwise
+  the language of the Module's settings (LazurioPlatform#909).
 
 ### For Organizations and agents
 

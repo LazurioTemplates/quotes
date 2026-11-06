@@ -16,6 +16,7 @@ record:
       {prepared_by}
       {organization}
     subject: "Quote {number}: {title}"
+  language: en
   min_margin_percent: 20
   quote_number_format: Q-{YYYY}-{NNNN}
   supplier:

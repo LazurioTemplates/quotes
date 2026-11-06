@@ -127,6 +127,22 @@ git merge --no-ff <commit>
 - `bun install --frozen-lockfile && bun run check && bun run build`, then a
   pull request. Merging it is the person's Publication.
 
+## Languages
+
+Every text people see is written in Czech and English side by side
+(`t("Ceník", "Price list")` in the UI, `pick(locale, cs, en)` on the server).
+The App takes its language from `?lang=` in the address, then from the
+person's Lazurio profile in `/.lazurio/shell.json`, then from `language` of
+the Module's settings, then Czech (`app/v3/src/ui/locale.ts`); the server
+answers in the language the page asks for (`Accept-Language`), the print page
+in `?lang=`, the command line in `--lang` or the settings' language. Lazurio
+relays `/.lazurio/shell.json` only on its own origins today, so on a module's
+origin the settings decide; when it hands modules the person's language
+([LazurioPlatform#909](https://github.com/Lazurio/LazurioPlatform/issues/909)),
+the App follows it without a change. A third language is a third string in
+every pair and a third start in `app/v3/seed/`: a template release, not a
+change of one Organization's copy.
+
 ## Stack profile releases
 
 The template follows the stack profile [`app-data@2026.11`](https://github.com/Lazurio/LazurioPlatform/blob/main/docs/stack-profiles.md#app-data):
