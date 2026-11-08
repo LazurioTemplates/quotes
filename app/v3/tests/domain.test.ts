@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { calculateQuote } from "../src/domain/calculate.ts";
+import { sameImportRequest } from "../src/domain/canonical.ts";
 import { withPrice } from "../src/domain/catalog.ts";
 import { checkQuote } from "../src/domain/checks.ts";
 import { addDays, formatDate, slugify } from "../src/domain/common.ts";
@@ -68,17 +70,43 @@ describe("the lifecycle of a quote", () => {
 
   test("a draft is sent, then accepted, rejected or expired", () => {
     expect(allowedActions(quote)).toEqual(["send"]);
-    const sent = applyAction(quote, "send", "2026-11-07");
+    const sent = applyAction(quote, "send", "2026-11-07", sampleData().settings);
     if ("cs" in sent) throw new Error(sent.en);
     expect(sent.status).toBe("sent");
     expect(sent.sent_at).toBe("2026-11-07");
+    expect(sent.sent_settings).toEqual({
+      supplier: sampleData().settings.supplier,
+      total_rounding: "none",
+    });
     expect(allowedActions(sent)).toEqual(["accept", "reject", "expire"]);
-    const accepted = applyAction(sent, "accept", "2026-11-10");
+    const accepted = applyAction(sent, "accept", "2026-11-10", sampleData().settings);
     if ("cs" in accepted) throw new Error(accepted.en);
     expect(accepted.closed_at).toBe("2026-11-10");
     expect(canCreateVersion(accepted)).toBe(false);
-    const refused = applyAction(accepted, "send", "2026-11-11");
+    const refused = applyAction(accepted, "send", "2026-11-11", sampleData().settings);
     expect("cs" in refused && refused.en).toContain("does not allow");
+  });
+
+  test("a version that went out keeps its rounding and must keep its settings", () => {
+    const data = sampleData();
+    const line = {
+      id: "l1",
+      name: "x",
+      unit: "ks",
+      quantity: 1,
+      unit_price: 1005,
+      vat_percent: 21,
+    };
+    const sent = applyAction({ ...newQuote(), lines: [line] }, "send", "2026-11-07", data.settings);
+    if ("cs" in sent) throw new Error(sent.en);
+    const rounded = { ...data.settings, total_rounding: "whole" as const };
+    expect(calculateQuote({ ...newQuote(), lines: [line] }, rounded).payable).toBe(1200);
+    expect(calculateQuote(sent, rounded).payable).toBe(1216);
+    const { sent_settings: _kept, ...withoutSettings } = sent;
+    const broken = { ...data, quotes: [...data.quotes, withoutSettings] };
+    expect(checkRules(broken, "en").map((issue) => issue.message)).toContain(
+      "a quote that went out does not keep the settings it went out with",
+    );
   });
 
   test("a new version is a draft with the same number", () => {
@@ -93,6 +121,7 @@ describe("the lifecycle of a quote", () => {
     });
     expect(next.valid_until).toBe("2026-12-20");
     expect("sent_at" in next).toBe(false);
+    expect("sent_settings" in next).toBe(false);
     expect(isPastValidity({ status: "sent", valid_until: "2026-11-01" }, "2026-11-02")).toBe(true);
     expect(
       latestVersions([
@@ -251,6 +280,19 @@ describe("the e-mail with a quote", () => {
 });
 
 describe("a supplier's price list", () => {
+  test("two import requests are the same when their CSV and options are", () => {
+    const one = {
+      csv: "a;b",
+      options: { supplier: "S", valid_from: "2026-12-01", markup_percent: 45 },
+    };
+    const reordered = { markup_percent: 45, valid_from: "2026-12-01", supplier: "S" };
+    expect(sameImportRequest(one, { csv: "a;b", options: reordered })).toBe(true);
+    expect(
+      sameImportRequest(one, { ...one, options: { ...one.options, markup_percent: 90 } }),
+    ).toBe(false);
+    expect(sameImportRequest(one, { ...one, csv: "a;c" })).toBe(false);
+  });
+
   test("reads CSV the way Czech exports write it", () => {
     expect(detectDelimiter("a;b;c\n1;2;3")).toBe(";");
     expect(detectDelimiter("a,b\n1,2")).toBe(",");

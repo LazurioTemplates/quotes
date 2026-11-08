@@ -1,4 +1,6 @@
+import { createHash } from "node:crypto";
 import { type QuotesStore, type Revision, type Stored, StoreError } from "../data/store.ts";
+import { canonicalJson } from "../domain/canonical.ts";
 import { type Category, type Item, withPrice } from "../domain/catalog.ts";
 import { checkQuote, type QuoteIssue, readyToSend } from "../domain/checks.ts";
 import { addDays, localToday, slugify } from "../domain/common.ts";
@@ -190,7 +192,8 @@ export function createService(store: QuotesStore, options: ServiceOptions = {}) 
         );
       }
     }
-    const next = applyAction(current.value, action, today());
+    const settings = await store.settings();
+    const next = applyAction(current.value, action, today(), settings.value);
     if ("cs" in next) throw new StoreError("not_allowed", next);
     return store.saveQuote(next, baseRevision);
   }
@@ -267,13 +270,18 @@ export function createService(store: QuotesStore, options: ServiceOptions = {}) 
     return store.saveItem(next, baseRevision);
   }
 
+  /**
+   * The preview of an import and its token: a SHA-256 over what the person
+   * reviewed (the CSV, the effective column mapping and the options), what it
+   * would write (every row and the items the file lacks) and the data it was
+   * computed from (the revisions of the settings, every category and every
+   * item). Applying the import needs the same token: when anything of it
+   * changed, the preview is stale and nothing is written.
+   */
   async function importPreview(
     request: ImportRequest,
     locale: Locale = "cs",
-  ): Promise<{
-    preview: ImportPreview;
-    revisions: Record<string, string | null>;
-  }> {
+  ): Promise<{ preview: ImportPreview; token: string }> {
     const [settings, items, categories] = await Promise.all([
       store.settings(),
       store.listItems(),
@@ -286,40 +294,62 @@ export function createService(store: QuotesStore, options: ServiceOptions = {}) 
       settings: settings.value,
       locale,
     });
-    const revisionOf = new Map(items.map((entry) => [entry.value.code, entry.revision]));
-    const revisions: Record<string, string | null> = {};
-    for (const row of preview.rows) {
-      if (row.kind === "new") revisions[row.item.code] = null;
-      if (row.kind === "changed") revisions[row.item.code] = revisionOf.get(row.item.code) ?? null;
-    }
-    return { preview, revisions };
+    const reviewed = {
+      csv: request.csv,
+      mapping: preview.mapping,
+      options: request.options,
+      // A problem's wording follows the language, its row does not.
+      rows: preview.rows.map((row) =>
+        row.kind === "invalid"
+          ? { kind: row.kind, line: row.line, supplierCode: row.supplierCode }
+          : row,
+      ),
+      missing: preview.missing,
+      data: {
+        settings: settings.revision,
+        categories: categories.map((entry) => [entry.value.id, entry.revision]).sort(),
+        items: items.map((entry) => [entry.value.code, entry.revision]).sort(),
+      },
+    };
+    const token = `preview:${createHash("sha256").update(canonicalJson(reviewed)).digest("hex")}`;
+    return { preview, token };
   }
 
   /**
-   * Writes the chosen rows of an import as one draft. `revisions` are the
-   * ones the preview showed: when the price list changed since, nothing is
-   * written and the person looks at a fresh preview.
+   * Writes the chosen rows of an import as one draft, exactly as the preview
+   * with `token` showed them. A different request, a changed price list,
+   * category or setting, or a row the preview did not offer to write is
+   * refused, and nothing is written.
    */
   async function importApply(
-    request: ImportRequest & { lines?: number[]; revisions: Record<string, string | null> },
+    request: ImportRequest & { token: string; lines?: number[] | undefined },
     locale: Locale = "cs",
   ) {
-    const { preview, revisions } = await importPreview(request, locale);
-    const chosen = importedItems(preview, request.lines);
-    for (const { item } of chosen) {
-      if (
-        !(item.code in request.revisions) ||
-        request.revisions[item.code] !== revisions[item.code]
-      ) {
-        throw new StoreError("record_changed", {
-          cs: `Ceník se od náhledu změnil (${item.code}); načtěte náhled znovu.`,
-          en: `The price list changed since the preview (${item.code}); load the preview again.`,
-        });
-      }
+    const { preview, token } = await importPreview(request, locale);
+    if (token !== request.token) {
+      throw new StoreError("preview_stale", {
+        cs: "Ceník, nastavení nebo pravidla importu se od náhledu změnily; zobrazte náhled znovu.",
+        en: "The price list, the settings or the rules of the import changed since the preview; preview it again.",
+      });
     }
-    if (chosen.length === 0) return [];
+    const writable = new Map(importedItems(preview).map((entry) => [entry.line, entry]));
+    const lines = request.lines ?? [...writable.keys()];
+    const refused = lines.filter((line) => !writable.has(line));
+    if (refused.length > 0) {
+      throw new StoreError("bad_request", {
+        cs: `Řádky ${refused.join(", ")} náhled nenabídl k uložení.`,
+        en: `The preview did not offer the rows ${refused.join(", ")} to save.`,
+      });
+    }
+    if (lines.length === 0) return [];
+    const current = new Map(
+      (await store.listItems()).map((entry) => [entry.value.code, entry.revision]),
+    );
     return store.saveItems(
-      chosen.map(({ item }) => ({ value: item, baseRevision: revisions[item.code] ?? null })),
+      lines.map((line) => {
+        const { item, existing } = writable.get(line) as { item: Item; existing: boolean };
+        return { value: item, baseRevision: existing ? (current.get(item.code) ?? null) : null };
+      }),
     );
   }
 

@@ -16,8 +16,10 @@ on this repository. Do not open a public issue for it.
 - **No Git and no paths of its own on the data.** Records are read and written
   only through repository-db (`Collection`, `readDataFile`), which refuses
   symbolic links and paths outside the checkout. A save names the revision it
-  was edited from; a stale save is refused. An import writes only rows whose
-  item is still the version the preview showed.
+  was edited from; a stale save is refused. An import writes only what the
+  person reviewed: the preview's token binds the request, its rows and the
+  revisions of the data it was computed from, and anything changed since
+  refuses the import.
 - **Publishing is one validated commit.** repository-db runs the data
   repository's validator before every publish. Who may publish is decided by
   the person's live GitHub rights on the data repository; the App keeps no

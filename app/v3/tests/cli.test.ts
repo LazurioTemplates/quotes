@@ -140,7 +140,20 @@ describe("the agent's command line", () => {
         ];
         expect(await run(parseArgs(["import:preview", ...args]), value)).toBe(0);
         expect(output.join("\n")).toContain("Nové 1, změněné 1");
-        expect(await run(parseArgs(["import:apply", ...args, "--rows", "3"]), value)).toBe(0);
+        const token = /Otisk náhledu: (preview:[0-9a-f]{64})/.exec(output.join("\n"))?.[1];
+        if (!token) throw new Error("the preview printed no token");
+        // Without the token, or with other rules than the preview's: nothing is written.
+        await expect(
+          run(parseArgs(["import:apply", ...args, "--rows", "3"]), value),
+        ).rejects.toThrow("--token");
+        const otherMarkup = args.map((arg) => (arg === "45" ? "90" : arg));
+        await expect(
+          run(parseArgs(["import:apply", ...otherMarkup, "--token", token, "--rows", "3"]), value),
+        ).rejects.toThrow("changed since the preview");
+        expect(await store.getItem("UV-7777")).toBeNull();
+        expect(
+          await run(parseArgs(["import:apply", ...args, "--token", token, "--rows", "3"]), value),
+        ).toBe(0);
       },
     );
     expect((await store.getItem("UV-7777"))?.value.sale_price).toBe(159500);

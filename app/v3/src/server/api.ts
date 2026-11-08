@@ -78,6 +78,7 @@ const STATUS_BY_CODE: Record<string, number> = {
   materialize_failed: 422,
   not_editable: 409,
   not_allowed: 409,
+  preview_stale: 409,
   record_changed: 409,
   draft_changed: 409,
   draft_write_blocked: 409,
@@ -266,8 +267,8 @@ export function createApi(store: QuotesStore, options: ApiOptions) {
       const input = await body(
         req,
         importInput.extend({
+          token: z.string().min(1),
           lines: z.array(z.int().min(1)).optional(),
-          revisions: z.record(z.string(), z.string().nullable()),
         }),
       );
       return json(await service.importApply(input, locale));

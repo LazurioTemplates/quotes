@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { sameImportRequest } from "../../domain/canonical.ts";
 import { localToday } from "../../domain/common.ts";
 
 import {
@@ -10,7 +11,7 @@ import {
 } from "../../domain/price-import.ts";
 import type { Localized } from "../../i18n/locale.ts";
 import type { AppData } from "../App.tsx";
-import { api } from "../api.ts";
+import { api, type ImportRequest } from "../api.ts";
 import { ErrorNotice, Field, PageHeader } from "../components/common.tsx";
 import { useFormat, useT } from "../i18n.tsx";
 import { href } from "../routes.ts";
@@ -63,10 +64,9 @@ export function ImportPage({
   const [roundToCrowns, setRoundToCrowns] = useState(true);
   const [category, setCategory] = useState(data.categories[0]?.value.id ?? "");
   const [mapping, setMapping] = useState<ImportMapping | undefined>(undefined);
-  const [result, setResult] = useState<{
-    preview: ImportPreview;
-    revisions: Record<string, string | null>;
-  } | null>(null);
+  const [result, setResult] = useState<{ preview: ImportPreview; token: string } | null>(null);
+  /** The exact request the shown preview answered; Apply sends this one, never the form's. */
+  const [reviewed, setReviewed] = useState<ImportRequest | null>(null);
   const [chosen, setChosen] = useState<Set<number>>(new Set());
   const [saved, setSaved] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
@@ -75,7 +75,7 @@ export function ImportPage({
   const money = (amount: number | undefined) =>
     amount === undefined ? "–" : f.money(amount, settings.currency);
 
-  const request = (nextMapping: ImportMapping | undefined) => ({
+  const request = (nextMapping: ImportMapping | undefined): ImportRequest => ({
     csv,
     ...(nextMapping ? { mapping: nextMapping } : {}),
     options: {
@@ -102,8 +102,10 @@ export function ImportPage({
     setError(null);
     setSaved(null);
     try {
-      const next = await api.importPreview(request(nextMapping));
+      const asked = request(nextMapping);
+      const next = await api.importPreview(asked);
       setResult(next);
+      setReviewed(asked);
       setMapping(next.preview.mapping);
       setChosen(
         new Set(
@@ -120,14 +122,14 @@ export function ImportPage({
   }
 
   async function apply() {
-    if (!result) return;
+    if (!result || !reviewed || stale) return;
     setBusy(true);
     setError(null);
     try {
       const written = await api.importApply({
-        ...request(mapping),
+        ...reviewed,
+        token: result.token,
         lines: [...chosen],
-        revisions: result.revisions,
       });
       setSaved(written.length);
       setResult(null);
@@ -147,6 +149,9 @@ export function ImportPage({
   };
 
   const ready = csv.trim() !== "" && supplier.trim() !== "" && markup !== null;
+  // The form changed since the preview: what it shows is not what Apply would save.
+  const stale =
+    result !== null && reviewed !== null && !sameImportRequest(request(mapping), reviewed);
   return (
     <section>
       <PageHeader
@@ -288,6 +293,22 @@ export function ImportPage({
       {result ? (
         <article className="panel">
           <h2>{t("2. Náhled změn", "2. Preview of the changes")}</h2>
+          {stale ? (
+            <div className="notice notice-warning" role="status">
+              {t(
+                "Soubor nebo pravidla se od náhledu změnily, takže náhled už neplatí. Zobrazte ho znovu, než něco uložíte.",
+                "The file or the rules changed since the preview, so it no longer holds. Preview it again before you save anything.",
+              )}{" "}
+              <button
+                className="button"
+                type="button"
+                disabled={busy || !ready}
+                onClick={() => preview(mapping)}
+              >
+                {t("Zobrazit náhled znovu", "Preview again")}
+              </button>
+            </div>
+          ) : null}
           <p className="small muted">
             {t(
               "Sloupce souboru, jak je import pochopil. Když nesedí, opravte je a náhled se přepočítá.",
@@ -376,7 +397,7 @@ export function ImportPage({
             <button
               className="button button-primary"
               type="button"
-              disabled={busy || chosen.size === 0}
+              disabled={busy || stale || chosen.size === 0}
               onClick={apply}
             >
               {t(

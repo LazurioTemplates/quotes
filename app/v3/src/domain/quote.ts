@@ -4,7 +4,7 @@ import { itemCode } from "./catalog.ts";
 import { addDays, currencyCode, isoDate, optionalText, text } from "./common.ts";
 import { customerId } from "./customer.ts";
 import { money, percent, quantity } from "./money.ts";
-import type { Settings } from "./settings.ts";
+import { type Settings, supplier, TOTAL_ROUNDINGS } from "./settings.ts";
 
 /**
  * A quote for a customer. Every version of a quote is a record of its own
@@ -46,6 +46,16 @@ export const quoteCustomer = z.strictObject({
   phone: optionalText,
 });
 
+/**
+ * What a quote that went out keeps of the settings it went out with: the
+ * Organization's details it printed and the rounding of its total. A later
+ * change of the settings never changes a version the customer has.
+ */
+export const sentSettings = z.strictObject({
+  supplier,
+  total_rounding: z.enum(TOTAL_ROUNDINGS),
+});
+
 export const quote = z.strictObject({
   number: z.string().regex(QUOTE_NUMBER, { message: "expected a quote number" }),
   version: z.int().min(1).max(999),
@@ -66,9 +76,26 @@ export const quote = z.strictObject({
   sent_at: isoDate.optional(),
   closed_at: isoDate.optional(),
   previous_version: z.int().min(1).optional(),
+  sent_settings: sentSettings
+    .optional()
+    .describe("The settings the version went out with; set when it is marked as sent."),
 });
 
 export type Quote = z.infer<typeof quote>;
+export type SentSettings = z.infer<typeof sentSettings>;
+
+/**
+ * The settings a quote's document and totals follow: those it went out with,
+ * or the current ones while it is a draft.
+ */
+export function documentSettings(
+  value: Pick<Quote, "sent_settings">,
+  settings: Pick<Settings, "supplier" | "total_rounding">,
+): SentSettings {
+  return (
+    value.sent_settings ?? { supplier: settings.supplier, total_rounding: settings.total_rounding }
+  );
+}
 export type QuoteLine = z.infer<typeof quoteLine>;
 export type QuoteCustomer = z.infer<typeof quoteCustomer>;
 
@@ -188,8 +215,16 @@ export function canCreateVersion(value: Pick<Quote, "status">): boolean {
   return value.status === "sent" || value.status === "rejected" || value.status === "expired";
 }
 
-/** The quote after an action, or why the state does not allow it. */
-export function applyAction(value: Quote, action: QuoteAction, today: string): Quote | Localized {
+/**
+ * The quote after an action, or why the state does not allow it. Sending
+ * keeps the settings the version goes out with (`sent_settings`).
+ */
+export function applyAction(
+  value: Quote,
+  action: QuoteAction,
+  today: string,
+  settings: Pick<Settings, "supplier" | "total_rounding">,
+): Quote | Localized {
   const transition = TRANSITIONS[action];
   if (!transition.from.includes(value.status)) {
     const status = STATUS_LABELS[value.status];
@@ -200,8 +235,10 @@ export function applyAction(value: Quote, action: QuoteAction, today: string): Q
     };
   }
   const next: Quote = { ...value, status: transition.to, updated_at: today };
-  if (action === "send") next.sent_at = today;
-  else next.closed_at = today;
+  if (action === "send") {
+    next.sent_at = today;
+    next.sent_settings = { supplier: settings.supplier, total_rounding: settings.total_rounding };
+  } else next.closed_at = today;
   return next;
 }
 
@@ -219,7 +256,13 @@ export function nextVersion(
   settings: Pick<Settings, "validity_days">,
   today: string,
 ) {
-  const { sent_at: _sent, closed_at: _closed, previous_version: _previous, ...content } = value;
+  const {
+    sent_at: _sent,
+    closed_at: _closed,
+    previous_version: _previous,
+    sent_settings: _settings,
+    ...content
+  } = value;
   return {
     ...content,
     version: value.version + 1,

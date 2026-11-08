@@ -15,13 +15,16 @@ called „Cenové nabídky“.
 - **Supplier price lists.** A supplier's CSV (`;`, `,` or tab, UTF-8 or
   Windows-1250) is read against the price list: a preview shows every new,
   changed and invalid row and the supplier's items the file lacks, and only the
-  rows a person keeps are written, with a markup and rounding they choose.
+  rows a person keeps are written, with a markup and rounding they choose,
+  exactly as the preview showed them; a preview made stale by a change of the
+  rules or the data is refused.
 - **Quotes.** A customer from the Module's own contacts, lines from the price
   list or outside it, quantities with decimals, a discount per line and on the
   whole quote, VAT per rate (21, 12 and 0 % by default, all data), subtotals
   and totals, numbers in a format of the Organization's choice, a validity
   date, the states draft → sent → accepted, rejected or expired, and a new
-  version after a quote went out. Amounts are whole haléře, never floating
+  version after a quote went out, which keeps the settings it went out with.
+  Amounts are whole haléře, never floating
   point.
 - **For the customer.** A print page in the look of the Organization's design
   system, printed or saved as PDF by the browser, and the e-mail text to send

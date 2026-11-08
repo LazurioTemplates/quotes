@@ -221,6 +221,81 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 9007199254740991
+        },
+        "sent_settings": {
+          "description": "The settings the version went out with; set when it is marked as sent.",
+          "type": "object",
+          "properties": {
+            "supplier": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "company_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "vat_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "street": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "city": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "postal_code": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "country": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "registration": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "email": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "phone": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "web": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "bank_account": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "name"
+              ],
+              "additionalProperties": false
+            },
+            "total_rounding": {
+              "type": "string",
+              "enum": [
+                "none",
+                "whole"
+              ]
+            }
+          },
+          "required": [
+            "supplier",
+            "total_rounding"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [

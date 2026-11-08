@@ -2,7 +2,7 @@ import type { Locale } from "../i18n/locale.ts";
 import { calculateQuote } from "./calculate.ts";
 import { formatDate } from "./common.ts";
 import { formatMoney } from "./money.ts";
-import type { Quote } from "./quote.ts";
+import { documentSettings, type Quote } from "./quote.ts";
 import type { Settings } from "./settings.ts";
 
 /**
@@ -54,8 +54,8 @@ export function quoteEmail(value: Quote, settings: Settings, locale: Locale = "c
     valid_until: formatDate(value.valid_until, locale),
     total: formatMoney(totals.payable, value.currency, locale),
     total_without_vat: formatMoney(totals.base, value.currency, locale),
-    organization: settings.supplier.name,
-    prepared_by: value.prepared_by ?? settings.supplier.name,
+    organization: documentSettings(value, settings).supplier.name,
+    prepared_by: value.prepared_by ?? documentSettings(value, settings).supplier.name,
   };
   const fill = (template: string) =>
     template.replace(/\{([a-z_]+)\}/g, (match, key: string) =>

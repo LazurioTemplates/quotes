@@ -156,6 +156,15 @@ export function checkRules(data: DataSet, locale: Locale = "cs"): RuleIssue[] {
         t("odeslaná nabídka nemá datum odeslání", "a quote that went out has no date it was sent"),
       );
     }
+    if (quote.status !== "draft" && !quote.sent_settings) {
+      add(
+        record,
+        t(
+          "odeslaná nabídka nemá uložené nastavení, se kterým odešla",
+          "a quote that went out does not keep the settings it went out with",
+        ),
+      );
+    }
   }
   return issues;
 }

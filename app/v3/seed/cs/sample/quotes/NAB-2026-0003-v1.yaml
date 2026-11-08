@@ -42,6 +42,21 @@ record:
   number: NAB-2026-0003
   prepared_by: Jordan Blake
   sent_at: 2026-10-05
+  sent_settings:
+    supplier:
+      bank_account: 1000000000/0000
+      city: Praha 1
+      company_id: "00000000"
+      country: Česká republika
+      email: obchod@example.com
+      name: Example s.r.o.
+      phone: +420 000 000 000
+      postal_code: 110 00
+      registration: Fiktivní firma pro ukázku šablony; nezapsaná v žádném rejstříku.
+      street: Vzorová 1
+      vat_id: CZ00000000
+      web: example.com
+    total_rounding: none
   status: rejected
   terms: Školení proběhne u Vás na pracovišti v termínu podle dohody.
   title: Školení ergonomie pro tým

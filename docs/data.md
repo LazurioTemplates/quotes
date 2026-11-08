@@ -29,7 +29,7 @@ schemaVersion: quotes.item.v1
 | `categories` | a slug | `quotes.category.v1` | name and order |
 | `items` | the item's code | `quotes.item.v1` | name, category, unit, purchase and sale price, VAT rate id, valid from and until, supplier and the supplier's code, retired, the price history |
 | `customers` | `C-0001` | `quotes.customer.v1` | name, company ID, VAT ID, address, contact person, e-mail, phone, an internal note |
-| `quotes` | `<number>-v<version>` | `quotes.quote.v1` | number, version, state, subject, the customer as the quote names them, dates, currency, lines, discount on the whole, texts for the customer, an internal note |
+| `quotes` | `<number>-v<version>` | `quotes.quote.v1` | number, version, state, subject, the customer as the quote names them, dates, currency, lines, discount on the whole, texts for the customer, an internal note, and once it went out the settings it went out with (`sent_settings`) |
 
 The schemas are Zod in `app/v3/src/domain/` and nothing else; `bun run
 schema:export` writes their JSON Schemas into `templates/data-repo/schemas/`.
@@ -63,8 +63,12 @@ the shape only.
 ## Versions of a quote
 
 A draft is edited in place. "Označit jako odeslanou" (mark as sent) locks the
-version; an edit after that is "Upravit jako novou verzi", a new record
-`<number>-v<N+1>` that starts as a draft. Old versions stay as they were sent.
+version and keeps in it the settings its document follows: the Organization's
+details and the rounding of the total (`sent_settings`). Its totals, print and
+e-mail use them from then on, so a later change of the settings never changes
+what the customer has; a draft follows the current settings. An edit after
+that is "Upravit jako novou verzi", a new record `<number>-v<N+1>` that starts
+as a draft. Old versions stay as they were sent.
 Accepted, rejected and expired are the states a sent version ends in;
 an accepted quote is closed.
 

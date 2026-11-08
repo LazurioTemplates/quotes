@@ -67,7 +67,9 @@ export interface QuoteTotals {
   margin: { amount: number; percent: number; base: number } | null;
 }
 
-export type CalculationInput = Pick<Quote, "lines" | "discount_percent">;
+/** A quote's lines and discount; a version that went out brings its own rounding. */
+export type CalculationInput = Pick<Quote, "lines" | "discount_percent"> &
+  Partial<Pick<Quote, "sent_settings">>;
 
 function lineTotals(line: QuoteLine): Omit<LineTotals, "quoteDiscount" | "base"> {
   const milli = quantityToMilli(line.quantity);
@@ -114,7 +116,8 @@ export function calculateQuote(
   const base = groups.reduce((sum, group) => sum + group.base, 0);
   const vat = groups.reduce((sum, group) => sum + group.vat, 0);
   const total = base + vat;
-  const payable = options.total_rounding === "whole" ? roundTo(total, 100) : total;
+  const rounding = value.sent_settings?.total_rounding ?? options.total_rounding;
+  const payable = rounding === "whole" ? roundTo(total, 100) : total;
 
   const costed = lines.filter((line) => line.cost !== null);
   const marginBase = costed.reduce((sum, line) => sum + line.base, 0);

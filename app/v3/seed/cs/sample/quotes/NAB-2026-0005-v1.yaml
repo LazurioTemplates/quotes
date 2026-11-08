@@ -53,6 +53,21 @@ record:
   number: NAB-2026-0005
   prepared_by: Jordan Blake
   sent_at: 2026-08-20
+  sent_settings:
+    supplier:
+      bank_account: 1000000000/0000
+      city: Praha 1
+      company_id: "00000000"
+      country: Česká republika
+      email: obchod@example.com
+      name: Example s.r.o.
+      phone: +420 000 000 000
+      postal_code: 110 00
+      registration: Fiktivní firma pro ukázku šablony; nezapsaná v žádném rejstříku.
+      street: Vzorová 1
+      vat_id: CZ00000000
+      web: example.com
+    total_rounding: none
   status: expired
   terms: Dodání do tří týdnů od potvrzení objednávky. Splatnost faktury 14 dní. Montáž v pracovní dny 8–17 h.
   title: Dvě nová pracovní místa

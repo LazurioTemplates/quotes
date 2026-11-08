@@ -2,7 +2,7 @@ import { calculateQuote } from "../domain/calculate.ts";
 import { formatDate } from "../domain/common.ts";
 import { addressLines } from "../domain/customer.ts";
 import { formatMoney, formatNumber, formatPercent } from "../domain/money.ts";
-import type { Quote } from "../domain/quote.ts";
+import { documentSettings, type Quote } from "../domain/quote.ts";
 import type { Settings } from "../domain/settings.ts";
 import { type Locale, pick } from "../i18n/locale.ts";
 
@@ -22,10 +22,12 @@ export function QuoteDocument({
   locale?: Locale;
 }) {
   const t = (cs: string, en: string) => pick(locale, cs, en);
-  const totals = calculateQuote(quote, settings);
+  // A version that went out prints the settings it went out with.
+  const frozen = documentSettings(quote, settings);
+  const totals = calculateQuote(quote, frozen);
   const money = (amount: number) => formatMoney(amount, quote.currency, locale);
   const percent = (value: number) => formatPercent(value, locale);
-  const supplier = settings.supplier;
+  const supplier = frozen.supplier;
   const customer = quote.customer;
   const anyDiscount = quote.lines.some((line) => (line.discount_percent ?? 0) > 0);
   return (

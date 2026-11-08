@@ -30,13 +30,21 @@ memory, for trying a step without touching `db/`.
 | `quote:print <number\|id>` | the path of the print page; the App's `runtime.url` plus this path opens it |
 | `quote:act <number\|id> send\|accept\|reject\|expire` | the next state, saved as a draft (`send` refuses a quote with errors) |
 | `import:preview --csv <file> --supplier <name> …` | what a supplier's price list would change |
-| `import:apply` with the same options `[--rows 2,3,7]` | writes the chosen rows (all new and changed by default) as a draft |
+| `import:apply` with the same options, `--token <token>` and `[--rows 2,3,7]` | writes the chosen rows (all new and changed by default) as a draft, exactly as the preview with that token showed them |
 | `check` | the rules across the whole data checkout |
 
 Options of the import: `--valid-from YYYY-MM-DD` (default today), `--markup
 <percent>` and `--round-crowns` (sale price = purchase price + markup),
 `--category <id>` (for new items), `--encoding windows-1250` (older Excel
 exports).
+
+`import:preview` ends with the preview's token. `import:apply` needs it and
+the same file and options: the token binds the reviewed CSV, its column
+mapping, the options, every row the preview showed and the revisions of the
+settings, the categories and the items it was computed from. When any of it
+changed since, the import is refused as stale (`preview_stale`) and nothing is
+written; preview again and show the person the new preview. The rows of
+`--rows` must be rows the preview offered to save (new or changed).
 
 ### The input of `quote:new`
 
@@ -82,7 +90,7 @@ the usual validity.
 | `create_quote_draft` | `customer_id`, `title` | the new draft and its id |
 | `check_quote` | `id` | the errors and warnings of the check |
 | `prepare_quote_email` | `id` | recipient, subject, text, the PDF's name and the print page's path |
-| `preview_price_list_import` | `csv`, `supplier`, `valid_from`, `markup_percent`, `round_to_crowns` | the preview; saves nothing |
+| `preview_price_list_import` | `csv`, `supplier`, `valid_from`, `markup_percent`, `round_to_crowns` | the preview and its token; saves nothing |
 
 The descriptions are in the language of the open App. A refusal is an answer
 `{ "refused": "<code>", "reason": "…" }`, never a page error.

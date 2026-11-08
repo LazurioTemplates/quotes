@@ -155,10 +155,10 @@ describe("HTTP API", () => {
     ]);
   });
 
-  test("imports a supplier's price list from a preview the person saw", async () => {
+  test("imports a supplier's price list exactly as the preview showed it", async () => {
     const { call } = setup();
     const request = {
-      csv: "Kód;Název;MJ;Nákupní cena\nUV-2160;Výškově nastavitelný stůl 160 × 80 cm;ks;9 800,00\nUV-7777;Odkládací stolek;ks;1 100\n",
+      csv: "Kód;Název;MJ;Nákupní cena\nUV-2160;Výškově nastavitelný stůl 160 × 80 cm;ks;9 800,00\nUV-7777;Odkládací stolek;ks;1 100\nUV-4103;Kontejner se třemi zásuvkami;ks;2 200,00\n",
       options: {
         supplier: "Ukázkový velkoobchod nábytku",
         valid_from: "2026-12-01",
@@ -166,32 +166,139 @@ describe("HTTP API", () => {
         round_to_crowns: true,
       },
     };
-    const preview = await (await call("POST", "/api/import/preview", request)).json();
-    expect(preview.preview.counts).toEqual({ new: 1, changed: 1, unchanged: 0, invalid: 0 });
-    // A colleague edits the desk after the preview: the import refuses, nothing is written.
+    const shown = await (await call("POST", "/api/import/preview", request)).json();
+    expect(shown.token).toMatch(/^preview:[0-9a-f]{64}$/);
+    expect(shown.preview.counts).toEqual({ new: 1, changed: 2, unchanged: 0, invalid: 0 });
+    const refusal = async (body: unknown) => {
+      const response = await call("POST", "/api/import/apply", body);
+      return [response.status, (await response.json()).code];
+    };
+
+    // Other rules than the preview's, with its token: refused, nothing written.
+    for (const options of [
+      { ...request.options, markup_percent: 90 },
+      { ...request.options, round_to_crowns: false },
+      { ...request.options, valid_from: "2027-01-01" },
+      { ...request.options, category: "sluzby" },
+      { ...request.options, supplier: "Jiný dodavatel" },
+    ]) {
+      expect(await refusal({ ...request, options, token: shown.token, lines: [3] })).toEqual([
+        409,
+        "preview_stale",
+      ]);
+    }
+    expect(
+      await refusal({ ...request, csv: `${request.csv}UV-9;Lampa;ks;100\n`, token: shown.token }),
+    ).toEqual([409, "preview_stale"]);
+    // A row the preview did not offer to write.
+    expect(await refusal({ ...request, token: shown.token, lines: [9] })).toEqual([
+      400,
+      "bad_request",
+    ]);
+    expect((await call("GET", "/api/items/UV-7777")).status).toBe(404);
+
+    // A change of the data the preview was computed from: settings, categories, items.
+    const settings = await (await call("GET", "/api/settings")).json();
+    await call("PUT", "/api/settings", {
+      record: { ...settings.value, default_vat_rate: "reduced" },
+      baseRevision: settings.revision,
+    });
+    expect(await refusal({ ...request, token: shown.token })).toEqual([409, "preview_stale"]);
+    const afterSettings = await (await call("POST", "/api/import/preview", request)).json();
+    await call("POST", "/api/categories", { name: "Doplňky" });
+    expect(await refusal({ ...request, token: afterSettings.token })).toEqual([
+      409,
+      "preview_stale",
+    ]);
+    const afterCategory = await (await call("POST", "/api/import/preview", request)).json();
     const desk = await (await call("GET", "/api/items/NAB-STUL-160")).json();
     await call("PUT", "/api/items/NAB-STUL-160", {
       record: { ...desk.value, unit: "kus" },
       baseRevision: desk.revision,
     });
-    const stale = await call("POST", "/api/import/apply", {
-      ...request,
-      revisions: preview.revisions,
-    });
-    expect((await stale.json()).code).toBe("record_changed");
+    expect(await refusal({ ...request, token: afterCategory.token })).toEqual([
+      409,
+      "preview_stale",
+    ]);
     expect((await call("GET", "/api/items/UV-7777")).status).toBe(404);
 
+    // The current preview saves exactly the rows it showed, with its values.
     const fresh = await (await call("POST", "/api/import/preview", request)).json();
     const applied = await call("POST", "/api/import/apply", {
       ...request,
+      token: fresh.token,
       lines: [2, 3],
-      revisions: fresh.revisions,
     });
+    expect(applied.status).toBe(200);
     expect(
-      (await applied.json()).map((entry: { value: { code: string } }) => entry.value.code),
-    ).toEqual(["NAB-STUL-160", "UV-7777"]);
-    const again = await (await call("POST", "/api/import/preview", request)).json();
-    expect(again.preview.counts).toEqual({ new: 0, changed: 0, unchanged: 2, invalid: 0 });
+      (await applied.json()).map((entry: { value: { code: string; sale_price: number } }) => [
+        entry.value.code,
+        entry.value.sale_price,
+      ]),
+    ).toEqual([
+      ["NAB-STUL-160", 1421000],
+      ["UV-7777", 159500],
+    ]);
+    expect((await (await call("GET", "/api/items/NAB-KONT-3")).json()).value.sale_price).toBe(
+      329000,
+    );
+    // The same token again is stale: the price list changed by the import itself.
+    expect(await refusal({ ...request, token: fresh.token, lines: [4] })).toEqual([
+      409,
+      "preview_stale",
+    ]);
+  });
+
+  test("a version that went out keeps the settings it went out with", async () => {
+    const { call } = setup();
+    const settings = await (await call("GET", "/api/settings")).json();
+    const created = await (
+      await call("POST", "/api/quotes", { customer_id: "C-0002", title: "Recepce" })
+    ).json();
+    const line = {
+      id: "l1",
+      item_code: "SLU-MONTAZ",
+      name: "Montáž nábytku",
+      unit: "hod",
+      quantity: 1.5,
+      unit_price: 65033,
+      vat_percent: 21,
+    };
+    const saved = await (
+      await call("PUT", "/api/quotes/NAB-2026-0006-v1", {
+        record: { ...created.value, lines: [line] },
+        baseRevision: created.revision,
+      })
+    ).json();
+    const sent = await (
+      await call("POST", "/api/quotes/NAB-2026-0006-v1/action", {
+        action: "send",
+        baseRevision: saved.revision,
+      })
+    ).json();
+    expect(sent.value.sent_settings).toEqual({
+      supplier: settings.value.supplier,
+      total_rounding: "none",
+    });
+
+    // The Organization renames itself and rounds totals to whole crowns afterwards.
+    await call("PUT", "/api/settings", {
+      record: {
+        ...settings.value,
+        total_rounding: "whole",
+        supplier: { ...settings.value.supplier, name: "Přejmenovaná s.r.o." },
+      },
+      baseRevision: settings.revision,
+    });
+    const stored = (await (await call("GET", "/api/quotes/NAB-2026-0006-v1")).json()).value;
+    expect(stored.sent_settings.supplier.name).toBe("Example s.r.o.");
+    // 1.5 × 650,33 Kč = 975,495 → 975,50 Kč; with VAT 1 180,36 Kč, not rounded to 1 180 Kč.
+    const email = await (await call("GET", "/api/quotes/NAB-2026-0006-v1/email")).json();
+    expect(email.body).toContain("1\u00a0180,36\u00a0Kč");
+    expect(email.body).toContain("Example s.r.o.");
+    // A draft follows the current settings.
+    const draft = await (await call("GET", "/api/quotes/NAB-2026-0004-v1/email")).json();
+    expect(draft.body).toContain("Přejmenovaná s.r.o.");
   });
 
   test("answers in the language the browser asks for", async () => {
@@ -225,6 +332,28 @@ describe("HTTP API", () => {
 });
 
 describe("the print page", () => {
+  test("prints a sent version as it went out, a draft with the current settings", async () => {
+    const store = createMemoryStore(sampleData());
+    const settings = await store.settings();
+    await store.saveSettings(
+      {
+        ...settings.value,
+        total_rounding: "whole",
+        supplier: { ...settings.value.supplier, name: "Přejmenovaná s.r.o." },
+      },
+      settings.revision,
+    );
+    const print = createPrintHandler(store);
+    const sent = (await (await print("/print/quotes/NAB-2026-0002-v2", "cs"))?.text()) ?? "";
+    expect(sent).toContain("Example s.r.o.");
+    expect(sent).not.toContain("Přejmenovaná");
+    expect(sent).toContain("55\u00a0296,70\u00a0Kč");
+    expect(sent).not.toContain("Zaokrouhlení");
+    const draft = (await (await print("/print/quotes/NAB-2026-0004-v1", "cs"))?.text()) ?? "";
+    expect(draft).toContain("Přejmenovaná s.r.o.");
+    expect(draft).toContain("Zaokrouhlení");
+  });
+
   test("renders the quote in the design system's look, in Czech or English, without internals", async () => {
     const print = createPrintHandler(createMemoryStore(sampleData()));
     const response = await print("/print/quotes/NAB-2026-0004-v1", null);

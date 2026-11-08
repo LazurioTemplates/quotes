@@ -42,7 +42,8 @@ Commands
   quote:act <number|id> send|accept|reject|expire   the quote's next state, saved as a draft
   import:preview --csv <file> --supplier <name> [--valid-from YYYY-MM-DD] [--markup <percent>]
                  [--round-crowns] [--category <id>] [--encoding utf-8|windows-1250]
-  import:apply   the same options and [--rows 2,3,7]  writes the chosen rows as a draft
+  import:apply   the same options, --token <token of the preview> and [--rows 2,3,7]
+                 writes the chosen rows as a draft, only if nothing changed since the preview
   check                                          the rules across the data (draft included)
 
 Options
@@ -435,9 +436,9 @@ export async function run(options: Options, context: Context): Promise<number> {
           note: `${supplier}: ${file.split(/[\\/]/).at(-1)}`,
         },
       };
-      const { preview, revisions } = await service.importPreview(request, locale);
       if (options.command === "import:preview") {
-        print({ preview, revisions }, () =>
+        const { preview, token } = await service.importPreview(request, locale);
+        print({ preview, token }, () =>
           [
             t(
               `Nové ${preview.counts.new}, změněné ${preview.counts.changed}, beze změny ${preview.counts.unchanged}, chybné ${preview.counts.invalid}.`,
@@ -463,15 +464,26 @@ export async function run(options: Options, context: Context): Promise<number> {
                   ),
                 ]
               : []),
+            t(
+              `Otisk náhledu: ${token}\nUložte ho se stejnými volbami: import:apply … --token ${token} [--rows …]`,
+              `Preview token: ${token}\nSave it with the same options: import:apply … --token ${token} [--rows …]`,
+            ),
           ].join("\n"),
         );
         return 0;
+      }
+      const token = flag("token");
+      if (!token) {
+        fail(
+          "Chybí --token: uložit jde jen to, co ukázal import:preview; spusťte ho a předejte jeho otisk.",
+          "--token is missing: only what import:preview showed can be saved; run it and pass its token.",
+        );
       }
       const rows = flag("rows")
         ?.split(",")
         .map((value) => Number(value.trim()));
       const written = await service.importApply(
-        { ...request, revisions, ...(rows ? { lines: rows } : {}) },
+        { ...request, token, ...(rows ? { lines: rows } : {}) },
         locale,
       );
       print({ written: written.map((entry) => entry.value.code) }, () =>

@@ -33,9 +33,12 @@ cs` or `--lang en` (your Folder's language). Read the Organization's section of
    rate the settings do not know.
 5. **Ask which rows to take** (all new and changed by default), with your
    harness's question tool.
-6. **Write them:** `bun run quotes import:apply` with the same options and
-   `--rows <the chosen rows>`. They become a draft; the import page of the App
-   shows the same preview.
+6. **Write them:** `bun run quotes import:apply` with the same file and
+   options, `--token <the token import:preview printed>` and `--rows <the
+   chosen rows>`. They become a draft, exactly as the preview showed them. When
+   the import is refused as stale, something changed since the preview (the
+   price list, the settings or your options): preview again and show the
+   person the new preview before you write anything.
 7. **The quotes it touches.** `bun run quotes quotes --status draft`, then
    `quote:check` each: a line whose price changed in the price list shows as a
    warning. Tell the person which drafts quote old prices; never reprice a

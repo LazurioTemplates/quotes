@@ -90,6 +90,10 @@ const MESSAGES: Record<string, Localized> = {
     cs: "Datový repozitář zatím nemá nastavení nabídek.",
     en: "The data repository has no quote settings yet.",
   },
+  preview_stale: {
+    cs: "Ceník, nastavení nebo pravidla importu se od náhledu změnily. Zobrazte náhled znovu.",
+    en: "The price list, the settings or the rules of the import changed since the preview. Preview it again.",
+  },
   origin_refused: {
     cs: "Změnu lze poslat jen z aplikace Cenové nabídky.",
     en: "A change is accepted only from the Quotes App.",
@@ -149,13 +153,10 @@ export const api = {
       ...(note ? { note } : {}),
     }),
   importPreview: (input: ImportRequest) =>
-    post<{ preview: ImportPreview; revisions: Record<string, string | null> }>(
-      "/api/import/preview",
-      input,
-    ),
-  importApply: (
-    input: ImportRequest & { lines: number[]; revisions: Record<string, string | null> },
-  ) => post<Stored<Item>[]>("/api/import/apply", input),
+    post<{ preview: ImportPreview; token: string }>("/api/import/preview", input),
+  /** Saves the chosen rows of exactly the preview `token` names; a stale preview is refused. */
+  importApply: (input: ImportRequest & { token: string; lines: number[] }) =>
+    post<Stored<Item>[]>("/api/import/apply", input),
   customers: () => request<Stored<Customer>[]>("/api/customers"),
   createCustomer: (record: Omit<Customer, "id">) =>
     post<Stored<Customer>>("/api/customers", { record }),

@@ -54,6 +54,21 @@ record:
   prepared_by: Jordan Blake
   previous_version: 1
   sent_at: 2026-10-12
+  sent_settings:
+    supplier:
+      bank_account: 1000000000/0000
+      city: Prague 1
+      company_id: "00000000"
+      country: Czech Republic
+      email: obchod@example.com
+      name: Example s.r.o.
+      phone: +420 000 000 000
+      postal_code: 110 00
+      registration: A fictional company for the template's example; not in any register.
+      street: Model Street 1
+      vat_id: CZ00000000
+      web: example.com
+    total_rounding: none
   status: sent
   terms: Delivery within three weeks of the order's confirmation. Invoices are due in 14 days. Assembly on working days 8 am–5 pm.
   title: Meeting room acoustics and lighting
