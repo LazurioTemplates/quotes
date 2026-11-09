@@ -1,23 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import packageJson from "../package.json";
 import { documentCss } from "../src/document/document-css.ts";
 import { designSystemStylesheet, fontFile, fontStylesheet } from "../src/document/theme.ts";
 
-const MODULE_ROOT = resolve(import.meta.dir, "..", "..", "..");
-
 describe("the quote document and the design system", () => {
-  test("the design system is a package on a released tag, never a copy in the Module", () => {
-    expect(packageJson.dependencies["design-system"]).toMatch(
-      /^github:LazurioTemplates\/design-system#v\d+\.\d+\.\d+$/,
-    );
-    expect(existsSync(resolve(MODULE_ROOT, "design-system"))).toBe(false);
-    expect(readFileSync(resolve(import.meta.dir, "..", "bun.lock"), "utf8")).toContain(
-      "design-system@github:LazurioTemplates/design-system#",
-    );
-  });
-
   test("the print page writes the package's own token names", () => {
     const written = [...designSystemStylesheet().matchAll(/(--ds-[a-z0-9-]+):/g)].map(
       (match) => match[1] as string,

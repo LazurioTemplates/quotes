@@ -3,15 +3,19 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import packageJson from "../package.json";
+import { parseDesignSystemPin } from "./support/design-system-pin.ts";
 
-// The contract of a Lazurio Marketplace template, checked on every pull
-// request: the license, the documents, exact versions, the built version to
-// run from `main`, the identity left to the adopting Organization, the skills
-// and the screenshots in both languages.
+// The contract of the Module, checked on every pull request: the license and
+// the documents, exact versions, the built version to run from `main`, the
+// skills and paths that check out on Windows. The part only the template
+// keeps (its placeholder identity, its own pins, its release notes and the
+// Marketplace screenshots) runs only while the identity is the template's
+// and is skipped in an adopted Module.
 const ROOT = resolve(import.meta.dir, "..", "..", "..");
 const read = (path: string) => readFileSync(resolve(ROOT, path), "utf8");
+const TEMPLATE = JSON.parse(read("lazurio.module.json")).company === "REPLACE-WITH-ORG-NAME";
 
-describe("template contract", () => {
+describe("module contract", () => {
   test("MIT by Lazurio contributors, with the documents an adoption needs", () => {
     expect(read("LICENSE")).toContain("MIT License");
     expect(read("LICENSE")).toContain("Copyright (c) 2026 Lazurio contributors");
@@ -29,7 +33,6 @@ describe("template contract", () => {
     ]) {
       expect({ file, exists: existsSync(resolve(ROOT, file)) }).toEqual({ file, exists: true });
     }
-    expect(read("CHANGELOG.md")).toContain("## 0.1.0 (proposed)");
     expect(read("docs/extending.md")).toContain("app-data@2026.11");
     expect(read("docs/adoption.md")).toContain(
       "lazurio module create <Org>/<slug> --stack vite-react",
@@ -44,15 +47,11 @@ describe("template contract", () => {
       string
     >;
     for (const [name, version] of Object.entries(all)) {
-      expect({
-        name,
-        exact: /^(\d+\.\d+\.\d+|github:(Lazurio|LazurioTemplates)\/[a-z-]+#v\d+\.\d+\.\d+)$/.test(
-          version,
-        ),
-      }).toEqual({
-        name,
-        exact: true,
-      });
+      const exact =
+        name === "design-system"
+          ? parseDesignSystemPin(version) !== null
+          : /^(\d+\.\d+\.\d+|github:Lazurio\/[a-z-]+#v\d+\.\d+\.\d+)$/.test(version);
+      expect({ name, exact }).toEqual({ name, exact: true });
     }
     expect(all).toMatchObject({
       typescript: "7.0.2",
@@ -62,7 +61,6 @@ describe("template contract", () => {
       "@biomejs/biome": "2.6.4",
       "@lazurio/repository-db": "github:Lazurio/repository-db#v3.2.6",
       "@lazurio/module-kit": "github:Lazurio/module-kit#v0.2.0",
-      "design-system": "github:LazurioTemplates/design-system#v2.0.0",
     });
     for (const workflow of [
       ".github/workflows/check.yml",
@@ -98,22 +96,6 @@ describe("template contract", () => {
     expect(packageJson.lazurio.preparation.owner_package).toBe("app/v3/package.json");
   });
 
-  test("leaves the Organization's identity as placeholders", () => {
-    const manifest = JSON.parse(read("lazurio.module.json"));
-    expect(manifest).toMatchObject({
-      schema_version: "lazurio.module.v1",
-      id: "quotes",
-      company: "REPLACE-WITH-ORG-NAME",
-      apps: ["app/v3/package.json"],
-      default_app: "app/v3/package.json",
-    });
-    expect(packageJson.lazurio.runtime.company).toBe("REPLACE-WITH-ORG-NAME");
-    expect(packageJson.lazurio.runtime.id).toBe("replace-with-org-slug-quotes-v3");
-    expect(read("app/v3/config/data-repository.json")).toContain(
-      "REPLACE-WITH-ORG-NAME/quotes-data",
-    );
-  });
-
   test("carries the process for agents, the same for Codex and Claude Code", () => {
     const names = readdirSync(resolve(ROOT, ".agents/skills")).sort();
     expect(names).toEqual([
@@ -130,6 +112,47 @@ describe("template contract", () => {
       expect(typeof JSON.parse(description)).toBe("string");
       expect(read("AGENTS.md")).toContain(`.agents/skills/${name}/SKILL.md`);
     }
+  });
+
+  test("every tracked path checks out on Windows", () => {
+    const listed = spawnSync("git", ["-C", ROOT, "ls-files"], { encoding: "utf8" });
+    if (listed.status !== 0) return;
+    for (const path of listed.stdout.split("\n").filter(Boolean)) {
+      const bad =
+        /[<>:"|?*\\]/.test(path) ||
+        path
+          .split("/")
+          .some(
+            (part) => /^(con|prn|aux|nul|com\d|lpt\d)(\..*)?$/i.test(part) || /[ .]$/.test(part),
+          ) ||
+        path.length > 180;
+      expect({ path, bad }).toEqual({ path, bad: false });
+    }
+  });
+});
+
+describe.skipIf(!TEMPLATE)("template contract (skipped in an adopted Module)", () => {
+  test("the first release is proposed and the template pins the public design system", () => {
+    expect(read("CHANGELOG.md")).toContain("## 0.1.0 (proposed)");
+    expect(packageJson.dependencies["design-system"]).toBe(
+      "github:LazurioTemplates/design-system#v2.0.0",
+    );
+  });
+
+  test("leaves the Organization's identity as placeholders", () => {
+    const manifest = JSON.parse(read("lazurio.module.json"));
+    expect(manifest).toMatchObject({
+      schema_version: "lazurio.module.v1",
+      id: "quotes",
+      company: "REPLACE-WITH-ORG-NAME",
+      apps: ["app/v3/package.json"],
+      default_app: "app/v3/package.json",
+    });
+    expect(packageJson.lazurio.runtime.company).toBe("REPLACE-WITH-ORG-NAME");
+    expect(packageJson.lazurio.runtime.id).toBe("replace-with-org-slug-quotes-v3");
+    expect(read("app/v3/config/data-repository.json")).toContain(
+      "REPLACE-WITH-ORG-NAME/quotes-data",
+    );
   });
 
   test("ships the same screenshots in Czech and English, 1600 px wide", () => {
@@ -149,22 +172,6 @@ describe("template contract", () => {
           width: 1600,
         });
       }
-    }
-  });
-
-  test("every tracked path checks out on Windows", () => {
-    const listed = spawnSync("git", ["-C", ROOT, "ls-files"], { encoding: "utf8" });
-    if (listed.status !== 0) return;
-    for (const path of listed.stdout.split("\n").filter(Boolean)) {
-      const bad =
-        /[<>:"|?*\\]/.test(path) ||
-        path
-          .split("/")
-          .some(
-            (part) => /^(con|prn|aux|nul|com\d|lpt\d)(\..*)?$/i.test(part) || /[ .]$/.test(part),
-          ) ||
-        path.length > 180;
-      expect({ path, bad }).toEqual({ path, bad: false });
     }
   });
 });

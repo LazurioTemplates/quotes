@@ -124,8 +124,16 @@ Organization's identity:
   quotes print in the example brand until they have their own. A private
   design system cannot be installed by the Module's CI yet
   (Lazurio/LazurioPlatform#915): say so in the pull request, and run
-  `bun run check` on the Environment;
+  `bun run check` on the Environment. Both pins pass the Module's tests
+  (`tests/design-system.test.ts`) as long as they name a released tag
+  `v<major>.<minor>.<patch>` and `bun.lock` matches it;
 - keep `LICENSE` and `NOTICE.md`: MIT requires the notices.
+
+The template's own contract in `tests/template.test.ts` (the placeholder
+identity, its public design system pin, the proposed first release and the
+Marketplace screenshots) is skipped as soon as `company` in
+`lazurio.module.json` is the Organization's; the module contract next to it
+keeps running.
 
 Commit the merge, then check that the release stays an ancestor; this is what
 lets later releases arrive as ordinary merges:
