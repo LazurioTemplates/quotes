@@ -44,7 +44,9 @@ export function pdfFileName(
  * decides how the amounts and dates filled into it are written.
  */
 export function quoteEmail(value: Quote, settings: Settings, locale: Locale = "cs"): QuoteEmail {
-  const totals = calculateQuote(value, settings);
+  // A version that went out keeps the e-mail, the details and the rounding it went out with.
+  const frozen = documentSettings(value, settings);
+  const totals = calculateQuote(value, frozen);
   const values: Record<(typeof EMAIL_PLACEHOLDERS)[number], string> = {
     number: value.number,
     version: String(value.version),
@@ -54,8 +56,8 @@ export function quoteEmail(value: Quote, settings: Settings, locale: Locale = "c
     valid_until: formatDate(value.valid_until, locale),
     total: formatMoney(totals.payable, value.currency, locale),
     total_without_vat: formatMoney(totals.base, value.currency, locale),
-    organization: documentSettings(value, settings).supplier.name,
-    prepared_by: value.prepared_by ?? documentSettings(value, settings).supplier.name,
+    organization: frozen.supplier.name,
+    prepared_by: value.prepared_by ?? frozen.supplier.name,
   };
   const fill = (template: string) =>
     template.replace(/\{([a-z_]+)\}/g, (match, key: string) =>
@@ -63,8 +65,8 @@ export function quoteEmail(value: Quote, settings: Settings, locale: Locale = "c
     );
   return {
     to: value.customer.email ?? null,
-    subject: fill(settings.email.subject),
-    body: fill(settings.email.body),
+    subject: fill(frozen.email.subject),
+    body: fill(frozen.email.body),
     attachment: pdfFileName(value, locale),
   };
 }

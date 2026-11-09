@@ -4,7 +4,7 @@ import { itemCode } from "./catalog.ts";
 import { addDays, currencyCode, isoDate, optionalText, text } from "./common.ts";
 import { customerId } from "./customer.ts";
 import { money, percent, quantity } from "./money.ts";
-import { type Settings, supplier, TOTAL_ROUNDINGS } from "./settings.ts";
+import { emailTemplate, type Settings, supplier, TOTAL_ROUNDINGS } from "./settings.ts";
 
 /**
  * A quote for a customer. Every version of a quote is a record of its own
@@ -48,13 +48,18 @@ export const quoteCustomer = z.strictObject({
 
 /**
  * What a quote that went out keeps of the settings it went out with: the
- * Organization's details it printed and the rounding of its total. A later
- * change of the settings never changes a version the customer has.
+ * Organization's details it printed, the rounding of its total and the
+ * e-mail it went with. A later change of the settings never changes a
+ * version the customer has.
  */
 export const sentSettings = z.strictObject({
   supplier,
   total_rounding: z.enum(TOTAL_ROUNDINGS),
+  email: emailTemplate,
 });
+
+/** The settings a quote's document follows. */
+export type DocumentSettingsSource = Pick<Settings, "supplier" | "total_rounding" | "email">;
 
 export const quote = z.strictObject({
   number: z.string().regex(QUOTE_NUMBER, { message: "expected a quote number" }),
@@ -90,10 +95,14 @@ export type SentSettings = z.infer<typeof sentSettings>;
  */
 export function documentSettings(
   value: Pick<Quote, "sent_settings">,
-  settings: Pick<Settings, "supplier" | "total_rounding">,
+  settings: DocumentSettingsSource,
 ): SentSettings {
   return (
-    value.sent_settings ?? { supplier: settings.supplier, total_rounding: settings.total_rounding }
+    value.sent_settings ?? {
+      supplier: settings.supplier,
+      total_rounding: settings.total_rounding,
+      email: settings.email,
+    }
   );
 }
 export type QuoteLine = z.infer<typeof quoteLine>;
@@ -223,7 +232,7 @@ export function applyAction(
   value: Quote,
   action: QuoteAction,
   today: string,
-  settings: Pick<Settings, "supplier" | "total_rounding">,
+  settings: DocumentSettingsSource,
 ): Quote | Localized {
   const transition = TRANSITIONS[action];
   if (!transition.from.includes(value.status)) {
@@ -237,7 +246,11 @@ export function applyAction(
   const next: Quote = { ...value, status: transition.to, updated_at: today };
   if (action === "send") {
     next.sent_at = today;
-    next.sent_settings = { supplier: settings.supplier, total_rounding: settings.total_rounding };
+    next.sent_settings = {
+      supplier: settings.supplier,
+      total_rounding: settings.total_rounding,
+      email: settings.email,
+    };
   } else next.closed_at = today;
   return next;
 }

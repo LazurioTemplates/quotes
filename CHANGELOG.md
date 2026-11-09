@@ -15,15 +15,17 @@ from the scaffold of `lazurio module create --stack vite-react --data`.
   changed and invalid row and of the supplier's items the file lacks; a
   markup with rounding to whole crowns, or the file's sale price; only the
   chosen rows are written, exactly as the preview showed them (its token binds
-  the request, the rows and the revisions of the data; a stale preview is
-  refused in the App and on the command line).
+  the request, the rows and the revisions of the data, checked again in the
+  same atomic write; a stale preview is refused in the App and on the command
+  line).
 - **Quotes**: customers in the Module's own contacts, lines from the price list
   or outside it, discounts per line and on the whole quote, VAT per rate,
   subtotals, totals and an optional rounding to whole crowns, numbers in a
   format of the Organization's choice, validity, the states draft, sent,
   accepted, rejected and expired, and versions after a quote went out; a
-  version that went out keeps the Organization's details and the rounding it
-  went out with, so its print and totals never change.
+  version that went out keeps the Organization's details, the rounding and the
+  e-mail templates it went out with, so its print, totals and e-mail never
+  change.
 - **The check before sending**: errors that stop a quote (a line waiting for a
   price, an expired validity, placeholder details of the Organization) and
   warnings (a price that changed in the price list, a VAT rate, a sale below

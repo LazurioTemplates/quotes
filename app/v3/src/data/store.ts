@@ -27,6 +27,30 @@ export interface Stored<T> {
   revision: Revision;
 }
 
+/** The price list as one consistent read: what an import is computed from. */
+export interface Catalog {
+  settings: Stored<Settings>;
+  categories: Stored<Category>[];
+  items: Stored<Item>[];
+}
+
+/** The revisions of a catalog: every record of it, by id. */
+export interface CatalogRevisions {
+  settings: Revision;
+  categories: Record<string, Revision>;
+  items: Record<string, Revision>;
+}
+
+export function catalogRevisions(catalog: Catalog): CatalogRevisions {
+  return {
+    settings: catalog.settings.revision,
+    categories: Object.fromEntries(
+      catalog.categories.map((entry) => [entry.value.id, entry.revision]),
+    ),
+    items: Object.fromEntries(catalog.items.map((entry) => [entry.value.code, entry.revision])),
+  };
+}
+
 /** A save of one record: the value and the revision it was edited from (`null` for a new one). */
 export interface Save<T> {
   value: T;
@@ -62,13 +86,22 @@ export interface QuotesStore {
 
   /** Every item of the price list, by category order and name. */
   listItems(): Promise<Stored<Item>[]>;
+  /** The settings, the categories and the items in one consistent read. */
+  readCatalog(): Promise<Catalog>;
   getItem(code: string): Promise<Stored<Item> | null>;
   saveItem(value: Item, baseRevision: Revision | null): Promise<Stored<Item>>;
   /**
    * Save several items as one draft, as an import does. Every revision is
    * checked before the first write; one stale revision refuses them all.
+   * With `unchanged`, the settings, every category and every item must still
+   * be exactly those revisions (none changed, added or removed), checked in
+   * the same atomic write; otherwise it is refused with `data_changed` and
+   * nothing is written.
    */
-  saveItems(entries: readonly Save<Item>[]): Promise<Stored<Item>[]>;
+  saveItems(
+    entries: readonly Save<Item>[],
+    options?: { unchanged?: CatalogRevisions },
+  ): Promise<Stored<Item>[]>;
 
   listCustomers(): Promise<Stored<Customer>[]>;
   getCustomer(id: string): Promise<Stored<Customer> | null>;

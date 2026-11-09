@@ -19,7 +19,9 @@ on this repository. Do not open a public issue for it.
   was edited from; a stale save is refused. An import writes only what the
   person reviewed: the preview's token binds the request, its rows and the
   revisions of the data it was computed from, and anything changed since
-  refuses the import.
+  refuses the import. Every write of the App checks and writes under
+  repository-db's draft write gate, so a save of another engine writer cannot
+  land between a check and a write.
 - **Publishing is one validated commit.** repository-db runs the data
   repository's validator before every publish. Who may publish is decided by
   the person's live GitHub rights on the data repository; the App keeps no

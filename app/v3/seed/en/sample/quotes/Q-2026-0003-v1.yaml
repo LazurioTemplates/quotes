@@ -43,6 +43,18 @@ record:
   prepared_by: Jordan Blake
   sent_at: 2026-10-05
   sent_settings:
+    email:
+      body: |-
+        Hello {contact},
+
+        please find attached our quote {number} – {title}. It comes to {total} including VAT ({total_without_vat} excluding VAT) and is valid until {valid_until}.
+
+        If you would like to change anything, just reply to this e-mail.
+
+        Kind regards
+        {prepared_by}
+        {organization}
+      subject: "Quote {number}: {title}"
     supplier:
       bank_account: 1000000000/0000
       city: Prague 1

@@ -1,5 +1,11 @@
 import { createHash } from "node:crypto";
-import { type QuotesStore, type Revision, type Stored, StoreError } from "../data/store.ts";
+import {
+  catalogRevisions,
+  type QuotesStore,
+  type Revision,
+  type Stored,
+  StoreError,
+} from "../data/store.ts";
 import { canonicalJson } from "../domain/canonical.ts";
 import { type Category, type Item, withPrice } from "../domain/catalog.ts";
 import { checkQuote, type QuoteIssue, readyToSend } from "../domain/checks.ts";
@@ -275,25 +281,20 @@ export function createService(store: QuotesStore, options: ServiceOptions = {}) 
    * reviewed (the CSV, the effective column mapping and the options), what it
    * would write (every row and the items the file lacks) and the data it was
    * computed from (the revisions of the settings, every category and every
-   * item). Applying the import needs the same token: when anything of it
-   * changed, the preview is stale and nothing is written.
+   * item, read in one consistent read). Applying the import needs the same
+   * token: when anything of it changed, the preview is stale and nothing is
+   * written.
    */
-  async function importPreview(
-    request: ImportRequest,
-    locale: Locale = "cs",
-  ): Promise<{ preview: ImportPreview; token: string }> {
-    const [settings, items, categories] = await Promise.all([
-      store.settings(),
-      store.listItems(),
-      store.listCategories(),
-    ]);
+  async function preview(request: ImportRequest, locale: Locale) {
+    const catalog = await store.readCatalog();
     const preview = previewImport({
       ...request,
-      items: items.map((entry) => entry.value),
-      categories: categories.map((entry) => entry.value),
-      settings: settings.value,
+      items: catalog.items.map((entry) => entry.value),
+      categories: catalog.categories.map((entry) => entry.value),
+      settings: catalog.settings.value,
       locale,
     });
+    const revisions = catalogRevisions(catalog);
     const reviewed = {
       csv: request.csv,
       mapping: preview.mapping,
@@ -305,34 +306,42 @@ export function createService(store: QuotesStore, options: ServiceOptions = {}) 
           : row,
       ),
       missing: preview.missing,
-      data: {
-        settings: settings.revision,
-        categories: categories.map((entry) => [entry.value.id, entry.revision]).sort(),
-        items: items.map((entry) => [entry.value.code, entry.revision]).sort(),
-      },
+      data: revisions,
     };
     const token = `preview:${createHash("sha256").update(canonicalJson(reviewed)).digest("hex")}`;
-    return { preview, token };
+    return { preview, token, revisions };
+  }
+
+  async function importPreview(
+    request: ImportRequest,
+    locale: Locale = "cs",
+  ): Promise<{ preview: ImportPreview; token: string }> {
+    const { preview: shown, token } = await preview(request, locale);
+    return { preview: shown, token };
   }
 
   /**
    * Writes the chosen rows of an import as one draft, exactly as the preview
-   * with `token` showed them. A different request, a changed price list,
-   * category or setting, or a row the preview did not offer to write is
-   * refused, and nothing is written.
+   * with `token` showed them. A different request, or a row the preview did
+   * not offer to write, is refused. The write itself checks, atomically with
+   * writing, that the settings, every category and every item are still the
+   * revisions the preview was computed from, and writes each item over the
+   * revision the preview saw; a change of any of them, also one saved between
+   * this check of the token and the write, refuses the import and writes
+   * nothing.
    */
   async function importApply(
     request: ImportRequest & { token: string; lines?: number[] | undefined },
     locale: Locale = "cs",
   ) {
-    const { preview, token } = await importPreview(request, locale);
-    if (token !== request.token) {
-      throw new StoreError("preview_stale", {
+    const stale = () =>
+      new StoreError("preview_stale", {
         cs: "Ceník, nastavení nebo pravidla importu se od náhledu změnily; zobrazte náhled znovu.",
         en: "The price list, the settings or the rules of the import changed since the preview; preview it again.",
       });
-    }
-    const writable = new Map(importedItems(preview).map((entry) => [entry.line, entry]));
+    const { preview: shown, token, revisions } = await preview(request, locale);
+    if (token !== request.token) throw stale();
+    const writable = new Map(importedItems(shown).map((entry) => [entry.line, entry]));
     const lines = request.lines ?? [...writable.keys()];
     const refused = lines.filter((line) => !writable.has(line));
     if (refused.length > 0) {
@@ -342,15 +351,26 @@ export function createService(store: QuotesStore, options: ServiceOptions = {}) 
       });
     }
     if (lines.length === 0) return [];
-    const current = new Map(
-      (await store.listItems()).map((entry) => [entry.value.code, entry.revision]),
-    );
-    return store.saveItems(
-      lines.map((line) => {
-        const { item, existing } = writable.get(line) as { item: Item; existing: boolean };
-        return { value: item, baseRevision: existing ? (current.get(item.code) ?? null) : null };
-      }),
-    );
+    try {
+      return await store.saveItems(
+        lines.map((line) => {
+          const { item, existing } = writable.get(line) as { item: Item; existing: boolean };
+          return {
+            value: item,
+            baseRevision: existing ? (revisions.items[item.code] ?? null) : null,
+          };
+        }),
+        { unchanged: revisions },
+      );
+    } catch (error) {
+      if (
+        error instanceof StoreError &&
+        (error.code === "data_changed" || error.code === "record_changed")
+      ) {
+        throw stale();
+      }
+      throw error;
+    }
   }
 
   async function createCustomer(record: Omit<Customer, "id">) {

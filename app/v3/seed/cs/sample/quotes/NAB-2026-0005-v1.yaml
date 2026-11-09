@@ -54,6 +54,18 @@ record:
   prepared_by: Jordan Blake
   sent_at: 2026-08-20
   sent_settings:
+    email:
+      body: |-
+        Dobrý den,
+
+        posíláme Vám cenovou nabídku {number} – {title}. Celkem vychází na {total} včetně DPH ({total_without_vat} bez DPH) a platí do {valid_until}.
+
+        Nabídku najdete v příloze. Pokud budete chtít cokoli upravit, stačí odpovědět na tento e-mail.
+
+        S pozdravem
+        {prepared_by}
+        {organization}
+      subject: "Cenová nabídka {number}: {title}"
     supplier:
       bank_account: 1000000000/0000
       city: Praha 1

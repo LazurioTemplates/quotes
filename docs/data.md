@@ -64,9 +64,10 @@ the shape only.
 
 A draft is edited in place. "Označit jako odeslanou" (mark as sent) locks the
 version and keeps in it the settings its document follows: the Organization's
-details and the rounding of the total (`sent_settings`). Its totals, print and
-e-mail use them from then on, so a later change of the settings never changes
-what the customer has; a draft follows the current settings. An edit after
+details, the rounding of the total and the e-mail's subject and text templates
+(`sent_settings`). Its totals, print and e-mail use them from then on, so a
+later change of the settings never changes what the customer has; a draft
+follows the current settings. An edit after
 that is "Upravit jako novou verzi", a new record `<number>-v<N+1>` that starts
 as a draft. Old versions stay as they were sent.
 Accepted, rejected and expired are the states a sent version ends in;

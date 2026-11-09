@@ -289,11 +289,30 @@
                 "none",
                 "whole"
               ]
+            },
+            "email": {
+              "type": "object",
+              "properties": {
+                "subject": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "body": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "subject",
+                "body"
+              ],
+              "additionalProperties": false
             }
           },
           "required": [
             "supplier",
-            "total_rounding"
+            "total_rounding",
+            "email"
           ],
           "additionalProperties": false
         }

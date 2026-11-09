@@ -42,6 +42,9 @@ export const TOTAL_ROUNDINGS = ["none", "whole"] as const;
  */
 export const NUMBER_FORMAT = /^(?:[A-Za-z0-9._-]|\{YYYY\}|\{YY\}|\{MM\}|\{N{1,8}\})+$/;
 
+/** The e-mail that goes with a quote: its subject and text, with placeholders such as `{number}`. */
+export const emailTemplate = z.strictObject({ subject: text, body: text });
+
 export const settings = z.strictObject({
   language: z
     .enum(LOCALES)
@@ -61,7 +64,7 @@ export const settings = z.strictObject({
   supplier,
   default_introduction: optionalText,
   default_terms: optionalText,
-  email: z.strictObject({ subject: text, body: text }),
+  email: emailTemplate,
 });
 
 export type Settings = z.infer<typeof settings>;

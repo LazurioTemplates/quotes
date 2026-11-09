@@ -279,6 +279,7 @@ describe("HTTP API", () => {
     expect(sent.value.sent_settings).toEqual({
       supplier: settings.value.supplier,
       total_rounding: "none",
+      email: settings.value.email,
     });
 
     // The Organization renames itself and rounds totals to whole crowns afterwards.
@@ -287,6 +288,7 @@ describe("HTTP API", () => {
         ...settings.value,
         total_rounding: "whole",
         supplier: { ...settings.value.supplier, name: "Přejmenovaná s.r.o." },
+        email: { subject: "Nový předmět {number} od {organization}", body: "Nový text {total}" },
       },
       baseRevision: settings.revision,
     });
@@ -296,9 +298,14 @@ describe("HTTP API", () => {
     const email = await (await call("GET", "/api/quotes/NAB-2026-0006-v1/email")).json();
     expect(email.body).toContain("1\u00a0180,36\u00a0Kč");
     expect(email.body).toContain("Example s.r.o.");
+    // The e-mail templates changed after it went out; the sent version keeps its own.
+    expect(email.subject).toBe("Cenová nabídka NAB-2026-0006: Recepce");
+    expect(email.body).toContain("posíláme Vám cenovou nabídku NAB-2026-0006");
     // A draft follows the current settings.
     const draft = await (await call("GET", "/api/quotes/NAB-2026-0004-v1/email")).json();
-    expect(draft.body).toContain("Přejmenovaná s.r.o.");
+    expect(draft.subject).toBe("Nový předmět NAB-2026-0004 od Přejmenovaná s.r.o.");
+    // A draft follows the current settings, rounding to whole crowns included.
+    expect(draft.body).toBe("Nový text 88\u00a0737,00\u00a0Kč");
   });
 
   test("answers in the language the browser asks for", async () => {

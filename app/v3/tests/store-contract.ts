@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import type { QuotesStore } from "../src/data/store.ts";
+import { catalogRevisions, type QuotesStore } from "../src/data/store.ts";
 import { withPrice } from "../src/domain/catalog.ts";
 import { newItem, newQuote } from "./support/seed.ts";
 
@@ -163,6 +163,44 @@ export function storeContract(
         "Ceník 12/2026",
       );
       expect((await store.draft()).records).toHaveLength(2);
+    });
+
+    test("reads the catalog at once and saves items only over the catalog it names", async () => {
+      const catalog = await store.readCatalog();
+      expect(catalog.items).toHaveLength(13);
+      expect(catalog.categories.map((entry) => entry.value.id)[0]).toBe("nabytek");
+      const unchanged = catalogRevisions(catalog);
+      const lamp = catalog.items.find((entry) => entry.value.code === "OSV-LAMPA-LED");
+      if (!lamp) throw new Error("OSV-LAMPA-LED missing");
+      // A category added after the read: the save is refused and writes nothing.
+      await store.saveCategory({ id: "doplnky", name: "Doplňky", order: 9 }, null);
+      expect(
+        await refusal(() =>
+          store.saveItems([{ value: newItem(), baseRevision: null }], { unchanged }),
+        ),
+      ).toBe("data_changed");
+      expect(await store.getItem("NAB-STOLEK")).toBeNull();
+      // Over a fresh read it goes through.
+      const fresh = catalogRevisions(await store.readCatalog());
+      const saved = await store.saveItems(
+        [
+          { value: newItem(), baseRevision: null },
+          { value: { ...lamp.value, name: "Lampa" }, baseRevision: lamp.revision },
+        ],
+        { unchanged: fresh },
+      );
+      expect(saved.map((entry) => entry.value.code)).toEqual(["NAB-STOLEK", "OSV-LAMPA-LED"]);
+      // The settings changed: refused again.
+      const settings = await store.settings();
+      const after = catalogRevisions(await store.readCatalog());
+      await store.saveSettings({ ...settings.value, validity_days: 14 }, settings.revision);
+      expect(
+        await refusal(() =>
+          store.saveItems([{ value: newItem("NAB-DALSI"), baseRevision: null }], {
+            unchanged: after,
+          }),
+        ),
+      ).toBe("data_changed");
     });
 
     test("publishes exactly the draft that was shown", async () => {

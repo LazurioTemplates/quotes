@@ -1,3 +1,4 @@
+import { canonicalJson } from "../domain/canonical.ts";
 import type { CollectionName, RecordOf } from "../domain/collections.ts";
 import { checkRules, type RuleIssue } from "../domain/rules.ts";
 import { SETTINGS_ID } from "../domain/settings.ts";
@@ -13,6 +14,8 @@ import {
   type Snapshot,
 } from "./records.ts";
 import type {
+  Catalog,
+  CatalogRevisions,
   DiscardScope,
   DraftCard,
   QuotesStore,
@@ -78,9 +81,36 @@ export function createRecordStore(backend: RecordBackend): QuotesStore {
     });
   }
 
+  /** The revisions of the catalog in a snapshot, as `catalogRevisions` names them. */
+  function revisionsIn(snapshot: Snapshot): CatalogRevisions {
+    const of = <C extends CollectionName>(collection: C) =>
+      Object.fromEntries(
+        [...snapshot[collection].entries()].map(([id, entry]) => [id, entry.revision]),
+      );
+    return {
+      settings: snapshot.settings.get(SETTINGS_ID)?.revision ?? "",
+      categories: of("categories"),
+      items: of("items"),
+    };
+  }
+
+  /**
+   * Inside the write, before anything changes: the settings, categories and
+   * items must still be the revisions the caller computed from.
+   */
+  function assertUnchanged(snapshot: Snapshot, expected: CatalogRevisions | undefined) {
+    if (!expected) return;
+    if (canonicalJson(revisionsIn(snapshot)) === canonicalJson(expected)) return;
+    throw new StoreError("data_changed", {
+      cs: "Ceník, kategorie nebo nastavení se mezitím změnily; nic se neuložilo.",
+      en: "The price list, the categories or the settings changed meanwhile; nothing was saved.",
+    });
+  }
+
   function saveMany<C extends CollectionName>(
     collection: C,
     entries: readonly Save<RecordOf[C]>[],
+    unchanged?: CatalogRevisions,
   ): Promise<Stored<RecordOf[C]>[]> {
     const parsed = entries.map((entry) => ({
       value: parseIn(collection, entry.value),
@@ -96,6 +126,7 @@ export function createRecordStore(backend: RecordBackend): QuotesStore {
       );
     }
     return backend.write(`save-${collection}`, (snapshot, put) => {
+      assertUnchanged(snapshot, unchanged);
       const records = snapshot[collection] as Map<string, Entry<RecordOf[C]>>;
       parsed.forEach((entry, index) => {
         const id = ids[index] as string;
@@ -163,7 +194,22 @@ export function createRecordStore(backend: RecordBackend): QuotesStore {
     listItems: () => list("items"),
     getItem: (code) => get("items", code),
     saveItem: (value, base) => save("items", value, base),
-    saveItems: (entries) => saveMany("items", entries),
+    saveItems: (entries, options) => saveMany("items", entries, options?.unchanged),
+    readCatalog: () =>
+      backend.read((snapshot): Catalog => {
+        const settings = snapshot.settings.get(SETTINGS_ID);
+        if (!settings) {
+          throw new StoreError("settings_missing", {
+            cs: "Data zatím nemají nastavení nabídek.",
+            en: "The data has no quote settings yet.",
+          });
+        }
+        return {
+          settings: stored(settings),
+          categories: ordered(snapshot, "categories").map(stored),
+          items: ordered(snapshot, "items").map(stored),
+        };
+      }),
     listCustomers: () => list("customers"),
     getCustomer: (id) => get("customers", id),
     saveCustomer: (value, base) => save("customers", value, base),

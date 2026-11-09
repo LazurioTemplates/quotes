@@ -79,6 +79,7 @@ const STATUS_BY_CODE: Record<string, number> = {
   not_editable: 409,
   not_allowed: 409,
   preview_stale: 409,
+  data_changed: 409,
   record_changed: 409,
   draft_changed: 409,
   draft_write_blocked: 409,

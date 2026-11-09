@@ -1,5 +1,6 @@
 import { posix } from "node:path";
 import {
+  assertDataPath,
   createSyncHost,
   type DraftPanelRecordInput,
   documentFileName,
@@ -7,8 +8,11 @@ import {
   type RepositoryDb,
   RepositoryDbError,
   readDataFile,
+  recordRevision,
   recordRevisionFromBytes,
   type SyncHost,
+  writeRecordDraft,
+  writeYamlFileAtomic,
 } from "@lazurio/repository-db";
 import {
   COLLECTION_NAMES,
@@ -138,15 +142,41 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Quot
       }
     },
     read: (operation) => engine(() => host.read((db) => operation(snapshot(db)))),
+    // One write is one pass through the engine's draft write gate, the lock
+    // every engine writer takes, in this process and in others (the App, the
+    // command line, an agent's repository-db CLI): the snapshot is read under
+    // it, every check runs on that snapshot, and every record is written
+    // before it is released. Nothing an engine writer saves can land between
+    // a check and a write, also for a save of several records with the
+    // revisions of others it depends on (an import).
     write: (kind, operation) =>
       engine(() =>
         host.run(kind, (db) => {
-          const put: Put = (collection, id, value, baseRevision) => {
-            const revision = collectionOf(db, collection).put(id, value, {}, { baseRevision });
-            db.recordOrigin([pathOf(db, collection, id)], { kind: "app", source: SOURCE });
-            return revision;
-          };
-          return operation(snapshot(db), put);
+          const written: string[] = [];
+          const gate = assertDataPath(mountRoot, db.config.layout.data);
+          const result = writeRecordDraft(mountRoot, gate, {}, () => {
+            const put: Put = (collection, id, value, baseRevision) => {
+              const path = pathOf(db, collection, id);
+              const file = assertDataPath(mountRoot, path);
+              // The gate is held: the file is the version the checks read.
+              if (recordRevision(file) !== baseRevision) {
+                throw new StoreError("record_changed", {
+                  cs: `${path} se mezitím změnil; nic se neuložilo.`,
+                  en: `${path} changed meanwhile; nothing was saved.`,
+                });
+              }
+              writeYamlFileAtomic(file, {
+                schemaVersion: collections[collection].schemaVersion,
+                id,
+                record: value,
+              });
+              written.push(path);
+              return recordRevision(file) as string;
+            };
+            return operation(snapshot(db), put);
+          });
+          if (written.length > 0) db.recordOrigin(written, { kind: "app", source: SOURCE });
+          return result;
         }),
       ),
     async draft(locale): Promise<DraftCard> {

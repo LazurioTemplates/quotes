@@ -43,7 +43,10 @@ the same file and options: the token binds the reviewed CSV, its column
 mapping, the options, every row the preview showed and the revisions of the
 settings, the categories and the items it was computed from. When any of it
 changed since, the import is refused as stale (`preview_stale`) and nothing is
-written; preview again and show the person the new preview. The rows of
+written; preview again and show the person the new preview. The write checks
+the same revisions again under repository-db's write gate, the lock every
+engine writer takes, so a colleague's save between the check of the token and
+the write refuses the import too and is never overwritten. The rows of
 `--rows` must be rows the preview offered to save (new or changed).
 
 ### The input of `quote:new`

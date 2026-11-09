@@ -77,6 +77,7 @@ describe("the lifecycle of a quote", () => {
     expect(sent.sent_settings).toEqual({
       supplier: sampleData().settings.supplier,
       total_rounding: "none",
+      email: sampleData().settings.email,
     });
     expect(allowedActions(sent)).toEqual(["accept", "reject", "expire"]);
     const accepted = applyAction(sent, "accept", "2026-11-10", sampleData().settings);
