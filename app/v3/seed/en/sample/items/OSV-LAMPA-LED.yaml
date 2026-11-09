@@ -1,0 +1,11 @@
+id: OSV-LAMPA-LED
+record:
+  category: lighting
+  code: OSV-LAMPA-LED
+  name: Dimmable LED desk lamp
+  purchase_price: 89000
+  sale_price: 139000
+  unit: pc
+  valid_from: 2026-01-01
+  vat_rate: standard
+schemaVersion: quotes.item.v1

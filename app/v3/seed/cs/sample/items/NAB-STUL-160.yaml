@@ -1,0 +1,21 @@
+id: NAB-STUL-160
+record:
+  category: nabytek
+  code: NAB-STUL-160
+  name: Výškově nastavitelný stůl 160 × 80 cm
+  price_history:
+    - note: Podzimní akce
+      purchase_price: 940000
+      purchase_price_before: 940000
+      sale_price: 1349000
+      sale_price_before: 1390000
+      source: manual
+      valid_from: 2026-10-01
+  purchase_price: 940000
+  sale_price: 1349000
+  supplier: Ukázkový velkoobchod nábytku
+  supplier_code: UV-2160
+  unit: ks
+  valid_from: 2026-10-01
+  vat_rate: standard
+schemaVersion: quotes.item.v1

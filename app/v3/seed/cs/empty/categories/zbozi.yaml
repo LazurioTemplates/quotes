@@ -1,0 +1,6 @@
+id: zbozi
+record:
+  id: zbozi
+  name: Zboží
+  order: 1
+schemaVersion: quotes.category.v1

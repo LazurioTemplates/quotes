@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "quotes.settings.v1",
+  "title": "Quotes settings",
+  "$comment": "Generated from the Zod schemas of Quotes (app/v3/src/domain) by `bun run schema:export`. Do not edit.",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": "quotes.settings.v1"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "record": {
+      "type": "object",
+      "properties": {
+        "language": {
+          "description": "The language of the App while Lazurio does not hand it the person's (LazurioPlatform#909).",
+          "type": "string",
+          "enum": [
+            "cs",
+            "en"
+          ]
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "vat_rates": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1
+              },
+              "percent": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100,
+                "multipleOf": 0.01,
+                "description": "A percentage with at most two decimals."
+              }
+            },
+            "required": [
+              "id",
+              "label",
+              "percent"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "default_vat_rate": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+        },
+        "quote_number_format": {
+          "type": "string",
+          "pattern": "^(?:[A-Za-z0-9._-]|\\{YYYY\\}|\\{YY\\}|\\{MM\\}|\\{N{1,8}\\})+$"
+        },
+        "validity_days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 365
+        },
+        "total_rounding": {
+          "type": "string",
+          "enum": [
+            "none",
+            "whole"
+          ]
+        },
+        "min_margin_percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "multipleOf": 0.01,
+          "description": "A percentage with at most two decimals."
+        },
+        "supplier": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "company_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "vat_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "street": {
+              "type": "string",
+              "minLength": 1
+            },
+            "city": {
+              "type": "string",
+              "minLength": 1
+            },
+            "postal_code": {
+              "type": "string",
+              "minLength": 1
+            },
+            "country": {
+              "type": "string",
+              "minLength": 1
+            },
+            "registration": {
+              "type": "string",
+              "minLength": 1
+            },
+            "email": {
+              "type": "string",
+              "minLength": 1
+            },
+            "phone": {
+              "type": "string",
+              "minLength": 1
+            },
+            "web": {
+              "type": "string",
+              "minLength": 1
+            },
+            "bank_account": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        "default_introduction": {
+          "type": "string",
+          "minLength": 1
+        },
+        "default_terms": {
+          "type": "string",
+          "minLength": 1
+        },
+        "email": {
+          "type": "object",
+          "properties": {
+            "subject": {
+              "type": "string",
+              "minLength": 1
+            },
+            "body": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "subject",
+            "body"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "currency",
+        "vat_rates",
+        "default_vat_rate",
+        "quote_number_format",
+        "validity_days",
+        "total_rounding",
+        "supplier",
+        "email"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "id",
+    "record"
+  ],
+  "additionalProperties": false
+}

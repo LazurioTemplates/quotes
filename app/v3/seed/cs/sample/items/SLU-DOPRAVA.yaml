@@ -1,0 +1,10 @@
+id: SLU-DOPRAVA
+record:
+  category: sluzby
+  code: SLU-DOPRAVA
+  name: Doprava a vynáška v rámci města
+  sale_price: 120000
+  unit: paušál
+  valid_from: 2026-01-01
+  vat_rate: standard
+schemaVersion: quotes.item.v1

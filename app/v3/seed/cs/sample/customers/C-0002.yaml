@@ -1,0 +1,14 @@
+id: C-0002
+record:
+  city: Praha 4
+  company_id: "00000002"
+  contact_person: Sam Taylor
+  country: Česká republika
+  email: sam.taylor@vzorova-ucetni.example
+  id: C-0002
+  name: Vzorová účetní kancelář s.r.o.
+  phone: +420 000 000 202
+  postal_code: 140 00
+  street: Fiktivní 5
+  vat_id: CZ00000002
+schemaVersion: quotes.customer.v1

@@ -1,0 +1,78 @@
+{
+  "name": "quotes-app-v3",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "bun@1.4.4",
+  "scripts": {
+    "dev": "bun --no-env-file run src/server/main.ts",
+    "start": "bun --no-env-file run src/server/main.ts",
+    "dev:demo": "bun --no-env-file run src/server/demo.ts",
+    "build": "bun ./node_modules/vite/bin/vite.js build",
+    "check:prepared": "bun run src/prepared.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "biome check --error-on-warnings .",
+    "format": "biome check --write .",
+    "test": "bun test",
+    "schema:export": "bun run src/cli/schema.ts --write",
+    "schema:check": "bun run src/cli/schema.ts --check",
+    "validate:data": "bun run src/validate-data.ts seed/cs/empty seed/cs/sample seed/en/empty seed/en/sample",
+    "validate:db": "bun run src/validate-data.ts ../../db/data",
+    "quotes": "bun --no-env-file run src/cli/quotes.ts",
+    "check": "bun run typecheck && bun run lint && bun run schema:check && bun run validate:data && bun test"
+  },
+  "dependencies": {
+    "@lazurio/module-kit": "github:Lazurio/module-kit#v0.2.0",
+    "@lazurio/repository-db": "github:Lazurio/repository-db#v3.2.6",
+    "@vitejs/plugin-react": "6.2.1",
+    "design-system": "github:LazurioTemplates/design-system#v2.0.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "vite": "8.3.5",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.4",
+    "@types/bun": "1.4.4",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "typescript": "7.0.2"
+  },
+  "lazurio": {
+    "runtime": {
+      "schema_version": "lazurio.runtime.v1",
+      "id": "replace-with-org-slug-quotes-v3",
+      "title": "Cenové nabídky",
+      "description": "Ceník, nabídky pro zákazníky a jejich tisk do PDF: data Organizace v repository-db.",
+      "company": "REPLACE-WITH-ORG-NAME",
+      "module": "quotes",
+      "surface": "internal",
+      "dev_script": "dev",
+      "start_script": "start",
+      "build_script": "build",
+      "build_output": "dist",
+      "tags": [
+        "quotes",
+        "price-list",
+        "repository-db"
+      ],
+      "listeners": [
+        {
+          "id": "app",
+          "role": "entrypoint",
+          "lease": "main",
+          "protocol": "http",
+          "health": {
+            "kind": "http",
+            "path": "/healthz"
+          }
+        }
+      ]
+    },
+    "preparation": {
+      "schema_version": "lazurio.preparation.v1",
+      "owner_package": "app/v3/package.json",
+      "check_script": "check:prepared"
+    }
+  }
+}

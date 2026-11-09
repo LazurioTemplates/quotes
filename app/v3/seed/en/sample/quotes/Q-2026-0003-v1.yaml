@@ -1,0 +1,78 @@
+id: Q-2026-0003-v1
+record:
+  closed_at: 2026-10-20
+  created_at: 2026-10-05
+  currency: CZK
+  customer:
+    city: Ostrava
+    company_id: "00000003"
+    contact_person: Alex Morgan
+    country: Czech Republic
+    email: alex.morgan@demo-logistika.example
+    id: C-0003
+    name: Demo Logistics a.s.
+    postal_code: 702 00
+    street: Warehouse Street 3
+  introduction: Thank you for your inquiry. Following our conversation, here is our quote.
+  issue_date: 2026-10-05
+  lines:
+    - id: l1
+      item_code: SLU-SKOLENI
+      name: Workplace ergonomics training
+      quantity: 4
+      unit: h
+      unit_price: 180000
+      vat_percent: 21
+    - id: l2
+      item_code: SLU-OBCERSTVENI
+      name: Refreshments for the training
+      purchase_price: 12000
+      quantity: 15
+      unit: person
+      unit_price: 18000
+      vat_percent: 12
+    - id: l3
+      item_code: KNI-PRIRUCKA
+      name: Healthy Workplace handbook (printed book)
+      purchase_price: 18000
+      quantity: 15
+      unit: pc
+      unit_price: 29000
+      vat_percent: 0
+  number: Q-2026-0003
+  prepared_by: Jordan Blake
+  sent_at: 2026-10-05
+  sent_settings:
+    email:
+      body: |-
+        Hello {contact},
+
+        please find attached our quote {number} – {title}. It comes to {total} including VAT ({total_without_vat} excluding VAT) and is valid until {valid_until}.
+
+        If you would like to change anything, just reply to this e-mail.
+
+        Kind regards
+        {prepared_by}
+        {organization}
+      subject: "Quote {number}: {title}"
+    supplier:
+      bank_account: 1000000000/0000
+      city: Prague 1
+      company_id: "00000000"
+      country: Czech Republic
+      email: obchod@example.com
+      name: Example s.r.o.
+      phone: +420 000 000 000
+      postal_code: 110 00
+      registration: A fictional company for the template's example; not in any register.
+      street: Model Street 1
+      vat_id: CZ00000000
+      web: example.com
+    total_rounding: none
+  status: rejected
+  terms: The training takes place at your workplace on a date we agree.
+  title: Ergonomics training for the team
+  updated_at: 2026-10-20
+  valid_until: 2026-11-04
+  version: 1
+schemaVersion: quotes.quote.v1

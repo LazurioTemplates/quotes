@@ -1,0 +1,14 @@
+id: C-0001
+record:
+  city: Brno
+  company_id: "00000001"
+  contact_person: Robin Lee
+  country: Česká republika
+  email: robin.lee@atelier-ukazka.example
+  id: C-0001
+  name: Atelier Ukázka s.r.o.
+  phone: +420 000 000 101
+  postal_code: 602 00
+  street: Ukázková 12
+  vat_id: CZ00000001
+schemaVersion: quotes.customer.v1

@@ -1,0 +1,87 @@
+id: Q-2026-0002-v1
+record:
+  created_at: 2026-10-01
+  currency: CZK
+  customer:
+    city: Prague 4
+    company_id: "00000002"
+    contact_person: Sam Taylor
+    country: Czech Republic
+    email: sam.taylor@vzorova-ucetni.example
+    id: C-0002
+    name: Model Accounting s.r.o.
+    phone: +420 000 000 202
+    postal_code: 140 00
+    street: Fiction Street 5
+    vat_id: CZ00000002
+  introduction: Thank you for your inquiry. Following our conversation, here is our quote.
+  issue_date: 2026-10-01
+  lines:
+    - id: l1
+      item_code: AKU-PANEL-120
+      name: Acoustic panel 120 × 60 cm
+      purchase_price: 190000
+      quantity: 12
+      unit: pc
+      unit_price: 285000
+      vat_percent: 21
+    - id: l2
+      item_code: OSV-PANEL-6060
+      name: LED ceiling panel 60 × 60 cm
+      purchase_price: 145000
+      quantity: 6
+      unit: pc
+      unit_price: 219000
+      vat_percent: 21
+    - id: l3
+      item_code: SLU-MONTAZ
+      name: Furniture assembly
+      purchase_price: 38000
+      quantity: 10
+      unit: h
+      unit_price: 65000
+      vat_percent: 21
+    - id: l4
+      item_code: SLU-DOPRAVA
+      name: Delivery and carrying within the city
+      quantity: 1
+      unit: flat
+      unit_price: 120000
+      vat_percent: 21
+  number: Q-2026-0002
+  prepared_by: Jordan Blake
+  sent_at: 2026-10-01
+  sent_settings:
+    email:
+      body: |-
+        Hello {contact},
+
+        please find attached our quote {number} – {title}. It comes to {total} including VAT ({total_without_vat} excluding VAT) and is valid until {valid_until}.
+
+        If you would like to change anything, just reply to this e-mail.
+
+        Kind regards
+        {prepared_by}
+        {organization}
+      subject: "Quote {number}: {title}"
+    supplier:
+      bank_account: 1000000000/0000
+      city: Prague 1
+      company_id: "00000000"
+      country: Czech Republic
+      email: obchod@example.com
+      name: Example s.r.o.
+      phone: +420 000 000 000
+      postal_code: 110 00
+      registration: A fictional company for the template's example; not in any register.
+      street: Model Street 1
+      vat_id: CZ00000000
+      web: example.com
+    total_rounding: none
+  status: sent
+  terms: Delivery within three weeks of the order's confirmation. Invoices are due in 14 days. Assembly on working days 8 am–5 pm.
+  title: Meeting room acoustics and lighting
+  updated_at: 2026-10-01
+  valid_until: 2026-10-31
+  version: 1
+schemaVersion: quotes.quote.v1

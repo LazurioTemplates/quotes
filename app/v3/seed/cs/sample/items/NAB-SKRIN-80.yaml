@@ -1,0 +1,13 @@
+id: NAB-SKRIN-80
+record:
+  category: nabytek
+  code: NAB-SKRIN-80
+  name: Uzamykatelná skříň 80 cm
+  purchase_price: 530000
+  sale_price: 769000
+  supplier: Ukázkový velkoobchod nábytku
+  supplier_code: UV-5080
+  unit: ks
+  valid_from: 2026-01-01
+  vat_rate: standard
+schemaVersion: quotes.item.v1

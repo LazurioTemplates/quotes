@@ -1,0 +1,6 @@
+id: akustika
+record:
+  id: akustika
+  name: Akustika
+  order: 3
+schemaVersion: quotes.category.v1

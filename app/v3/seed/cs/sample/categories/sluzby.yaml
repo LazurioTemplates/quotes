@@ -1,0 +1,6 @@
+id: sluzby
+record:
+  id: sluzby
+  name: Montáž a služby
+  order: 4
+schemaVersion: quotes.category.v1

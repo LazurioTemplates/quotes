@@ -1,0 +1,87 @@
+id: NAB-2026-0002-v1
+record:
+  created_at: 2026-10-01
+  currency: CZK
+  customer:
+    city: Praha 4
+    company_id: "00000002"
+    contact_person: Sam Taylor
+    country: Česká republika
+    email: sam.taylor@vzorova-ucetni.example
+    id: C-0002
+    name: Vzorová účetní kancelář s.r.o.
+    phone: +420 000 000 202
+    postal_code: 140 00
+    street: Fiktivní 5
+    vat_id: CZ00000002
+  introduction: Děkujeme za Vaši poptávku. Na základě našeho rozhovoru Vám posíláme cenovou nabídku.
+  issue_date: 2026-10-01
+  lines:
+    - id: l1
+      item_code: AKU-PANEL-120
+      name: Akustický panel 120 × 60 cm
+      purchase_price: 190000
+      quantity: 12
+      unit: ks
+      unit_price: 285000
+      vat_percent: 21
+    - id: l2
+      item_code: OSV-PANEL-6060
+      name: Stropní LED panel 60 × 60 cm
+      purchase_price: 145000
+      quantity: 6
+      unit: ks
+      unit_price: 219000
+      vat_percent: 21
+    - id: l3
+      item_code: SLU-MONTAZ
+      name: Montáž nábytku
+      purchase_price: 38000
+      quantity: 10
+      unit: hod
+      unit_price: 65000
+      vat_percent: 21
+    - id: l4
+      item_code: SLU-DOPRAVA
+      name: Doprava a vynáška v rámci města
+      quantity: 1
+      unit: paušál
+      unit_price: 120000
+      vat_percent: 21
+  number: NAB-2026-0002
+  prepared_by: Jordan Blake
+  sent_at: 2026-10-01
+  sent_settings:
+    email:
+      body: |-
+        Dobrý den,
+
+        posíláme Vám cenovou nabídku {number} – {title}. Celkem vychází na {total} včetně DPH ({total_without_vat} bez DPH) a platí do {valid_until}.
+
+        Nabídku najdete v příloze. Pokud budete chtít cokoli upravit, stačí odpovědět na tento e-mail.
+
+        S pozdravem
+        {prepared_by}
+        {organization}
+      subject: "Cenová nabídka {number}: {title}"
+    supplier:
+      bank_account: 1000000000/0000
+      city: Praha 1
+      company_id: "00000000"
+      country: Česká republika
+      email: obchod@example.com
+      name: Example s.r.o.
+      phone: +420 000 000 000
+      postal_code: 110 00
+      registration: Fiktivní firma pro ukázku šablony; nezapsaná v žádném rejstříku.
+      street: Vzorová 1
+      vat_id: CZ00000000
+      web: example.com
+    total_rounding: none
+  status: sent
+  terms: Dodání do tří týdnů od potvrzení objednávky. Splatnost faktury 14 dní. Montáž v pracovní dny 8–17 h.
+  title: Akustika a světlo zasedací místnosti
+  updated_at: 2026-10-01
+  valid_until: 2026-10-31
+  version: 1
+schemaVersion: quotes.quote.v1

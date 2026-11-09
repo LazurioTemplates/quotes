@@ -1,0 +1,47 @@
+id: settings
+record:
+  currency: CZK
+  default_introduction: Děkujeme za Vaši poptávku. Na základě našeho rozhovoru Vám posíláme cenovou nabídku.
+  default_terms: Dodání do tří týdnů od potvrzení objednávky. Splatnost faktury 14 dní. Montáž v pracovní dny 8–17 h.
+  default_vat_rate: standard
+  email:
+    body: |-
+      Dobrý den,
+
+      posíláme Vám cenovou nabídku {number} – {title}. Celkem vychází na {total} včetně DPH ({total_without_vat} bez DPH) a platí do {valid_until}.
+
+      Nabídku najdete v příloze. Pokud budete chtít cokoli upravit, stačí odpovědět na tento e-mail.
+
+      S pozdravem
+      {prepared_by}
+      {organization}
+    subject: "Cenová nabídka {number}: {title}"
+  language: cs
+  min_margin_percent: 20
+  quote_number_format: NAB-{YYYY}-{NNNN}
+  supplier:
+    bank_account: 1000000000/0000
+    city: Praha 1
+    company_id: "00000000"
+    country: Česká republika
+    email: obchod@example.com
+    name: Example s.r.o.
+    phone: +420 000 000 000
+    postal_code: 110 00
+    registration: Fiktivní firma pro ukázku šablony; nezapsaná v žádném rejstříku.
+    street: Vzorová 1
+    vat_id: CZ00000000
+    web: example.com
+  total_rounding: none
+  validity_days: 30
+  vat_rates:
+    - id: standard
+      label: Základní
+      percent: 21
+    - id: reduced
+      label: Snížená
+      percent: 12
+    - id: zero
+      label: Nulová
+      percent: 0
+schemaVersion: quotes.settings.v1
