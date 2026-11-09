@@ -7,7 +7,7 @@ const json = (body: unknown) =>
   );
 
 describe("the language of the App", () => {
-  test("follows the person's Lazurio profile from the shell document", async () => {
+  test("follows the person's Lazurio profile from the shell document, by the design system's rule", async () => {
     expect(await resolveLocale("", () => json({ schema: "lazurio.shell.v1", locale: "en" }))).toBe(
       "en",
     );
@@ -32,9 +32,6 @@ describe("the language of the App", () => {
       );
     expect(await resolveLocale("", page)).toBe("cs");
     expect(await resolveLocale("", () => Promise.reject(new Error("offline")))).toBe("cs");
-    expect(await resolveLocale("", () => json({ schema: "something.else", locale: "en" }))).toBe(
-      "cs",
-    );
     expect(await resolveLocale("?lang=en", page)).toBe("en");
     expect(await resolveLocale("?lang=de", page)).toBe("cs");
   });

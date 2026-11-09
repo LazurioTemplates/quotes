@@ -5,11 +5,10 @@
     "": {
       "name": "quotes-app-v3",
       "dependencies": {
-        "@fontsource-variable/inter-tight": "5.3.0",
-        "@fontsource/geist-mono": "5.3.0",
         "@lazurio/module-kit": "github:Lazurio/module-kit#v0.2.0",
         "@lazurio/repository-db": "github:Lazurio/repository-db#v3.2.6",
         "@vitejs/plugin-react": "6.2.1",
+        "design-system": "github:LazurioTemplates/design-system#v2.0.0",
         "react": "19.3.1",
         "react-dom": "19.3.1",
         "vite": "8.3.5",
@@ -46,10 +45,6 @@
     "@biomejs/cli-win32-arm64": ["@biomejs/cli-win32-arm64@2.6.4", "", { "os": "win32", "cpu": "arm64" }, "sha512-eCsqt8Ma3eVap+oyJCDnJZH60SIU464B66n3y38EUTJdM1T/HfZol1FJC9vb+sHToX0ix8XzqPcwJnOzyAJz0g=="],
 
     "@biomejs/cli-win32-x64": ["@biomejs/cli-win32-x64@2.6.4", "", { "os": "win32", "cpu": "x64" }, "sha512-pYsMy5AThiHFOZAsngg8qN4PurM6nInKBhVX7sbj3eNpRQqo1Hb0MgCwPL7VqVMrmcEEMj9Ks3qbkallR65e8g=="],
-
-    "@fontsource-variable/inter-tight": ["@fontsource-variable/inter-tight@5.3.0", "", {}, "sha512-ZhZZ29sNZ15P1K+cUt13GeBRYON0akgmNiftshUeDLos7X7zGcRgPzt434879Xhq1QbwlW3M/apBMk7jWabwvA=="],
-
-    "@fontsource/geist-mono": ["@fontsource/geist-mono@5.3.0", "", {}, "sha512-UtJ1BBBCVpMYdIcW7nEB45UAoAw5M53ZXs2t0ciPW+IokuAAIc56M8+kW5tXbRJCTpDw4XTtU7proT6NdQAHTg=="],
 
     "@lazurio/module-kit": ["@lazurio/module-kit@github:Lazurio/module-kit#2183f0a", {}, "Lazurio-module-kit-2183f0a", "sha512-yCkj5xNH3lue5/eqbCW1TezlyJxx8fz2KpsmdlyWJ/JJIj2HW7phfNq7GTZwz+5RUGBbKCmZN6M1tsR6OcIpnw=="],
 
@@ -142,6 +137,8 @@
     "bun-types": ["bun-types@1.4.4", "", { "dependencies": { "@types/node": "*", "undici-types": "*" } }, "sha512-yjrJh5oGX7mMPKGd19YXyIjmEuj4G4zNC30bs7PM9Az7NQ3ndF3j6hbeRdvJTRQEhJ/FYQwW0a2moweEi2hMxQ=="],
 
     "csstype": ["csstype@3.2.3", "", {}, "sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ=="],
+
+    "design-system": ["design-system@github:LazurioTemplates/design-system#23af5a3", { "peerDependencies": { "astro": "7.4.5", "react": "19.3.1" }, "optionalPeers": ["astro", "react"] }, "LazurioTemplates-design-system-23af5a3", "sha512-gxn6K7t2+8fiX25t2Lpjn02+GK0z0dUPlBRcj8hsTaR5pCdzHj96RyKbcyW9lC2nh5Ei4J34/37mHcd4hnXXRw=="],
 
     "detect-libc": ["detect-libc@2.1.2", "", {}, "sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ=="],
 

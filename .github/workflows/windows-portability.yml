@@ -3,14 +3,13 @@ name: windows portability
 # The same gates on Windows, where people run Quotes on their own computers
 # and where the data repository's Git and paths behave differently. Only code
 # can break that, so this runs for pull requests that change the App, the
-# templates, the design system or a workflow, and on demand; never after a
+# templates or a workflow, and on demand; never after a
 # merge to main (Module Standard, CI; MS-14).
 on:
   pull_request:
     paths:
       - "app/**"
       - "templates/**"
-      - "design-system/**"
       - ".github/workflows/**"
   workflow_dispatch:
 

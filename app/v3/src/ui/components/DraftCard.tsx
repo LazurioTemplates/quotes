@@ -5,6 +5,7 @@ import {
   type DraftPanelRecord,
   deriveDraftPanel,
 } from "@lazurio/repository-db";
+import { Button } from "design-system/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Locale } from "../../i18n/locale.ts";
 import { useLocale, useT } from "../i18n.tsx";
@@ -189,29 +190,20 @@ function RecordRow({
       ) : null}
       <div className="rdb-draft-record-actions">
         {record.href ? (
-          <button type="button" onClick={() => window.location.assign(record.href as string)}>
+          <Button variant="secondary" size="sm" href={record.href}>
             {record.openLabel}
-          </button>
+          </Button>
         ) : null}
         {record.revertSupported ? (
-          <button
-            type="button"
-            className="rdb-draft-revert"
-            disabled={busy}
-            onClick={() => onRevert(record)}
-          >
+          <Button variant="secondary" size="sm" disabled={busy} onClick={() => onRevert(record)}>
             {w.revert}
-          </button>
+          </Button>
         ) : (
           <span className="rdb-draft-revert-blocked">{record.revertBlockedReason}</span>
         )}
-        <button
-          type="button"
-          className="rdb-draft-technical-toggle"
-          onClick={() => setShowTechnical((value) => !value)}
-        >
+        <Button variant="quiet" size="sm" onClick={() => setShowTechnical((value) => !value)}>
           {showTechnical ? w.hideTechnical : w.technical}
-        </button>
+        </Button>
       </div>
       {showTechnical ? <code className="rdb-draft-technical">{record.technicalPath}</code> : null}
     </li>
@@ -351,14 +343,19 @@ export function DraftCard({
         <div className="rdb-draft-actions">
           {model.actions.map((action) => (
             <span key={action.kind} className="rdb-draft-action">
-              <button
-                type="button"
-                className={action.destructive ? "rdb-draft-destructive" : undefined}
+              <Button
+                variant={
+                  action.destructive
+                    ? "danger"
+                    : action.kind === "publish"
+                      ? "primary"
+                      : "secondary"
+                }
                 disabled={!action.enabled || busy}
                 onClick={() => act(action.kind)}
               >
                 {action.label}
-              </button>
+              </Button>
               {!action.enabled && action.disabledReason ? (
                 <small className="rdb-draft-disabled-reason">{action.disabledReason}</small>
               ) : null}

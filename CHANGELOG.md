@@ -51,6 +51,8 @@ from the scaffold of `lazurio module create --stack vite-react --data`.
 - WebMCP tools for the main actions; none publishes or sends.
 - `templates/data-repo/` with a dependency-free validator, and the starts
   `app/v3/seed/<cs|en>/<empty|sample>/`.
-- `design-system/`: LazurioTemplates/design-system v1.0.0 merged as a subtree;
-  a later release arrives as a merge of its tag.
+- The design system is the package `design-system`
+  (`github:LazurioTemplates/design-system#v2.0.0`): the App uses its styles,
+  tokens and React components, the print page its tokens and fonts; the
+  Organization's own design system replaces it by changing the dependency.
 - One gate, `bun run check`, on Ubuntu and Windows.

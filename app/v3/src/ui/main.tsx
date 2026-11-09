@@ -1,7 +1,8 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import "@fontsource-variable/inter-tight";
-import "@fontsource/geist-mono/400.css";
+// The design system first: tokens, fonts, base styles and its components;
+// then the App's own layout, then the Organization's overlay.
+import "design-system/styles.css";
 import "./styles.css";
 import "../instance/theme.css";
 import { App } from "./App.tsx";

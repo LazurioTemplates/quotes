@@ -1,3 +1,4 @@
+import { Button } from "design-system/react";
 import { useState } from "react";
 import { calculateQuote } from "../../domain/calculate.ts";
 import type { Customer } from "../../domain/customer.ts";
@@ -86,16 +87,16 @@ export function CustomerPage({
         title={stored ? stored.value.name : t("Nový zákazník", "New customer")}
         actions={
           stored ? (
-            <a className="button button-primary" href={href({ page: "new-quote" })}>
+            <Button variant="primary" href={href({ page: "new-quote" })}>
               {t("Nová nabídka", "New quote")}
-            </a>
+            </Button>
           ) : null
         }
       />
       <div className="detail-grid">
         <form className="form" onSubmit={save}>
           <ErrorNotice error={error} />
-          <article className="panel">
+          <article className="ds-card">
             <div className="form-grid">
               {FIELDS.map((field) => (
                 <Field
@@ -130,20 +131,16 @@ export function CustomerPage({
             </div>
           </article>
           <div className="form-actions">
-            <button
-              className="button button-primary"
-              type="submit"
-              disabled={busy || !form.name?.trim()}
-            >
+            <Button variant="primary" type="submit" disabled={busy || !form.name?.trim()}>
               {stored
                 ? t("Uložit do konceptu", "Save to the draft")
                 : t("Založit zákazníka", "Create the customer")}
-            </button>
+            </Button>
           </div>
         </form>
         {stored ? (
           <aside className="aside">
-            <article className="panel">
+            <article className="ds-card">
               <h2>{t("Nabídky", "Quotes")}</h2>
               {quotes.length === 0 ? (
                 <p className="muted">{t("Zatím žádná.", "None yet.")}</p>

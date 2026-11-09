@@ -1,3 +1,4 @@
+import { Alert, Button, Table } from "design-system/react";
 import { useState } from "react";
 import { calculateQuote } from "../../domain/calculate.ts";
 import { checkQuote, readyToSend } from "../../domain/checks.ts";
@@ -15,7 +16,7 @@ import type { AppData } from "../App.tsx";
 import { api, printUrl } from "../api.ts";
 import { ErrorNotice, PageHeader, StatusChip } from "../components/common.tsx";
 import { Totals } from "../components/Totals.tsx";
-import { useFormat, useT } from "../i18n.tsx";
+import { useFormat, useLocale, useT } from "../i18n.tsx";
 import { href, navigate } from "../routes.ts";
 
 export function QuoteDetailPage({
@@ -30,6 +31,7 @@ export function QuoteDetailPage({
   today?: string;
 }) {
   const t = useT();
+  const locale = useLocale();
   const f = useFormat();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -107,23 +109,23 @@ export function QuoteDetailPage({
         }
         actions={
           <>
-            <a className="button" href={printUrl(id)} target="_blank" rel="noreferrer">
+            <Button variant="secondary" href={printUrl(id)} icon="page">
               {t("Tisk a PDF", "Print and PDF")}
-            </a>
+            </Button>
             {quote.status === "draft" ? (
-              <a className="button button-primary" href={href({ page: "edit-quote", id })}>
+              <Button variant="primary" href={href({ page: "edit-quote", id })}>
                 {t("Upravit", "Edit")}
-              </a>
+              </Button>
             ) : null}
             {isLatest && canCreateVersion(quote) ? (
-              <button
-                className="button"
+              <Button
+                variant="secondary"
                 type="button"
                 disabled={busy}
                 onClick={() => run(() => api.newVersion(id))}
               >
                 {t("Upravit jako novou verzi", "Edit as a new version")}
-              </button>
+              </Button>
             ) : null}
           </>
         }
@@ -153,36 +155,36 @@ export function QuoteDetailPage({
 
       <ErrorNotice error={error} />
       {!isLatest && latest ? (
-        <p className="notice notice-info">
+        <Alert tone="info" locale={locale}>
           {t("Toto je starší verze. Platná je", "This is an older version. The current one is")}{" "}
           <a href={href({ page: "quote", id: idOfQuote(latest) })}>
             {t("verze", "version")} {latest.version}
           </a>
           .
-        </p>
+        </Alert>
       ) : null}
       {isLatest && isPastValidity(quote, today) ? (
-        <p className="notice notice-warning">
+        <Alert tone="warning" locale={locale}>
           {t(
             `Platnost skončila ${f.date(quote.valid_until)} a zákazník se neozval. Označte nabídku jako propadlou, nebo z ní vytvořte novou verzi.`,
             `The quote expired on ${f.date(quote.valid_until)} without an answer. Mark it as expired, or create a new version of it.`,
           )}
-        </p>
+        </Alert>
       ) : null}
 
       <div className="quote-layout">
         <div>
-          <table className="table lines-table">
+          <Table id="quote-lines" caption={t("Položky nabídky", "Lines of the quote")} hideCaption>
             <thead>
               <tr>
                 <th>#</th>
                 <th>{t("Položka", "Item")}</th>
-                <th className="num">{t("Množství", "Quantity")}</th>
-                <th className="num">{t("Cena za MJ", "Unit price")}</th>
-                <th className="num">{t("Sleva", "Discount")}</th>
-                <th className="num">{t("DPH", "VAT")}</th>
-                <th className="num">{t("Bez DPH", "Excl. VAT")}</th>
-                <th className="num">{t("Marže", "Margin")}</th>
+                <th className="ds-table__num">{t("Množství", "Quantity")}</th>
+                <th className="ds-table__num">{t("Cena za MJ", "Unit price")}</th>
+                <th className="ds-table__num">{t("Sleva", "Discount")}</th>
+                <th className="ds-table__num">{t("DPH", "VAT")}</th>
+                <th className="ds-table__num">{t("Bez DPH", "Excl. VAT")}</th>
+                <th className="ds-table__num">{t("Marže", "Margin")}</th>
               </tr>
             </thead>
             <tbody>
@@ -209,16 +211,18 @@ export function QuoteDetailPage({
                         <div className="warning small">⚠ {line.to_check}</div>
                       ) : null}
                     </td>
-                    <td className="num">
+                    <td className="ds-table__num">
                       {f.number(line.quantity)} {line.unit}
                     </td>
-                    <td className="num">{money(line.unit_price)}</td>
-                    <td className="num">
+                    <td className="ds-table__num">{money(line.unit_price)}</td>
+                    <td className="ds-table__num">
                       {line.discount_percent ? f.percent(line.discount_percent) : ""}
                     </td>
-                    <td className="num">{f.percent(line.vat_percent)}</td>
-                    <td className="num">{money(amounts?.net ?? 0)}</td>
-                    <td className={`num ${margin !== null && margin < 0 ? "danger" : "muted"}`}>
+                    <td className="ds-table__num">{f.percent(line.vat_percent)}</td>
+                    <td className="ds-table__num">{money(amounts?.net ?? 0)}</td>
+                    <td
+                      className={`ds-table__num ${margin !== null && margin < 0 ? "danger" : "muted"}`}
+                    >
                       {margin === null ? "" : money(margin)}
                     </td>
                   </tr>
@@ -232,14 +236,14 @@ export function QuoteDetailPage({
                 </tr>
               ) : null}
             </tbody>
-          </table>
+          </Table>
           <Totals
             totals={totals}
             currency={quote.currency}
             discountPercent={quote.discount_percent}
           />
           {quote.introduction || quote.terms || quote.internal_note ? (
-            <article className="panel">
+            <article className="ds-card">
               {quote.introduction ? (
                 <>
                   <h3>{t("Úvodní text", "Introduction")}</h3>
@@ -264,19 +268,20 @@ export function QuoteDetailPage({
 
         <aside className="aside">
           {actions.length > 0 ? (
-            <article className="panel">
+            <article className="ds-card">
               <h2>{t("Stav nabídky", "State of the quote")}</h2>
               <div className="stack">
                 {actions.map((action) => (
-                  <button
+                  <Button
                     key={action}
-                    className={`button${action === "send" ? " button-primary" : ""}`}
-                    type="button"
-                    disabled={busy || (action === "send" && !ready)}
+                    variant={action === "send" ? "primary" : "secondary"}
+                    block
+                    busy={busy}
+                    disabled={action === "send" && !ready}
                     onClick={() => act(action)}
                   >
                     {t.of(ACTION_LABELS[action])}
-                  </button>
+                  </Button>
                 ))}
               </div>
               {actions.includes("send") ? (
@@ -291,7 +296,7 @@ export function QuoteDetailPage({
           ) : null}
 
           {quote.status === "draft" ? (
-            <article className="panel">
+            <article className="ds-card">
               <h2>{t("Kontrola před odesláním", "Check before sending")}</h2>
               {issues.length === 0 ? (
                 <p className="ok">
@@ -315,7 +320,7 @@ export function QuoteDetailPage({
             </article>
           ) : null}
 
-          <article className="panel">
+          <article className="ds-card">
             <h2>{t("E-mail pro zákazníka", "E-mail for the customer")}</h2>
             <p className="small muted">
               {t("Komu", "To")}:{" "}
@@ -324,12 +329,12 @@ export function QuoteDetailPage({
             </p>
             <p className="email-subject">{email.subject}</p>
             <p className="pre email-body">{email.body}</p>
-            <button className="button" type="button" onClick={copyEmail}>
+            <Button variant="secondary" type="button" onClick={copyEmail}>
               {copied ? t("Zkopírováno", "Copied") : t("Zkopírovat text", "Copy the text")}
-            </button>
+            </Button>
           </article>
 
-          <article className="panel">
+          <article className="ds-card">
             <h2>{t("Verze", "Versions")}</h2>
             <ul className="versions">
               {versions.map((version) => (

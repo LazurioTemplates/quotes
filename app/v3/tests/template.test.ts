@@ -46,7 +46,9 @@ describe("template contract", () => {
     for (const [name, version] of Object.entries(all)) {
       expect({
         name,
-        exact: /^(\d+\.\d+\.\d+|github:Lazurio\/[a-z-]+#v\d+\.\d+\.\d+)$/.test(version),
+        exact: /^(\d+\.\d+\.\d+|github:(Lazurio|LazurioTemplates)\/[a-z-]+#v\d+\.\d+\.\d+)$/.test(
+          version,
+        ),
       }).toEqual({
         name,
         exact: true,
@@ -60,6 +62,7 @@ describe("template contract", () => {
       "@biomejs/biome": "2.6.4",
       "@lazurio/repository-db": "github:Lazurio/repository-db#v3.2.6",
       "@lazurio/module-kit": "github:Lazurio/module-kit#v0.2.0",
+      "design-system": "github:LazurioTemplates/design-system#v2.0.0",
     });
     for (const workflow of [
       ".github/workflows/check.yml",

@@ -1,51 +1,42 @@
+import { resolveLocale as chooseLocale, readLazurioLocale } from "design-system";
 import { DEFAULT_LOCALE, type Locale, parseLocale } from "../i18n/locale.ts";
 
-/** The schema of the shell document Lazurio serves on every page (LazurioPlatform `src/shell/contract.ts`). */
-const SHELL_SCHEMA = "lazurio.shell.v1";
-
 /**
- * The language the App speaks, the first of:
+ * The language the App speaks, by the design system's rule (Lazurio's,
+ * decision 0142): an explicit choice first, then the language Lazurio gives,
+ * then Czech.
  *
- * 1. `?lang=cs|en` in the address (development, the demo, screenshots);
- * 2. the language of the person's Lazurio profile in `/.lazurio/shell.json`
- *    (`lazurio.shell.v1`, `locale`), the document Lazurio's shell reads on
- *    its own origins. On a module's origin it does not arrive yet
- *    (LazurioPlatform#909): the App's own server answers 404 and this step
- *    passes at once;
- * 3. `language` of the Module's settings, which the start of the adoption
- *    sets and a person changes under Nastavení / Settings;
- * 4. Czech.
+ * 1. The explicit choice is `?lang=cs|en` in the address (development, the
+ *    demo, screenshots).
+ * 2. Lazurio gives the language of the person's profile in
+ *    `/.lazurio/shell.json`, read by the design system's `readLazurioLocale`.
+ *    On a module's origin it does not arrive yet (LazurioPlatform#909), so
+ *    the App takes the language of the Module's settings in its place, which
+ *    the start of the adoption sets and a person changes under Settings.
+ * 3. Czech.
  */
+export type Load = (path: string, init?: RequestInit) => Promise<Response>;
+
 export async function resolveLocale(
   search: string = typeof window === "undefined" ? "" : window.location.search,
-  load: (path: string, timeoutMs?: number) => Promise<Response> = (path, timeoutMs) =>
-    fetch(path, {
-      headers: { accept: "application/json" },
-      credentials: "same-origin",
-      redirect: "manual",
-      ...(timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}),
-    }),
+  load: Load = (path, init) => fetch(path, init),
 ): Promise<Locale> {
-  const fromAddress = parseLocale(new URLSearchParams(search).get("lang"));
-  if (fromAddress) return fromAddress;
+  const explicit = parseLocale(new URLSearchParams(search).get("lang"));
+  const lazurio = explicit
+    ? null
+    : ((await readLazurioLocale(load as typeof fetch, AbortSignal.timeout(1500))) ??
+      (await settingsLocale(load)));
+  return chooseLocale({ explicit, lazurio }) ?? DEFAULT_LOCALE;
+}
+
+async function settingsLocale(load: Load): Promise<Locale | null> {
   try {
-    const response = await load("/.lazurio/shell.json", 1500);
-    if (response.ok && (response.headers.get("content-type") ?? "").includes("json")) {
-      const shell = (await response.json()) as { schema?: unknown; locale?: unknown } | null;
-      if (shell?.schema === SHELL_SCHEMA) return parseLocale(shell.locale) ?? DEFAULT_LOCALE;
-    }
-  } catch {
-    // No shell document: the App runs outside Lazurio, or on a module origin.
-  }
-  try {
-    const response = await load("/api/settings");
-    if (response.ok) {
-      const stored = (await response.json()) as { value?: { language?: unknown } } | null;
-      const language = parseLocale(stored?.value?.language);
-      if (language) return language;
-    }
+    const response = await load("/api/settings", { headers: { accept: "application/json" } });
+    if (!response.ok) return null;
+    const stored = (await response.json()) as { value?: { language?: unknown } } | null;
+    return parseLocale(stored?.value?.language);
   } catch {
     // The data is not available yet; the App says so in Czech.
+    return null;
   }
-  return DEFAULT_LOCALE;
 }

@@ -1,9 +1,10 @@
+import { Alert, Button } from "design-system/react";
 import { useState } from "react";
 import { idOfQuote } from "../../domain/quote.ts";
 import type { AppData } from "../App.tsx";
 import { api } from "../api.ts";
 import { ErrorNotice, Field, fieldErrors, PageHeader } from "../components/common.tsx";
-import { useT } from "../i18n.tsx";
+import { useLocale, useT } from "../i18n.tsx";
 import { href, navigate } from "../routes.ts";
 
 /** A new quote starts as a draft with the next number; the lines come in the editor. */
@@ -15,6 +16,7 @@ export function NewQuotePage({
   onChanged: () => Promise<void>;
 }) {
   const t = useT();
+  const locale = useLocale();
   const [customerId, setCustomerId] = useState(data.customers[0]?.value.id ?? "");
   const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false);
@@ -46,11 +48,11 @@ export function NewQuotePage({
         )}
       />
       {data.customers.length === 0 ? (
-        <p className="notice notice-info">
+        <Alert tone="info" locale={locale}>
           {t("Zatím nemáte žádného zákazníka.", "There is no customer yet.")}{" "}
           <a href={href({ page: "new-customer" })}>{t("Přidejte ho", "Add one")}</a>{" "}
           {t("a pak se sem vraťte.", "and come back here.")}
-        </p>
+        </Alert>
       ) : (
         <form className="form" onSubmit={submit}>
           <ErrorNotice error={error} />
@@ -74,16 +76,12 @@ export function NewQuotePage({
             <input value={title} onChange={(event) => setTitle(event.target.value)} required />
           </Field>
           <div className="form-actions">
-            <button
-              className="button button-primary"
-              type="submit"
-              disabled={busy || !title.trim()}
-            >
+            <Button variant="primary" type="submit" disabled={busy || !title.trim()}>
               {t("Založit koncept", "Create the draft")}
-            </button>
-            <a className="button" href={href({ page: "new-customer" })}>
+            </Button>
+            <Button variant="secondary" href={href({ page: "new-customer" })}>
               {t("Nový zákazník", "New customer")}
-            </a>
+            </Button>
           </div>
         </form>
       )}

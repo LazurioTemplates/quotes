@@ -369,7 +369,8 @@ describe("the print page", () => {
     expect(html).toContain('<html lang="cs" data-theme="light">');
     expect(html).toContain("Cenová nabídka");
     expect(html).toContain("Demo Logistika a.s.");
-    expect(html).toContain("--accent: #2d4fd1");
+    expect(html).toContain("--ds-color-accent: #0d12db");
+    expect(html).toContain('url("/print/fonts/inter-latin-wght-normal.woff2")');
     expect(html).toContain("Koncept");
     expect(html).not.toContain("Poptávka z 5. 11.");
     expect(html).not.toContain("Není v ceníku");
@@ -383,6 +384,10 @@ describe("the print page", () => {
     expect(text).toContain("CZK 55,296.70");
     expect(text).not.toMatch(/[ěščřžůú]/);
     expect(await english("/print/elsewhere", "en")).toBeNull();
+    const font = await english("/print/fonts/inter-latin-wght-normal.woff2", "en");
+    expect(font?.status).toBe(200);
+    expect(font?.headers.get("content-type")).toBe("font/woff2");
+    expect((await english("/print/fonts/..%2F..%2Fpackage.json", "en"))?.status).toBe(404);
     expect((await english("/print/quotes/Q-1-v1", "en"))?.status).toBe(404);
   });
 });

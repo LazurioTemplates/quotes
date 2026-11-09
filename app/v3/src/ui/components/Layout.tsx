@@ -1,4 +1,5 @@
 import type { DraftPanelInput } from "@lazurio/repository-db";
+import { Nav } from "design-system/react";
 import type { ReactNode } from "react";
 import type { Localized } from "../../i18n/locale.ts";
 import { quotesBrand } from "../../instance/brand.ts";
@@ -64,36 +65,21 @@ export function Layout({
   const count = draftCount(draft);
   return (
     <div className="shell">
-      <nav className="sidebar" aria-label={t("Hlavní navigace", "Main navigation")}>
+      <aside className="sidebar">
         <div className="sidebar-header">
           <span className="sidebar-product">{t("Cenové nabídky", "Quotes")}</span>
           <span className="sidebar-context">{quotesBrand.organization}</span>
         </div>
-        <ul className="sidebar-items">
-          {NAV.map((item) => {
-            const active = item.matches.includes(route.page);
-            return (
-              <li key={item.label.en}>
-                <a
-                  className={`sidebar-item${active ? " active" : ""}`}
-                  href={href(item.route)}
-                  aria-current={active ? "page" : undefined}
-                >
-                  <span>{t.of(item.label)}</span>
-                  {item.route.page === "draft" && count !== null ? (
-                    <span
-                      className="badge badge-draft"
-                      title={t("Nepublikované změny", "Unpublished changes")}
-                    >
-                      {count}
-                    </span>
-                  ) : null}
-                </a>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+        <Nav
+          label={t("Hlavní navigace", "Main navigation")}
+          items={NAV.map((item) => ({
+            href: href(item.route),
+            label: t.of(item.label),
+            current: item.matches.includes(route.page),
+            ...(item.route.page === "draft" && count !== null ? { badge: String(count) } : {}),
+          }))}
+        />
+      </aside>
       <main className="content-area">{children}</main>
     </div>
   );

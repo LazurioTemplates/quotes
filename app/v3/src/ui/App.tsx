@@ -1,4 +1,5 @@
 import type { DraftPanelInput } from "@lazurio/repository-db";
+import { Alert } from "design-system/react";
 import { useCallback, useEffect, useState } from "react";
 import type { Category, Item } from "../domain/catalog.ts";
 import type { Customer } from "../domain/customer.ts";
@@ -6,7 +7,7 @@ import type { Quote } from "../domain/quote.ts";
 import type { Settings } from "../domain/settings.ts";
 import { ApiError, api, type Stored, subscribe } from "./api.ts";
 import { Layout } from "./components/Layout.tsx";
-import { useT } from "./i18n.tsx";
+import { useLocale, useT } from "./i18n.tsx";
 import { CustomerListPage } from "./pages/CustomerListPage.tsx";
 import { CustomerPage } from "./pages/CustomerPage.tsx";
 import { DraftPage } from "./pages/DraftPage.tsx";
@@ -45,6 +46,7 @@ function useHashRoute(): Route {
 
 export function App() {
   const t = useT();
+  const locale = useLocale();
   const route = useHashRoute();
   const [data, setData] = useState<AppData | null>(null);
   const [draft, setDraft] = useState<DraftPanelInput | null>(null);
@@ -88,14 +90,18 @@ export function App() {
   return (
     <Layout route={route} draft={draft}>
       {error ? (
-        <div className={`notice ${quiet ? "notice-info" : "notice-danger"}`} role="alert">
+        <Alert
+          tone={quiet ? "info" : "danger"}
+          live={quiet ? "polite" : "assertive"}
+          locale={locale}
+        >
           <strong>
             {quiet
               ? t("Data zatím nejsou k dispozici.", "The data is not available yet.")
               : t("Data se nepodařilo načíst.", "The data could not be loaded.")}
           </strong>{" "}
           {error.message}
-        </div>
+        </Alert>
       ) : null}
       {data ? <Page route={route} data={data} onChanged={changed} /> : null}
       {!data && !error ? <p className="muted">{t("Načítám…", "Loading…")}</p> : null}

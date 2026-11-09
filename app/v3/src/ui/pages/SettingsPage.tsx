@@ -1,3 +1,4 @@
+import { Alert, Button, Table } from "design-system/react";
 import { useState } from "react";
 import { localToday, slugify } from "../../domain/common.ts";
 import { EMAIL_PLACEHOLDERS } from "../../domain/email.ts";
@@ -8,7 +9,7 @@ import type { Localized } from "../../i18n/locale.ts";
 import type { AppData } from "../App.tsx";
 import { api } from "../api.ts";
 import { ErrorNotice, Field, fieldErrors, PageHeader } from "../components/common.tsx";
-import { useFormat, useT } from "../i18n.tsx";
+import { useFormat, useLocale, useT } from "../i18n.tsx";
 
 const SUPPLIER_FIELDS: { key: keyof Supplier; label: Localized }[] = [
   { key: "name", label: { cs: "Název Organizace", en: "Name of the Organization" } },
@@ -41,6 +42,7 @@ export function SettingsPage({
   today?: string;
 }) {
   const t = useT();
+  const locale = useLocale();
   const f = useFormat();
   const stored = data.settings;
   const [form, setForm] = useState<Settings>(() => structuredClone(stored.value));
@@ -119,20 +121,20 @@ export function SettingsPage({
       <form className="form form-wide" onSubmit={save}>
         <ErrorNotice error={error} />
         {saved ? (
-          <p className="notice notice-success">
+          <Alert tone="success" locale={locale}>
             {t("Uloženo do konceptu.", "Saved to the draft.")}
-          </p>
+          </Alert>
         ) : null}
         {hasPlaceholders(form.supplier) ? (
-          <p className="notice notice-warning">
+          <Alert tone="warning" locale={locale}>
             {t(
               "Údaje Organizace jsou zatím zástupné (REPLACE-WITH-…). Doplňte je, jinak kontrola nepustí žádnou nabídku k odeslání.",
               "The Organization's details are still placeholders (REPLACE-WITH-…). Fill them in, or the check lets no quote go out.",
             )}
-          </p>
+          </Alert>
         ) : null}
 
-        <article className="panel">
+        <article className="ds-card">
           <h2>{t("Organizace na nabídce", "The Organization on a quote")}</h2>
           <div className="form-grid">
             {SUPPLIER_FIELDS.map((field) => (
@@ -151,7 +153,7 @@ export function SettingsPage({
           </div>
         </article>
 
-        <article className="panel">
+        <article className="ds-card">
           <h2>{t("Sazby DPH", "VAT rates")}</h2>
           <p className="small muted">
             {t(
@@ -159,7 +161,7 @@ export function SettingsPage({
               "The defaults are the Czech rates of 21, 12 and 0%. When the law changes a rate, change its percentage here; price list items name the rate, quotes keep the percentage.",
             )}
           </p>
-          <table className="table compact">
+          <Table id="vat-rates" caption={t("Sazby DPH", "VAT rates")} hideCaption density="compact">
             <thead>
               <tr>
                 <th>{t("Název", "Name")}</th>
@@ -173,6 +175,7 @@ export function SettingsPage({
                 <tr key={rate.id || `new-${index}`}>
                   <td>
                     <input
+                      className="ds-input"
                       aria-label={t("Název sazby", "Name of the rate")}
                       value={rate.label}
                       onChange={(event) =>
@@ -186,9 +189,10 @@ export function SettingsPage({
                   </td>
                   <td>
                     <input
+                      className="ds-input"
                       aria-label={t("Procento sazby", "Percentage of the rate")}
                       inputMode="decimal"
-                      className={rate.value === null ? "invalid" : undefined}
+                      aria-invalid={rate.value === null ? "true" : undefined}
                       value={rate.percent}
                       onChange={(event) =>
                         setRates(
@@ -203,9 +207,10 @@ export function SettingsPage({
                     {rate.id || t("vznikne z názvu", "made from the name")}
                   </td>
                   <td>
-                    <button
+                    <Button
+                      variant="quiet"
+                      size="sm"
                       type="button"
-                      className="link danger"
                       disabled={usedRates.has(rate.id) || rate.id === form.default_vat_rate}
                       title={
                         usedRates.has(rate.id)
@@ -215,12 +220,12 @@ export function SettingsPage({
                       onClick={() => setRates(rates.filter((_, at) => at !== index))}
                     >
                       {t("Odebrat", "Remove")}
-                    </button>
+                    </Button>
                   </td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </Table>
           <div className="form-row">
             <Field
               label={t("Výchozí sazba nových položek", "Default rate of new items")}
@@ -241,18 +246,18 @@ export function SettingsPage({
             </Field>
             <div className="field">
               <span className="field-label">&nbsp;</span>
-              <button
+              <Button
+                variant="secondary"
                 type="button"
-                className="button"
                 onClick={() => setRates([...rates, { id: "", label: "", percent: "" }])}
               >
                 {t("Přidat sazbu", "Add a rate")}
-              </button>
+              </Button>
             </div>
           </div>
         </article>
 
-        <article className="panel">
+        <article className="ds-card">
           <h2>{t("Jazyk, číslování a platnost", "Language, numbering and validity")}</h2>
           <Field
             label={t("Jazyk aplikace", "Language of the App")}
@@ -344,7 +349,7 @@ export function SettingsPage({
           </div>
         </article>
 
-        <article className="panel">
+        <article className="ds-card">
           <h2>{t("Výchozí texty nabídky", "Default texts of a quote")}</h2>
           <Field label={t("Úvodní text", "Introduction")}>
             <textarea
@@ -362,7 +367,7 @@ export function SettingsPage({
           </Field>
         </article>
 
-        <article className="panel">
+        <article className="ds-card">
           <h2>{t("E-mail k nabídce", "The e-mail with a quote")}</h2>
           <p className="small muted">
             {t(
@@ -389,9 +394,9 @@ export function SettingsPage({
         </article>
 
         <div className="form-actions">
-          <button className="button button-primary" type="submit" disabled={busy || invalid}>
+          <Button variant="primary" type="submit" disabled={busy || invalid}>
             {t("Uložit nastavení do konceptu", "Save the settings to the draft")}
-          </button>
+          </Button>
         </div>
       </form>
     </section>

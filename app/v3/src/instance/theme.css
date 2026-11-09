@@ -1,2 +1,6 @@
-@import '../design-system/lazurio-theme.css';
-@import '../design-system/lazurio-grid.css';
+/*
+ * The Organization's overlay of the App's look, after the design system's
+ * styles (`design-system/styles.css`) and the App's own (`src/ui/styles.css`).
+ * The brand itself belongs to the Organization's design system package; put
+ * here only what is this App's alone.
+ */

@@ -1,3 +1,4 @@
+import { Button, EmptyState, Table } from "design-system/react";
 import { useState } from "react";
 import { latestVersions } from "../../domain/quote.ts";
 import type { AppData } from "../App.tsx";
@@ -26,13 +27,14 @@ export function CustomerListPage({ data }: { data: AppData }) {
           "The contacts you send quotes to. A quote copies the customer's details while it is a draft.",
         )}
         actions={
-          <a className="button button-primary" href={href({ page: "new-customer" })}>
+          <Button variant="primary" href={href({ page: "new-customer" })}>
             {t("Nový zákazník", "New customer")}
-          </a>
+          </Button>
         }
       />
       <div className="toolbar-row">
         <input
+          className="ds-input"
           type="search"
           placeholder={t(
             "Hledat název, IČO, kontakt, e-mail nebo město",
@@ -44,9 +46,9 @@ export function CustomerListPage({ data }: { data: AppData }) {
         />
       </div>
       {customers.length === 0 ? (
-        <p className="panel empty muted">{t("Žádný zákazník.", "No customer.")}</p>
+        <EmptyState icon="search" title={t("Žádný zákazník.", "No customer.")} headingLevel={2} />
       ) : (
-        <table className="table">
+        <Table id="customers" caption={t("Zákazníci", "Customers")} hideCaption>
           <thead>
             <tr>
               <th>{t("Název", "Name")}</th>
@@ -54,7 +56,7 @@ export function CustomerListPage({ data }: { data: AppData }) {
               <th>{t("Kontaktní osoba", "Contact person")}</th>
               <th>{t("E-mail", "E-mail")}</th>
               <th>{t("Obec", "City")}</th>
-              <th className="num">{t("Nabídky", "Quotes")}</th>
+              <th className="ds-table__num">{t("Nabídky", "Quotes")}</th>
             </tr>
           </thead>
           <tbody>
@@ -67,13 +69,13 @@ export function CustomerListPage({ data }: { data: AppData }) {
                 <td>{customer.contact_person ?? ""}</td>
                 <td>{customer.email ?? ""}</td>
                 <td>{customer.city ?? ""}</td>
-                <td className="num">
+                <td className="ds-table__num">
                   {latest.filter((quote) => quote.customer.id === customer.id).length}
                 </td>
               </tr>
             ))}
           </tbody>
-        </table>
+        </Table>
       )}
     </section>
   );

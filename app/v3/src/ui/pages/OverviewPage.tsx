@@ -1,3 +1,4 @@
+import { Button } from "design-system/react";
 import { calculateQuote } from "../../domain/calculate.ts";
 import { addDays, localToday } from "../../domain/common.ts";
 import { idOfQuote, isPastValidity, latestVersions, type Quote } from "../../domain/quote.ts";
@@ -62,9 +63,9 @@ export function OverviewPage({ data, today = localToday() }: { data: AppData; to
           "What waits for the customer's answer, what is in progress and what needs closing.",
         )}
         actions={
-          <a className="button button-primary" href={href({ page: "new-quote" })}>
+          <Button variant="primary" href={href({ page: "new-quote" })}>
             {t("Nová nabídka", "New quote")}
-          </a>
+          </Button>
         }
       />
       <div className="stats">
@@ -89,7 +90,7 @@ export function OverviewPage({ data, today = localToday() }: { data: AppData; to
       </div>
 
       {overdue.length > 0 ? (
-        <article className="panel panel-warning">
+        <article className="ds-card panel-warning">
           <h2>{t("Po platnosti", "Past their validity")}</h2>
           <p className="muted">
             {t(
@@ -112,7 +113,7 @@ export function OverviewPage({ data, today = localToday() }: { data: AppData; to
       ) : null}
 
       <div className="two-columns">
-        <article className="panel">
+        <article className="ds-card">
           <h2>{t("Čekají na odpověď", "Waiting for an answer")}</h2>
           {waiting.length === 0 ? (
             <p className="muted">
@@ -122,7 +123,7 @@ export function OverviewPage({ data, today = localToday() }: { data: AppData; to
             <div className="list">{waiting.map((quote) => row(quote, validUntil(quote)))}</div>
           )}
         </article>
-        <article className="panel">
+        <article className="ds-card">
           <h2>{t("Rozpracované koncepty", "Drafts in progress")}</h2>
           {drafts.length === 0 ? (
             <p className="muted">{t("Žádný koncept.", "No draft.")}</p>
@@ -139,7 +140,7 @@ export function OverviewPage({ data, today = localToday() }: { data: AppData; to
         </article>
       </div>
 
-      <article className="panel">
+      <article className="ds-card">
         <h2>{t("Ceník", "Price list")}</h2>
         <p>
           {t.count(active.length, ITEMS)}

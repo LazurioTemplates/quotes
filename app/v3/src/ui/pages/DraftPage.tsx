@@ -56,7 +56,7 @@ export function DraftPage({ onChanged }: { onChanged: () => Promise<void> }) {
       <div className="draft-panel">
         <DraftCard api={cardApi} subscribe={(onChange) => subscribe(() => onChange())} />
       </div>
-      <article className="panel">
+      <article className="ds-card">
         <h2>{t("Kontrola dat", "Data check")}</h2>
         {issues === null ? (
           <p className="muted">{t("Kontrolu teď nejde spustit.", "The check cannot run now.")}</p>

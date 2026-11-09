@@ -1,3 +1,5 @@
+import type { Tone } from "design-system";
+import { Alert, Badge, Button, Checkbox, Table } from "design-system/react";
 import { useState } from "react";
 import { sameImportRequest } from "../../domain/canonical.ts";
 import { localToday } from "../../domain/common.ts";
@@ -13,7 +15,7 @@ import type { Localized } from "../../i18n/locale.ts";
 import type { AppData } from "../App.tsx";
 import { api, type ImportRequest } from "../api.ts";
 import { ErrorNotice, Field, PageHeader } from "../components/common.tsx";
-import { useFormat, useT } from "../i18n.tsx";
+import { useFormat, useLocale, useT } from "../i18n.tsx";
 import { href } from "../routes.ts";
 
 const ITEMS = {
@@ -26,6 +28,13 @@ const KIND_LABELS: Record<ImportRow["kind"], Localized> = {
   changed: { cs: "Změna", en: "Change" },
   unchanged: { cs: "Beze změny", en: "Unchanged" },
   invalid: { cs: "Chyba", en: "Error" },
+};
+
+const KIND_TONES: Record<ImportRow["kind"], Tone> = {
+  new: "info",
+  changed: "warning",
+  unchanged: "neutral",
+  invalid: "danger",
 };
 
 const FIELD_NAMES: Record<string, Localized> = {
@@ -50,6 +59,7 @@ export function ImportPage({
   today?: string;
 }) {
   const t = useT();
+  const locale = useLocale();
   const f = useFormat();
   const settings = data.settings.value;
   const suppliers = [
@@ -163,15 +173,15 @@ export function ImportPage({
       />
       <ErrorNotice error={error} />
       {saved !== null ? (
-        <p className="notice notice-success">
+        <Alert tone="success" locale={locale}>
           {t(
             `Uloženo do konceptu: ${t.count(saved, ITEMS)}. Zkontrolujte je a publikujte v části`,
             `Saved to the draft: ${t.count(saved, ITEMS)}. Review and publish them in`,
           )}{" "}
           <a href={href({ page: "draft" })}>{t("Koncept a publikování", "Draft & publish")}</a>.
-        </p>
+        </Alert>
       ) : null}
-      <article className="panel">
+      <article className="ds-card">
         <h2>{t("1. Soubor a pravidla", "1. The file and the rules")}</h2>
         <div className="form-row">
           <Field
@@ -267,47 +277,45 @@ export function ImportPage({
             </select>
           </Field>
         </div>
-        <label className="checkbox">
-          <input
-            type="checkbox"
-            checked={roundToCrowns}
-            onChange={(event) => setRoundToCrowns(event.target.checked)}
-          />
-          {t(
+        <Checkbox
+          id="import-round"
+          label={t(
             "Prodejní cenu z přirážky zaokrouhlit na celé koruny",
             "Round a sale price from the markup to whole crowns",
           )}
-        </label>
+          checked={roundToCrowns}
+          onChange={(event) => setRoundToCrowns(event.target.checked)}
+        />
         <div className="form-actions">
-          <button
-            className="button button-primary"
+          <Button
+            variant="primary"
             type="button"
             disabled={busy || !ready}
             onClick={() => preview(undefined)}
           >
             {t("Zobrazit náhled změn", "Preview the changes")}
-          </button>
+          </Button>
         </div>
       </article>
 
       {result ? (
-        <article className="panel">
+        <article className="ds-card">
           <h2>{t("2. Náhled změn", "2. Preview of the changes")}</h2>
           {stale ? (
-            <div className="notice notice-warning" role="status">
+            <Alert tone="warning" live="polite" locale={locale}>
               {t(
                 "Soubor nebo pravidla se od náhledu změnily, takže náhled už neplatí. Zobrazte ho znovu, než něco uložíte.",
                 "The file or the rules changed since the preview, so it no longer holds. Preview it again before you save anything.",
               )}{" "}
-              <button
-                className="button"
+              <Button
+                variant="secondary"
                 type="button"
                 disabled={busy || !ready}
                 onClick={() => preview(mapping)}
               >
                 {t("Zobrazit náhled znovu", "Preview again")}
-              </button>
-            </div>
+              </Button>
+            </Alert>
           ) : null}
           <p className="small muted">
             {t(
@@ -346,35 +354,39 @@ export function ImportPage({
               </div>
             ))}
           </div>
-          <div className="table-scroll">
-            <table className="table import-table">
-              <thead>
-                <tr>
-                  <th>{t("Převzít", "Take")}</th>
-                  <th>{t("Řádek", "Row")}</th>
-                  <th>{t("Stav", "State")}</th>
-                  <th>{t("Kód", "Code")}</th>
-                  <th>{t("Název", "Name")}</th>
-                  <th className="num">{t("Nákup", "Purchase")}</th>
-                  <th className="num">{t("Prodej", "Sale")}</th>
-                  <th>{t("Co se mění", "What changes")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {result.preview.rows.map((row) => (
-                  <ImportRowView
-                    key={row.line}
-                    row={row}
-                    chosen={chosen.has(row.line)}
-                    onToggle={() => toggle(row.line)}
-                    money={money}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
+
+          <Table
+            id="import-preview"
+            caption={t("Náhled změn", "Preview of the changes")}
+            hideCaption
+          >
+            <thead>
+              <tr>
+                <th>{t("Převzít", "Take")}</th>
+                <th>{t("Řádek", "Row")}</th>
+                <th>{t("Stav", "State")}</th>
+                <th>{t("Kód", "Code")}</th>
+                <th>{t("Název", "Name")}</th>
+                <th className="ds-table__num">{t("Nákup", "Purchase")}</th>
+                <th className="ds-table__num">{t("Prodej", "Sale")}</th>
+                <th>{t("Co se mění", "What changes")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.preview.rows.map((row) => (
+                <ImportRowView
+                  key={row.line}
+                  row={row}
+                  chosen={chosen.has(row.line)}
+                  onToggle={() => toggle(row.line)}
+                  money={money}
+                />
+              ))}
+            </tbody>
+          </Table>
+
           {result.preview.missing.length > 0 ? (
-            <div className="notice notice-info">
+            <Alert tone="info" locale={locale}>
               <strong>
                 {t(
                   `V souboru chybí položky tohoto dodavatele: ${result.preview.missing.length}.`,
@@ -391,11 +403,11 @@ export function ImportPage({
                   <a href={href({ page: "item", code: entry.code })}>{entry.code}</a>
                 </span>
               ))}
-            </div>
+            </Alert>
           ) : null}
           <div className="form-actions">
-            <button
-              className="button button-primary"
+            <Button
+              variant="primary"
               type="button"
               disabled={busy || stale || chosen.size === 0}
               onClick={apply}
@@ -404,7 +416,7 @@ export function ImportPage({
                 `Uložit do konceptu (vybráno: ${f.number(chosen.size)})`,
                 `Save to the draft (chosen: ${f.number(chosen.size)})`,
               )}
-            </button>
+            </Button>
           </div>
         </article>
       ) : null}
@@ -453,14 +465,16 @@ function ImportRowView({
       </td>
       <td className="muted">{row.line}</td>
       <td>
-        <span className={`chip chip-import-${row.kind}`}>{t.of(KIND_LABELS[row.kind])}</span>
+        <Badge tone={KIND_TONES[row.kind]}>{t.of(KIND_LABELS[row.kind])}</Badge>
       </td>
       <td className="code-link">
         {item?.code ?? (row.kind === "unchanged" ? row.code : (row.supplierCode ?? ""))}
       </td>
       <td>{item?.name ?? ""}</td>
-      <td className="num">{item ? change(before?.purchase_price, item.purchase_price) : ""}</td>
-      <td className="num">{item ? change(before?.sale_price, item.sale_price) : ""}</td>
+      <td className="ds-table__num">
+        {item ? change(before?.purchase_price, item.purchase_price) : ""}
+      </td>
+      <td className="ds-table__num">{item ? change(before?.sale_price, item.sale_price) : ""}</td>
       <td className="small">
         {row.kind === "changed"
           ? row.fields

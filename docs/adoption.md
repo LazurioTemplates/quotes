@@ -116,8 +116,16 @@ Organization's identity:
 - `AGENTS.md`, section "This Organization's copy": who reviews, where its data
   lives, its own pricing rules (a usual markup, a minimum margin, who may give
   a discount), so the skills follow them;
-- keep `LICENSE`, `NOTICE.md` and `design-system/` (with its own `LICENSE`):
-  MIT requires the notices, and the design system came with the merge.
+- the design system: when the Organization has adopted and released its own
+  design system, change the dependency in `app/v3/package.json` to
+  `"design-system": "git+ssh://git@github.com/<Org>/design-system.git#v<version>"`
+  and run `bun install` (commit `bun.lock`); otherwise keep
+  `github:LazurioTemplates/design-system#v2.0.0` and tell the person their
+  quotes print in the example brand until they have their own. A private
+  design system cannot be installed by the Module's CI yet
+  (Lazurio/LazurioPlatform#915): say so in the pull request, and run
+  `bun run check` on the Environment;
+- keep `LICENSE` and `NOTICE.md`: MIT requires the notices.
 
 Commit the merge, then check that the release stays an ancestor; this is what
 lets later releases arrive as ordinary merges:

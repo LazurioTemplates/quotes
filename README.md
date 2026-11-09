@@ -27,7 +27,7 @@ called „Cenové nabídky“.
   Amounts are whole haléře, never floating
   point.
 - **For the customer.** A print page in the look of the Organization's design
-  system, printed or saved as PDF by the browser, and the e-mail text to send
+  system (the package `design-system`), printed or saved as PDF by the browser, and the e-mail text to send
   with it. Sending is the person's step; the App and its agents only prepare it.
 - **For agents.** Three skills (`.agents/skills/`): prepare a quote from an
   inquiry, update the price list from a supplier's price list, check a quote
@@ -53,7 +53,7 @@ ship in both languages.
 | Stack profile | [`app-data@2026.11`](https://github.com/Lazurio/LazurioPlatform/blob/main/docs/stack-profiles.md#app-data): Bun 1.4.4, TypeScript 7.0.2, Vite 8.3.5, React 19.3.1, Biome 2.6.4, Zod 4.6.7, `@lazurio/repository-db` v3.2.6, `@lazurio/module-kit` v0.2.0, exact versions only |
 | Data | the Organization's own repository `quotes-data`, branch `v3`, checked out as `db/` |
 | Shape of the data | Zod schemas in `app/v3/src/domain/`; the JSON Schemas of the data repository are generated from them |
-| Look of the quote | `design-system/`: release v1.0.0 of [LazurioTemplates/design-system](https://github.com/LazurioTemplates/design-system), merged as a subtree |
+| Look of the App and the quote | the package `design-system`: [LazurioTemplates/design-system](https://github.com/LazurioTemplates/design-system) v2.0.0, a dependency on its released tag; the Organization's own design system replaces it by one line |
 
 ```text
 app/v3/src/
@@ -68,7 +68,6 @@ app/v3/src/
 app/v3/seed/<cs|en>/<empty|sample>/   the starts, laid out like db/data/
 app/v3/tests/store-contract.ts        the shared test suite every store implementation passes
 templates/data-repo/                  the data repository an adopting Organization starts from
-design-system/                        the design system release the quote document follows
 .agents/skills/, .claude/skills/      the process for agents (the same files for Codex and Claude Code)
 ```
 

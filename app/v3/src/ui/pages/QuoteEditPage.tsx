@@ -1,3 +1,4 @@
+import { Button } from "design-system/react";
 import { useMemo, useState } from "react";
 import { calculateQuote } from "../../domain/calculate.ts";
 import type { Item } from "../../domain/catalog.ts";
@@ -232,7 +233,7 @@ export function QuoteEditPage({
         <ErrorNotice error={error} />
         <div className="editor-grid">
           <div className="editor-main">
-            <article className="panel">
+            <article className="ds-card">
               <div className="form-row">
                 <Field label={t("Zákazník", "Customer")} error={errors["customer.id"]}>
                   <select
@@ -284,15 +285,16 @@ export function QuoteEditPage({
               </div>
             </article>
 
-            <article className="panel">
+            <article className="ds-card">
               <div className="panel-head">
                 <h2>{t("Položky (ceny bez DPH)", "Lines (prices excl. VAT)")}</h2>
-                <button className="button" type="button" onClick={addFree}>
+                <Button variant="secondary" type="button" onClick={addFree}>
                   {t("Přidat řádek mimo ceník", "Add a line outside the price list")}
-                </button>
+                </Button>
               </div>
               <div className="item-search">
                 <input
+                  className="ds-input"
                   type="search"
                   placeholder={t(
                     "Přidat z ceníku: hledejte kód nebo název (aspoň 2 znaky)",
@@ -360,43 +362,45 @@ export function QuoteEditPage({
                             : t("mimo ceník", "outside the price list")}
                         </span>
                         <span className="line-tools">
-                          <button
-                            type="button"
-                            className="link"
+                          <Button
+                            variant="quiet"
+                            size="sm"
+                            icon="nav-arrow-up"
+                            iconOnly
+                            label={t("Posunout nahoru", "Move up")}
                             disabled={index === 0}
                             onClick={() => moveLine(index, -1)}
-                            aria-label={t("Posunout nahoru", "Move up")}
-                          >
-                            ↑
-                          </button>
-                          <button
-                            type="button"
-                            className="link"
+                          />
+                          <Button
+                            variant="quiet"
+                            size="sm"
+                            icon="nav-arrow-down"
+                            iconOnly
+                            label={t("Posunout dolů", "Move down")}
                             disabled={index === form.lines.length - 1}
                             onClick={() => moveLine(index, 1)}
-                            aria-label={t("Posunout dolů", "Move down")}
-                          >
-                            ↓
-                          </button>
-                          <button
-                            type="button"
-                            className="link danger"
+                          />
+                          <Button
+                            variant="quiet"
+                            size="sm"
+                            icon="trash"
                             onClick={() => removeLine(line.id)}
                           >
                             {t("Odebrat", "Remove")}
-                          </button>
+                          </Button>
                         </span>
                       </div>
                       {line.to_check ? (
                         <div className="line-check">
                           <span>⚠ {line.to_check}</span>
-                          <button
+                          <Button
+                            variant="quiet"
+                            size="sm"
                             type="button"
-                            className="link"
                             onClick={() => updateLine(line.id, { to_check: undefined })}
                           >
                             {t("Vyřešeno", "Resolved")}
-                          </button>
+                          </Button>
                         </div>
                       ) : null}
                       <div className="line-fields">
@@ -475,7 +479,7 @@ export function QuoteEditPage({
               </div>
             </article>
 
-            <article className="panel">
+            <article className="ds-card">
               <Field
                 label={t("Úvodní text pro zákazníka", "Introduction for the customer")}
                 error={errors.introduction}
@@ -514,7 +518,7 @@ export function QuoteEditPage({
           </div>
 
           <aside className="editor-aside">
-            <article className="panel sticky">
+            <article className="ds-card sticky">
               <h2>{t("Souhrn", "Summary")}</h2>
               <Field
                 label={t("Sleva na celou nabídku %", "Discount on the whole quote %")}
@@ -535,12 +539,12 @@ export function QuoteEditPage({
                 discountPercent={quoteDiscount ?? 0}
               />
               <div className="stack">
-                <button className="button button-primary" type="submit" disabled={busy || invalid}>
+                <Button variant="primary" type="submit" disabled={busy || invalid}>
                   {t("Uložit koncept", "Save the draft")}
-                </button>
-                <a className="button" href={href({ page: "quote", id })}>
+                </Button>
+                <Button variant="secondary" href={href({ page: "quote", id })}>
                   {t("Zahodit úpravy", "Drop the edits")}
-                </a>
+                </Button>
               </div>
             </article>
           </aside>

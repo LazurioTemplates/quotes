@@ -1,3 +1,4 @@
+import { Badge, Button, Checkbox, EmptyState, Table } from "design-system/react";
 import { useState } from "react";
 import { marginPercent, priceExpired } from "../../domain/catalog.ts";
 import { localToday } from "../../domain/common.ts";
@@ -65,12 +66,12 @@ export function ItemListPage({
         )}
         actions={
           <>
-            <a className="button" href={href({ page: "import" })}>
+            <Button variant="secondary" href={href({ page: "import" })}>
               {t("Import ceníku dodavatele", "Import a supplier's price list")}
-            </a>
-            <a className="button button-primary" href={href({ page: "new-item" })}>
+            </Button>
+            <Button variant="primary" href={href({ page: "new-item" })}>
               {t("Nová položka", "New item")}
-            </a>
+            </Button>
           </>
         }
       />
@@ -93,6 +94,7 @@ export function ItemListPage({
       </nav>
       <div className="toolbar-row">
         <input
+          className="ds-input"
           type="search"
           placeholder={t(
             "Hledat kód, název nebo dodavatele",
@@ -102,31 +104,31 @@ export function ItemListPage({
           onChange={(event) => setSearch(event.target.value)}
           aria-label={t("Hledat v ceníku", "Search the price list")}
         />
-        <label className="checkbox">
-          <input
-            type="checkbox"
-            checked={showArchived}
-            onChange={(event) => setShowArchived(event.target.checked)}
-          />
-          {t("Zobrazit vyřazené", "Show retired items")}
-        </label>
+        <Checkbox
+          id="items-retired"
+          label={t("Zobrazit vyřazené", "Show retired items")}
+          checked={showArchived}
+          onChange={(event) => setShowArchived(event.target.checked)}
+        />
       </div>
       {items.length === 0 ? (
-        <p className="panel empty muted">
-          {t("Žádná položka tomu neodpovídá.", "No item matches.")}
-        </p>
+        <EmptyState
+          icon="search"
+          title={t("Žádná položka tomu neodpovídá.", "No item matches.")}
+          headingLevel={2}
+        />
       ) : (
-        <table className="table">
+        <Table id="items" caption={t("Ceník", "Price list")} hideCaption>
           <thead>
             <tr>
               <th>{t("Kód", "Code")}</th>
               <th>{t("Název", "Name")}</th>
               <th>{t("Kategorie", "Category")}</th>
               <th>{t("MJ", "Unit")}</th>
-              <th className="num">{t("Nákup", "Purchase")}</th>
-              <th className="num">{t("Prodej", "Sale")}</th>
-              <th className="num">{t("Marže", "Margin")}</th>
-              <th className="num">{t("DPH", "VAT")}</th>
+              <th className="ds-table__num">{t("Nákup", "Purchase")}</th>
+              <th className="ds-table__num">{t("Prodej", "Sale")}</th>
+              <th className="ds-table__num">{t("Marže", "Margin")}</th>
+              <th className="ds-table__num">{t("DPH", "VAT")}</th>
               <th>{t("Platnost ceny", "Price valid")}</th>
             </tr>
           </thead>
@@ -147,30 +149,32 @@ export function ItemListPage({
                   </td>
                   <td>{categoryName.get(item.category) ?? item.category}</td>
                   <td>{item.unit}</td>
-                  <td className="num">
+                  <td className="ds-table__num">
                     {item.purchase_price === undefined ? "" : money(item.purchase_price)}
                   </td>
-                  <td className="num">{money(item.sale_price)}</td>
+                  <td className="ds-table__num">{money(item.sale_price)}</td>
                   <td
-                    className={`num ${margin !== null && margin < (settings.min_margin_percent ?? 0) ? "warning" : "muted"}`}
+                    className={`ds-table__num ${margin !== null && margin < (settings.min_margin_percent ?? 0) ? "warning" : "muted"}`}
                   >
                     {margin === null ? "" : f.percent(margin)}
                   </td>
-                  <td className="num">{rate ? f.percent(rate.percent) : item.vat_rate}</td>
+                  <td className="ds-table__num">
+                    {rate ? f.percent(rate.percent) : item.vat_rate}
+                  </td>
                   <td>
                     {f.date(item.valid_from)}
                     {item.valid_to ? ` – ${f.date(item.valid_to)}` : " –"}
                     {priceExpired(item, today) ? (
-                      <span className="chip chip-warning">{t("neplatná", "expired")}</span>
+                      <Badge tone="warning">{t("neplatná", "expired")}</Badge>
                     ) : null}
                   </td>
                 </tr>
               );
             })}
           </tbody>
-        </table>
+        </Table>
       )}
-      <article className="panel narrow">
+      <article className="ds-card narrow">
         <h2>{t("Kategorie", "Categories")}</h2>
         <ErrorNotice error={error} />
         <ul className="plain">
@@ -182,14 +186,15 @@ export function ItemListPage({
         </ul>
         <form className="inline-form" onSubmit={addCategory}>
           <input
+            className="ds-input"
             placeholder={t("Nová kategorie", "New category")}
             value={newCategory}
             onChange={(event) => setNewCategory(event.target.value)}
             aria-label={t("Název nové kategorie", "Name of the new category")}
           />
-          <button className="button" type="submit" disabled={!newCategory.trim()}>
+          <Button variant="secondary" type="submit" disabled={!newCategory.trim()}>
             {t("Přidat", "Add")}
-          </button>
+          </Button>
         </form>
       </article>
     </section>

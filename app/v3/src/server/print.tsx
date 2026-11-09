@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { QuotesStore } from "../data/store.ts";
 import { documentCss } from "../document/document-css.ts";
 import { QuoteDocument } from "../document/QuoteDocument.tsx";
-import { designSystemStylesheet } from "../document/theme.ts";
+import { designSystemStylesheet, fontFile, fontStylesheet } from "../document/theme.ts";
 import { pdfFileName } from "../domain/email.ts";
 import { DEFAULT_LOCALE, type Locale, parseLocale, pick } from "../i18n/locale.ts";
 
@@ -19,6 +19,19 @@ function escapeHtml(value: string): string {
  */
 export function createPrintHandler(store: QuotesStore) {
   return async function print(pathname: string, lang?: string | null): Promise<Response | null> {
+    // The design system's fonts, from its package, for the document on screen and on paper.
+    const font = /^\/print\/fonts\/([^/]+)$/.exec(pathname);
+    if (font?.[1]) {
+      const file = fontFile(font[1]);
+      const served = file ? Bun.file(file) : null;
+      if (!served || !(await served.exists())) return new Response("Not found", { status: 404 });
+      return new Response(served, {
+        headers: {
+          "content-type": "font/woff2",
+          "cache-control": "public, max-age=31536000, immutable",
+        },
+      });
+    }
     const locale: Locale = parseLocale(lang) ?? DEFAULT_LOCALE;
     const t = (cs: string, en: string) => pick(locale, cs, en);
     const match = /^\/print\/quotes\/([^/]+)$/.exec(pathname);
@@ -46,7 +59,7 @@ export function createPrintHandler(store: QuotesStore) {
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>${escapeHtml(title)}</title>
-<style>${designSystemStylesheet()}${documentCss}</style>
+<style>${fontStylesheet("/print/fonts/")}${designSystemStylesheet()}${documentCss}</style>
 </head>
 <body>
 <nav class="toolbar" aria-label="${t("Tisk", "Print")}">

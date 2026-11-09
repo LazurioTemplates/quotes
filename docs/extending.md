@@ -32,46 +32,56 @@ security fix.
   change the skills in `.agents/skills/` and copy them to `.claude/skills/`
   (a test keeps them identical), and say the Organization's own rules in its
   section of `AGENTS.md`.
-- **Look and feel of the App.** `app/v3/src/instance/` is the Organization's
-  overlay: `brand.ts` and `theme.css`. Keep shared styling in
-  `app/v3/src/ui/styles.css` and `app/v3/src/design-system/`.
+- **Look and feel of the App.** The look is the design system's (next
+  section). `app/v3/src/instance/` is the Organization's overlay of this App:
+  `brand.ts` and `theme.css`. Keep the App's own layout in
+  `app/v3/src/ui/styles.css`, with the design system's tokens only.
 
 Run `bun run check` and `bun run build` in `app/v3` before every pull request.
 
-## The look of the quote document
+## The look of the App and the quote
 
-The quote a customer receives takes its colours, type and spacing from
-`design-system/` at the Module root: a release of
-[LazurioTemplates/design-system](https://github.com/LazurioTemplates/design-system)
-merged as a subtree (v1.0.0 in this release), never a copy of its files.
-`app/v3/src/document/theme.ts` is the one file that names it: it imports the
-design system's own `tokens.ts`, which reads its own `tokens.json`. The
-document's stylesheet (`document-css.ts`) uses only the design system's role
-names; a test fails on a colour of its own or a name the design system does
-not define.
+The App and the quote a customer receives take their look from the
+Organization's design system, the package `design-system`, a dependency of
+`app/v3/package.json` on a released tag. This template depends on
+`github:LazurioTemplates/design-system#v2.0.0`; `bun.lock` records the tag's
+commit and the archive's `sha512`, and `bun install --frozen-lockfile`
+installs exactly that. No file of the design system lives in this
+repository, and nothing imports it by a relative path (Module Standard).
 
-- **A newer release of the design system** (for example 2.0.0) arrives as a
-  merge of its tag into the subtree, in a pull request of its own:
-
-  ```bash
-  git fetch https://github.com/LazurioTemplates/design-system.git "refs/tags/<tag>"
-  test "$(git rev-parse 'FETCH_HEAD^{commit}')" = "<commit from the registry>"
-  git merge -X subtree=design-system/ --no-ff -m "Design system: take release <tag>" <commit>
-  ```
-
-  If the release moved its tokens or changed the interface of `tokens.ts`,
-  change `theme.ts` in the same pull request; `bun run check` says whether the
-  document still finds every role it uses. A release of Quotes that takes a
-  newer design system does exactly this, so an adopted Module usually gets it
-  by merging the Quotes tag instead.
+- **The App** imports `design-system/styles.css` once in
+  `app/v3/src/ui/main.tsx` and uses the package's React components
+  (`design-system/react`): buttons, badges, alerts, tables, fields,
+  checkboxes, the navigation, cards and empty states. `src/ui/styles.css`
+  holds only the App's own layout and names only the package's `--ds-*`
+  tokens; `src/ui/locale.ts` takes the language by the package's
+  `resolveLocale()` and `readLazurioLocale()`.
+- **The quote document** is HTML the server renders, outside the App's
+  bundle: `app/v3/src/document/theme.ts` takes the tokens from
+  `design-system/tokens` and writes them as the same `--ds-*` custom
+  properties, and the print page serves the package's fonts. The document's
+  stylesheet (`document-css.ts`) names only those tokens. Tests fail on a
+  colour of its own, on a token name the package does not declare, and on a
+  copy of the design system in the Module.
+- **A newer release of the design system** is a new tag in the dependency:
+  change `#v2.0.0`, run `bun install` and `bun run check`, read the release's
+  `CHANGELOG.md`, look at the pages and the print in both languages, and open
+  a pull request that names the release.
 - **The Organization's own design system** (an adopted
-  `<Organization>/design-system` with its own brand) replaces the subtree in a
-  pull request: `git rm -r design-system`, then the same subtree merge of the
-  Organization's commit (`git merge -s ours --no-commit
-  --allow-unrelated-histories <commit>` and `git read-tree
-  --prefix=design-system/ -u <commit>`), so later releases of it arrive as
-  merges too. From then on, when a Quotes release changes `design-system/`,
-  keep the Organization's side.
+  `<Organization>/design-system`, which carries the Organization's brand)
+  changes only the dependency line:
+  `"design-system": "git+ssh://git@github.com/<Organization>/design-system.git#v<version>"`;
+  the imports stay the same, because both packages are named
+  `design-system`. A new brand is a new release of that design system and a
+  new pin here.
+- **Known limitation:** the Organization's design system is a private
+  repository, which `git+ssh` installs on an Environment with the person's
+  SSH key, but the Module's GitHub Actions cannot install it until the
+  Organization gives them read access to it. How a Module's CI reaches an
+  Organization's private package is open in
+  [Lazurio/LazurioPlatform#915](https://github.com/Lazurio/LazurioPlatform/issues/915);
+  until then CI of such a Module fails at `bun install`, and the check runs on
+  the Environment.
 
 ## Sending a quote through the Organization's Integration
 
@@ -119,7 +129,8 @@ git merge --no-ff <commit>
 
 - Resolve conflicts hunk by hunk. The Organization's identity
   (`lazurio.module.json`, `lazurio.runtime` ids, `config/data-repository.json`,
-  `src/instance/`, its `AGENTS.md` section, a design system of its own) stays
+  `src/instance/`, its `AGENTS.md` section, the dependency on its own design
+  system) stays
   the Organization's; the rest usually takes the template's side.
 - Read the release's `CHANGELOG.md` section: when the schemas changed, the data
   repository gets the regenerated `schemas/` (and any migration) in a pull

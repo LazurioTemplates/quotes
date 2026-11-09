@@ -58,9 +58,12 @@ skill keeps:
 - An Organization's real price list and quotes live in its own data
   repository (`<Organization>/quotes-data`, branch `v3`, mounted as `db/`),
   never here.
-- `design-system/` is a release of LazurioTemplates/design-system merged as a
-  subtree. Never edit it here; a newer release arrives as a merge of its tag
-  ([`docs/extending.md`](docs/extending.md), "The look of the quote document").
+- The design system is the package `design-system`, a dependency on a released
+  tag (`github:LazurioTemplates/design-system#v2.0.0`). Never copy its files
+  into this repository or import it by a relative path; a newer release is a
+  new tag in the dependency ([`docs/extending.md`](docs/extending.md), "The
+  look of the App and the quote"). Use its React components and its `--ds-*`
+  tokens; the App's own CSS is layout only.
 
 ## How the code is cut
 

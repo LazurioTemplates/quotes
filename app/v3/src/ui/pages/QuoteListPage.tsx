@@ -1,3 +1,4 @@
+import { Badge, Button, EmptyState, Table } from "design-system/react";
 import { calculateQuote } from "../../domain/calculate.ts";
 import { localToday } from "../../domain/common.ts";
 import {
@@ -37,9 +38,9 @@ export function QuoteListPage({
           "The latest version of every quote. Older versions are in the quote's detail.",
         )}
         actions={
-          <a className="button button-primary" href={href({ page: "new-quote" })}>
+          <Button variant="primary" href={href({ page: "new-quote" })}>
             {t("Nová nabídka", "New quote")}
-          </a>
+          </Button>
         }
       />
       <nav className="filters" aria-label={t("Stav nabídky", "State of the quote")}>
@@ -60,11 +61,13 @@ export function QuoteListPage({
         ))}
       </nav>
       {shown.length === 0 ? (
-        <p className="panel empty muted">
-          {t("Žádná nabídka v tomto stavu.", "No quote in this state.")}
-        </p>
+        <EmptyState
+          icon="search"
+          title={t("Žádná nabídka v tomto stavu.", "No quote in this state.")}
+          headingLevel={2}
+        />
       ) : (
-        <table className="table">
+        <Table id="quotes" caption={t("Nabídky", "Quotes")} hideCaption>
           <thead>
             <tr>
               <th>{t("Číslo", "Number")}</th>
@@ -72,7 +75,7 @@ export function QuoteListPage({
               <th>{t("Zákazník", "Customer")}</th>
               <th>{t("Stav", "State")}</th>
               <th>{t("Platí do", "Valid until")}</th>
-              <th className="num">{t("Celkem s DPH", "Total incl. VAT")}</th>
+              <th className="ds-table__num">{t("Celkem s DPH", "Total incl. VAT")}</th>
             </tr>
           </thead>
           <tbody>
@@ -93,20 +96,18 @@ export function QuoteListPage({
                   <td>
                     <StatusChip status={quote.status} />
                     {isPastValidity(quote, today) ? (
-                      <span className="chip chip-warning">
-                        {t("po platnosti", "past validity")}
-                      </span>
+                      <Badge tone="warning">{t("po platnosti", "past validity")}</Badge>
                     ) : null}
                   </td>
                   <td>{f.date(quote.valid_until)}</td>
-                  <td className="num">
+                  <td className="ds-table__num">
                     {f.money(calculateQuote(quote, settings).payable, quote.currency)}
                   </td>
                 </tr>
               );
             })}
           </tbody>
-        </table>
+        </Table>
       )}
     </section>
   );

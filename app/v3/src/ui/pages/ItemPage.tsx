@@ -1,3 +1,4 @@
+import { Button, Checkbox, Tag } from "design-system/react";
 import { useState } from "react";
 import { type Item, marginPercent } from "../../domain/catalog.ts";
 import { localToday } from "../../domain/common.ts";
@@ -110,15 +111,15 @@ export function ItemPage({
           )
         }
         actions={
-          <a className="button" href={href({ page: "items", category: null })}>
+          <Button variant="secondary" href={href({ page: "items", category: null })}>
             {t("Zpět na ceník", "Back to the price list")}
-          </a>
+          </Button>
         }
       />
       <div className="detail-grid">
         <form className="form" onSubmit={save}>
           <ErrorNotice error={error} />
-          <article className="panel">
+          <article className="ds-card">
             <div className="form-row">
               {stored ? null : (
                 <Field
@@ -187,7 +188,7 @@ export function ItemPage({
             </datalist>
           </article>
 
-          <article className="panel">
+          <article className="ds-card">
             <h2>{t("Cena bez DPH", "Price excl. VAT")}</h2>
             <div className="form-row">
               <Field
@@ -282,7 +283,7 @@ export function ItemPage({
             ) : null}
           </article>
 
-          <article className="panel">
+          <article className="ds-card">
             <div className="form-row">
               <Field label={t("Dodavatel", "Supplier")} error={errors.supplier}>
                 <input
@@ -311,30 +312,28 @@ export function ItemPage({
                 onChange={(event) => update({ description: optional(event.target.value) })}
               />
             </Field>
-            <label className="checkbox">
-              <input
-                type="checkbox"
-                checked={form.archived === true}
-                onChange={(event) => update({ archived: event.target.checked || undefined })}
-              />
-              {t(
+            <Checkbox
+              id="item-archived"
+              label={t(
                 "Vyřazená položka (do nových nabídek se nenabízí)",
                 "Retired item (not offered for new quotes)",
               )}
-            </label>
+              checked={form.archived === true}
+              onChange={(event) => update({ archived: event.target.checked || undefined })}
+            />
           </article>
           <div className="form-actions">
-            <button className="button button-primary" type="submit" disabled={busy || invalid}>
+            <Button variant="primary" type="submit" disabled={busy || invalid}>
               {stored
                 ? t("Uložit do konceptu", "Save to the draft")
                 : t("Založit položku", "Create the item")}
-            </button>
+            </Button>
           </div>
         </form>
 
         {stored ? (
           <aside className="aside">
-            <article className="panel">
+            <article className="ds-card">
               <h2>{t("Historie cen", "Price history")}</h2>
               {history.length === 0 ? (
                 <p className="muted">
@@ -353,11 +352,11 @@ export function ItemPage({
                         <strong>
                           {t("od", "from")} {f.date(change.valid_from)}
                         </strong>
-                        <span className="chip">
+                        <Tag>
                           {change.source === "import"
                             ? t("import", "import")
                             : t("ručně", "by hand")}
-                        </span>
+                        </Tag>
                       </div>
                       <div>
                         {t("Prodej", "Sale")} {money(change.sale_price_before)} →{" "}
