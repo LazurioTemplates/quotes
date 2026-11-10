@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 (proposed)
+## 0.1.0 — 2026-11-09
 
 The first release of Quotes, a template of the Lazurio Marketplace. The App
 is generation `app/v3` on the stack profile `app-data@2026.11`; it was born

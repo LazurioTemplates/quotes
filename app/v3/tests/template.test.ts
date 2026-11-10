@@ -132,8 +132,8 @@ describe("module contract", () => {
 });
 
 describe.skipIf(!TEMPLATE)("template contract (skipped in an adopted Module)", () => {
-  test("the first release is proposed and the template pins the public design system", () => {
-    expect(read("CHANGELOG.md")).toContain("## 0.1.0 (proposed)");
+  test("the first release is proposed or dated, and the template pins the public design system", () => {
+    expect(read("CHANGELOG.md")).toMatch(/^## 0\.1\.0 (\(proposed\)|— \d{4}-\d{2}-\d{2})$/m);
     expect(packageJson.dependencies["design-system"]).toBe(
       "github:LazurioTemplates/design-system#v2.0.0",
     );
