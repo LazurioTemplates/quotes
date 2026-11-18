@@ -12,6 +12,9 @@ Standard `MS-19`), on the stack profile `app-data@2026.12`.
   quote and no draft action; a record's form shows its fields disabled. Its
   WebMCP tools only read. A refused change and a missing application role are
   explained in Czech and English.
+- An import of several items is all or nothing: if writing fails midway, the
+  items already written are taken back, so no half of an import stays in the
+  draft.
 
 ### For whoever runs it
 

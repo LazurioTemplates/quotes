@@ -23,6 +23,7 @@ import {
   recordId,
 } from "../domain/collections.ts";
 import type { Localized } from "../i18n/locale.ts";
+import { restoringOnFailure } from "./draft-restore.ts";
 import { createRecordStore, type Put } from "./record-store.ts";
 import { type Entry, emptySnapshot, parseIn, type Snapshot } from "./records.ts";
 import { quotesReviewAdapter } from "./review-adapter.ts";
@@ -236,27 +237,37 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Quot
         host.run(kind, (db) => {
           const written: string[] = [];
           const gate = assertDataPath(mountRoot, db.config.layout.data);
-          const result = writeRecordDraft(mountRoot, gate, {}, () => {
-            const put: Put = (collection, id, value, baseRevision) => {
-              const path = pathOf(db, collection, id);
-              const file = assertDataPath(mountRoot, path);
-              // The gate is held: the file is the version the checks read.
-              if (recordRevision(file) !== baseRevision) {
-                throw new StoreError("record_changed", {
-                  cs: `${path} se mezitím změnil; nic se neuložilo.`,
-                  en: `${path} changed meanwhile; nothing was saved.`,
+          const result = writeRecordDraft(mountRoot, gate, {}, () =>
+            // All or nothing: a write that fails midway gets the records
+            // already written back before the gate is released.
+            restoringOnFailure((remember) => {
+              const put: Put = (collection, id, value, baseRevision) => {
+                const path = pathOf(db, collection, id);
+                const file = assertDataPath(mountRoot, path);
+                // The gate is held: the file is the version the checks read.
+                if (recordRevision(file) !== baseRevision) {
+                  throw new StoreError("record_changed", {
+                    cs: `${path} se mezitím změnil; nic se neuložilo.`,
+                    en: `${path} changed meanwhile; nothing was saved.`,
+                  });
+                }
+                remember(file);
+                writeYamlFileAtomic(file, {
+                  schemaVersion: collections[collection].schemaVersion,
+                  id,
+                  record: value,
                 });
+                written.push(path);
+                return recordRevision(file) as string;
+              };
+              try {
+                return operation(snapshot(db), put);
+              } catch (error) {
+                written.length = 0;
+                throw error;
               }
-              writeYamlFileAtomic(file, {
-                schemaVersion: collections[collection].schemaVersion,
-                id,
-                record: value,
-              });
-              written.push(path);
-              return recordRevision(file) as string;
-            };
-            return operation(snapshot(db), put);
-          });
+            }),
+          );
           if (written.length > 0) db.recordOrigin(written, { kind: "app", source: SOURCE });
           return result;
         }),
