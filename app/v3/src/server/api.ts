@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { type Channel, withOrigin } from "../data/origin.ts";
+import { channelOf, withOrigin } from "../data/origin.ts";
 import { issuesOf } from "../data/records.ts";
 import { type QuotesStore, readOnly, StoreError } from "../data/store.ts";
 import { category, item } from "../domain/catalog.ts";
@@ -420,11 +420,9 @@ export function createApi(store: QuotesStore, options: ApiOptions) {
       // Who made the change and by which channel (Module Standard, One data
       // port): the import, a page tool that says so, or the interface. The
       // page's statement is the App's, not a proof.
-      const channel: Channel = url.pathname.startsWith("/api/import/")
+      const channel = url.pathname.startsWith("/api/import/")
         ? "import"
-        : req.headers.get(CHANNEL_HEADER) === "webmcp"
-          ? "webmcp"
-          : "ui";
+        : channelOf(req.headers.get(CHANNEL_HEADER));
       return await withOrigin({ subject: access.subject ?? null, channel }, () =>
         route(req, url, locale, access.mayWrite, access.mayWrite ? writing : reading),
       );

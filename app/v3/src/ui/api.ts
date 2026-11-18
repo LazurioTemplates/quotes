@@ -116,9 +116,9 @@ async function send<T>(
   path: string,
   init?: { method: string; body: unknown },
 ): Promise<T> {
-  // A page tool says so, so the server records its change as WebMCP.
-  const said: Record<string, string> =
-    channel === "webmcp" ? { "x-lazurio-channel": "webmcp" } : {};
+  // The page states its channel, so the server records the change as the
+  // interface's or the page tools'.
+  const said: Record<string, string> = { "x-lazurio-channel": channel };
   const response = await fetch(
     path,
     init

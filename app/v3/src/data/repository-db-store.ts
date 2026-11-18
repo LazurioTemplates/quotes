@@ -41,13 +41,10 @@ function attribution(): {
   actor?: string;
 } {
   const origin = currentOrigin();
-  // Where nobody stated the origin, it is unknown: no channel, no person.
-  if (origin === null) return { kind: "unknown", source: SOURCE };
-  return {
-    kind: originKind(origin.channel),
-    source: `${SOURCE}/${origin.channel}`,
-    ...(origin.subject ? { actor: origin.subject } : {}),
-  };
+  const actor = origin?.subject ? { actor: origin.subject } : {};
+  // A channel nobody stated is unknown, never guessed; the person stays.
+  if (!origin?.channel) return { kind: "unknown", source: SOURCE, ...actor };
+  return { kind: originKind(origin.channel), source: `${SOURCE}/${origin.channel}`, ...actor };
 }
 
 export interface RepositoryDbStoreOptions {

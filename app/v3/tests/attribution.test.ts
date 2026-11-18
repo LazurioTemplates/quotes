@@ -30,7 +30,8 @@ function setup(subject: string | null) {
     method: string,
     path: string,
     body: unknown,
-    headers: Record<string, string> = {},
+    // The interface states its channel unless a test says otherwise.
+    headers: Record<string, string> = { [CHANNEL_HEADER]: "ui" },
   ) =>
     handle(
       new Request(`${TEST_ORIGIN}${path}`, {
@@ -141,6 +142,21 @@ describe("author and channel", () => {
       const saved = (await response.json()) as { value: { id: string } };
       expect(await store.getCustomer(saved.value.id)).not.toBeNull();
       expect(existsSync(join(fixture.mountRoot, "data/customers"))).toBe(true);
+    } finally {
+      store.close();
+      fixture.cleanup();
+    }
+  });
+
+  test("a request that states no channel is unknown, with the gateway's person", async () => {
+    const { fixture, store, call, origins } = setup("subject-4");
+    try {
+      expect(
+        (await call("POST", "/api/customers", { record: { name: "Zeta s.r.o." } }, {})).status,
+      ).toBe(201);
+      expect(await origins()).toEqual([
+        expect.objectContaining({ kind: "unknown", actor: "subject-4", source: "quotes-v3" }),
+      ]);
     } finally {
       store.close();
       fixture.cleanup();
