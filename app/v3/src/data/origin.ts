@@ -3,7 +3,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 /**
  * Where a change came from (Module Standard, One data port: author and
  * channel): the interface, `/mcp`, the page's tools, an import, or the
- * command line agents use (`cli`, beyond the Standard's four).
+ * App's command line agents use (`cli`, Lazurio/LazurioPlatform#1083).
  */
 export type Channel = "ui" | "mcp" | "webmcp" | "import" | "cli";
 
