@@ -26,15 +26,27 @@ function withApi<T>(run: () => Promise<T>): Promise<T> {
 }
 
 const call = async (name: string, input: Record<string, unknown>) => {
-  const tool = quoteTools(api, "cs").find((entry) => entry.name === name);
+  const tool = quoteTools(api, "cs", { canWrite: true }).find((entry) => entry.name === name);
   if (!tool) throw new Error(`no tool ${name}`);
   const result = await tool.execute(input);
   return JSON.parse(result.content[0]?.text ?? "null");
 };
 
 describe("WebMCP tools", () => {
+  test("a copy that may not write offers only the reading tools", () => {
+    const tools = quoteTools(api, "en", { canWrite: false });
+    expect(tools.map((tool) => tool.name)).toEqual([
+      "find_items",
+      "find_customers",
+      "find_quotes",
+      "open_quote",
+      "check_quote",
+      "prepare_quote_email",
+    ]);
+  });
+
   test("name the main actions, each with an input schema, in both languages", () => {
-    const tools = quoteTools(api, "en");
+    const tools = quoteTools(api, "en", { canWrite: true });
     expect(tools.map((tool) => tool.name)).toEqual([
       "find_items",
       "find_customers",
@@ -50,7 +62,7 @@ describe("WebMCP tools", () => {
       expect(tool.inputSchema.type).toBe("object");
       expect(tool.description).not.toMatch(/[ěščřžýáíéůú]/);
     }
-    expect(quoteTools(api, "cs")[0]?.description).toContain("Najde položky");
+    expect(quoteTools(api, "cs", { canWrite: true })[0]?.description).toContain("Najde položky");
     expect(tools.map((tool) => tool.name).join(" ")).not.toMatch(/publish|send|delete/);
   });
 
@@ -81,9 +93,9 @@ describe("WebMCP tools", () => {
         modelContext: { registerTool: (tool: { name: string }) => registered.push(tool.name) },
       },
     };
-    const stop = registerTools(quoteTools(api, "cs"), host);
+    const stop = registerTools(quoteTools(api, "cs", { canWrite: true }), host);
     expect(registered).toHaveLength(8);
     stop();
-    expect(registerTools(quoteTools(api, "cs"), {})).toBeFunction();
+    expect(registerTools(quoteTools(api, "cs", { canWrite: true }), {})).toBeFunction();
   });
 });

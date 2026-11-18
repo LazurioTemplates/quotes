@@ -9,6 +9,7 @@ import { Button } from "design-system/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Locale } from "../../i18n/locale.ts";
 import { useLocale, useT } from "../i18n.tsx";
+import { useCanWrite } from "../write.tsx";
 
 /**
  * The Draft & Publish card, derived by the engine (`deriveDraftPanel`, as
@@ -162,6 +163,7 @@ function RecordRow({
 }) {
   const locale = useLocale();
   const w = words(locale);
+  const canWrite = useCanWrite();
   const [showTechnical, setShowTechnical] = useState(false);
   return (
     <li className={`rdb-draft-record rdb-draft-origin-${record.originKind}`}>
@@ -194,7 +196,7 @@ function RecordRow({
             {record.openLabel}
           </Button>
         ) : null}
-        {record.revertSupported ? (
+        {!canWrite ? null : record.revertSupported ? (
           <Button variant="secondary" size="sm" disabled={busy} onClick={() => onRevert(record)}>
             {w.revert}
           </Button>
@@ -222,6 +224,7 @@ export function DraftCard({
   const locale = useLocale();
   const t = useT();
   const w = words(locale);
+  const canWrite = useCanWrite();
   const [input, setInput] = useState<DraftPanelInput | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ text: string; tone: "info" | "error" } | null>(null);
@@ -341,7 +344,7 @@ export function DraftCard({
           </ul>
         ) : null}
         <div className="rdb-draft-actions">
-          {model.actions.map((action) => (
+          {(canWrite ? model.actions : []).map((action) => (
             <span key={action.kind} className="rdb-draft-action">
               <Button
                 variant={

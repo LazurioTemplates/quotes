@@ -9,6 +9,7 @@ import { api } from "../api.ts";
 import { ErrorNotice, Field, fieldErrors, PageHeader, StatusChip } from "../components/common.tsx";
 import { useFormat, useT } from "../i18n.tsx";
 import { href, navigate } from "../routes.ts";
+import { useCanWrite } from "../write.tsx";
 
 const FIELDS: { key: keyof Omit<Customer, "id">; label: Localized; hint?: Localized }[] = [
   { key: "name", label: { cs: "Název nebo jméno", en: "Name" } },
@@ -37,6 +38,7 @@ export function CustomerPage({
   onChanged: () => Promise<void>;
 }) {
   const t = useT();
+  const canWrite = useCanWrite();
   const f = useFormat();
   const stored = id ? data.customers.find((entry) => entry.value.id === id) : undefined;
   const [form, setForm] = useState<Partial<Customer>>(() =>
@@ -86,7 +88,7 @@ export function CustomerPage({
         }
         title={stored ? stored.value.name : t("Nový zákazník", "New customer")}
         actions={
-          stored ? (
+          stored && canWrite ? (
             <Button variant="primary" href={href({ page: "new-quote" })}>
               {t("Nová nabídka", "New quote")}
             </Button>
@@ -95,48 +97,52 @@ export function CustomerPage({
       />
       <div className="detail-grid">
         <form className="form" onSubmit={save}>
-          <ErrorNotice error={error} />
-          <article className="ds-card">
-            <div className="form-grid">
-              {FIELDS.map((field) => (
+          <fieldset className="form-fieldset" disabled={!canWrite}>
+            <ErrorNotice error={error} />
+            <article className="ds-card">
+              <div className="form-grid">
+                {FIELDS.map((field) => (
+                  <Field
+                    key={field.key}
+                    label={t.of(field.label)}
+                    hint={field.hint ? t.of(field.hint) : undefined}
+                    error={errors[field.key]}
+                    wide={field.key === "name"}
+                  >
+                    <input
+                      value={form[field.key] ?? ""}
+                      required={field.key === "name"}
+                      type={field.key === "email" ? "email" : "text"}
+                      onChange={(event) => setForm({ ...form, [field.key]: event.target.value })}
+                    />
+                  </Field>
+                ))}
                 <Field
-                  key={field.key}
-                  label={t.of(field.label)}
-                  hint={field.hint ? t.of(field.hint) : undefined}
-                  error={errors[field.key]}
-                  wide={field.key === "name"}
+                  label={t("Poznámka", "Note")}
+                  hint={t(
+                    "Jen pro vás; do nabídky se nekopíruje.",
+                    "For you only; never copied into a quote.",
+                  )}
+                  wide
                 >
-                  <input
-                    value={form[field.key] ?? ""}
-                    required={field.key === "name"}
-                    type={field.key === "email" ? "email" : "text"}
-                    onChange={(event) => setForm({ ...form, [field.key]: event.target.value })}
+                  <textarea
+                    rows={2}
+                    value={form.note ?? ""}
+                    onChange={(event) => setForm({ ...form, note: event.target.value })}
                   />
                 </Field>
-              ))}
-              <Field
-                label={t("Poznámka", "Note")}
-                hint={t(
-                  "Jen pro vás; do nabídky se nekopíruje.",
-                  "For you only; never copied into a quote.",
-                )}
-                wide
-              >
-                <textarea
-                  rows={2}
-                  value={form.note ?? ""}
-                  onChange={(event) => setForm({ ...form, note: event.target.value })}
-                />
-              </Field>
-            </div>
-          </article>
-          <div className="form-actions">
-            <Button variant="primary" type="submit" disabled={busy || !form.name?.trim()}>
-              {stored
-                ? t("Uložit do konceptu", "Save to the draft")
-                : t("Založit zákazníka", "Create the customer")}
-            </Button>
-          </div>
+              </div>
+            </article>
+            {canWrite ? (
+              <div className="form-actions">
+                <Button variant="primary" type="submit" disabled={busy || !form.name?.trim()}>
+                  {stored
+                    ? t("Uložit do konceptu", "Save to the draft")
+                    : t("Založit zákazníka", "Create the customer")}
+                </Button>
+              </div>
+            ) : null}
+          </fieldset>
         </form>
         {stored ? (
           <aside className="aside">

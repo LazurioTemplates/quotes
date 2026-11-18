@@ -21,6 +21,7 @@ import { QuoteEditPage } from "./pages/QuoteEditPage.tsx";
 import { QuoteListPage } from "./pages/QuoteListPage.tsx";
 import { SettingsPage } from "./pages/SettingsPage.tsx";
 import { parseRoute, type Route } from "./routes.ts";
+import { useCanWrite } from "./write.tsx";
 
 /** Everything the pages read, loaded once and again whenever the data moves. */
 export interface AppData {
@@ -119,6 +120,15 @@ function Page({
   onChanged: () => Promise<void>;
 }) {
   const t = useT();
+  const canWrite = useCanWrite();
+  // A copy that may not write opens no form that only creates or edits; the
+  // notice above says why. A quote opens as its detail.
+  if (!canWrite) {
+    if (route.page === "edit-quote")
+      return <QuoteDetailPage key={route.id} data={data} id={route.id} onChanged={onChanged} />;
+    if (["new-quote", "new-item", "new-customer", "import"].includes(route.page))
+      return <OverviewPage data={data} />;
+  }
   switch (route.page) {
     case "overview":
       return <OverviewPage data={data} />;

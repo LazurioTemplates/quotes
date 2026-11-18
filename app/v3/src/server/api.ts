@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { issuesOf } from "../data/records.ts";
-import { type QuotesStore, StoreError } from "../data/store.ts";
+import { type QuotesStore, readOnly, StoreError } from "../data/store.ts";
 import { category, item } from "../domain/catalog.ts";
 import { isoDate } from "../domain/common.ts";
 import { customer } from "../domain/customer.ts";
@@ -165,10 +165,12 @@ function writeRefusal(
 }
 
 export function createApi(store: QuotesStore, options: ApiOptions) {
-  const service: QuotesService = createService(
-    store,
-    options.today ? { today: options.today } : {},
-  );
+  const serviceOver = (port: QuotesStore): QuotesService =>
+    createService(port, options.today ? { today: options.today } : {});
+  // A request that may not write gets the store as a read-only view, and the
+  // service over it, so a change is refused at the port too.
+  const writing = { store, service: serviceOver(store) };
+  const reading = { store: readOnly(store), service: serviceOver(readOnly(store)) };
 
   function events(req: Request): Response {
     let stop = () => {};
@@ -206,12 +208,22 @@ export function createApi(store: QuotesStore, options: ApiOptions) {
     return match?.[1] ? decodeURIComponent(match[1]) : null;
   };
 
-  async function route(req: Request, url: URL, locale: Locale): Promise<Response> {
+  async function route(
+    req: Request,
+    url: URL,
+    locale: Locale,
+    mayWrite: boolean,
+    port: { store: QuotesStore; service: QuotesService },
+  ): Promise<Response> {
+    // The store and the service as this request may use them.
+    const { store, service } = port;
     const { pathname } = url;
     const method = req.method;
     const get = method === "GET";
 
-    if (pathname === "/api/status" && get) return json(await store.available());
+    // The one writer rule for this request (Module Standard): the page
+    // offers changes only while `mayWrite` is true.
+    if (pathname === "/api/status" && get) return json({ ...(await store.available()), mayWrite });
     if (pathname === "/api/settings" && get) return json(await store.settings());
     if (pathname === "/api/settings" && method === "PUT") {
       const input = await body(req, save(settings));
@@ -401,7 +413,7 @@ export function createApi(store: QuotesStore, options: ApiOptions) {
         409,
       );
     try {
-      return await route(req, url, locale);
+      return await route(req, url, locale, access.mayWrite, access.mayWrite ? writing : reading);
     } catch (error) {
       return errorResponse(error, locale);
     }

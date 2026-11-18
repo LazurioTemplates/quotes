@@ -98,6 +98,14 @@ const MESSAGES: Record<string, Localized> = {
     cs: "Změnu lze poslat jen z aplikace Cenové nabídky.",
     en: "A change is accepted only from the Quotes App.",
   },
+  data_read_only: {
+    cs: "Tato kopie Cenových nabídek je teď jen ke čtení, změna se neuložila.",
+    en: "This copy of Quotes is read-only now; the change was not saved.",
+  },
+  forbidden: {
+    cs: "V Cenových nabídkách nemáte roli. O přístup požádejte Admina Organizace.",
+    en: "You have no role in Quotes. Ask the Organization Admin for access.",
+  },
 };
 
 async function request<T>(path: string, init?: { method: string; body: unknown }): Promise<T> {
@@ -136,7 +144,9 @@ export interface ImportRequest {
 }
 
 export const api = {
-  status: () => request<{ ok: boolean; code?: string; message?: string }>("/api/status"),
+  /** Whether the data are open, and whether this copy lets the person change them now. */
+  status: () =>
+    request<{ ok: boolean; code?: string; message?: string; mayWrite?: boolean }>("/api/status"),
   settings: () => request<Stored<Settings>>("/api/settings"),
   saveSettings: (record: Settings, baseRevision: string) =>
     put<Stored<Settings>>("/api/settings", { record, baseRevision }),

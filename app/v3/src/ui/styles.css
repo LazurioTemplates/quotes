@@ -782,3 +782,12 @@ h3 {
     font-size: var(--ds-type-title-size);
   }
 }
+
+/* A form on a copy that may not write: its fields show the record, disabled. */
+.form-fieldset {
+  display: contents;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}

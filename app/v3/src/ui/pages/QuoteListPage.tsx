@@ -13,6 +13,7 @@ import type { AppData } from "../App.tsx";
 import { PageHeader, StatusChip } from "../components/common.tsx";
 import { useFormat, useT } from "../i18n.tsx";
 import { href } from "../routes.ts";
+import { useCanWrite } from "../write.tsx";
 
 export function QuoteListPage({
   data,
@@ -24,6 +25,7 @@ export function QuoteListPage({
   today?: string;
 }) {
   const t = useT();
+  const canWrite = useCanWrite();
   const f = useFormat();
   const settings = data.settings.value;
   const latest = latestVersions(data.quotes.map((entry) => entry.value));
@@ -38,9 +40,11 @@ export function QuoteListPage({
           "The latest version of every quote. Older versions are in the quote's detail.",
         )}
         actions={
-          <Button variant="primary" href={href({ page: "new-quote" })}>
-            {t("Nová nabídka", "New quote")}
-          </Button>
+          canWrite ? (
+            <Button variant="primary" href={href({ page: "new-quote" })}>
+              {t("Nová nabídka", "New quote")}
+            </Button>
+          ) : null
         }
       />
       <nav className="filters" aria-label={t("Stav nabídky", "State of the quote")}>

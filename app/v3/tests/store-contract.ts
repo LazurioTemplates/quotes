@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { catalogRevisions, type QuotesStore } from "../src/data/store.ts";
+import { type CHANGES, catalogRevisions, type QuotesStore, readOnly } from "../src/data/store.ts";
 import { withPrice } from "../src/domain/catalog.ts";
 import { newItem, newQuote } from "./support/seed.ts";
 
@@ -35,6 +35,35 @@ export function storeContract(
       }
       throw new Error("expected a refusal");
     };
+
+    test("a read-only view refuses every change and changes nothing", async () => {
+      const view = readOnly(store);
+      const state = async () => ({
+        settings: await store.settings(),
+        categories: await store.listCategories(),
+        items: await store.listItems(),
+        customers: await store.listCustomers(),
+        quotes: await store.listQuotes(),
+        draft: (await store.draft()).records?.length ?? 0,
+      });
+      const before = await state();
+      const attempts: Record<keyof typeof CHANGES, () => Promise<unknown>> = {
+        saveSettings: () => view.saveSettings(before.settings.value, before.settings.revision),
+        saveCategory: () => view.saveCategory({ id: "nova", name: "Nová" } as never, null),
+        saveItem: () => view.saveItem(newItem(), null),
+        saveItems: () => (view.saveItems as (...args: unknown[]) => Promise<unknown>)([]),
+        saveCustomer: () => view.saveCustomer({} as never, null),
+        saveQuote: () => view.saveQuote(newQuote(), null),
+        publish: () => view.publish({ expectedRevision: "r" }),
+        finishSend: () => view.finishSend("h"),
+        discard: () => view.discard({ kind: "draft" }, "r"),
+        pull: () => view.pull(),
+      };
+      for (const attempt of Object.values(attempts))
+        expect(await refusal(attempt)).toBe("data_read_only");
+      expect(await view.listQuotes()).toEqual(before.quotes);
+      expect(await state()).toEqual(before);
+    });
 
     test("reads the settings, categories, items, customers and quotes in order", async () => {
       expect(await store.available()).toEqual({ ok: true });

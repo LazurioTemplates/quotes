@@ -18,6 +18,7 @@ import { ErrorNotice, PageHeader, StatusChip } from "../components/common.tsx";
 import { Totals } from "../components/Totals.tsx";
 import { useFormat, useLocale, useT } from "../i18n.tsx";
 import { href, navigate } from "../routes.ts";
+import { useCanWrite } from "../write.tsx";
 
 export function QuoteDetailPage({
   data,
@@ -31,6 +32,7 @@ export function QuoteDetailPage({
   today?: string;
 }) {
   const t = useT();
+  const canWrite = useCanWrite();
   const locale = useLocale();
   const f = useFormat();
   const [busy, setBusy] = useState(false);
@@ -112,12 +114,12 @@ export function QuoteDetailPage({
             <Button variant="secondary" href={printUrl(id)} icon="page">
               {t("Tisk a PDF", "Print and PDF")}
             </Button>
-            {quote.status === "draft" ? (
+            {canWrite && quote.status === "draft" ? (
               <Button variant="primary" href={href({ page: "edit-quote", id })}>
                 {t("Upravit", "Edit")}
               </Button>
             ) : null}
-            {isLatest && canCreateVersion(quote) ? (
+            {canWrite && isLatest && canCreateVersion(quote) ? (
               <Button
                 variant="secondary"
                 type="button"
@@ -267,7 +269,7 @@ export function QuoteDetailPage({
         </div>
 
         <aside className="aside">
-          {actions.length > 0 ? (
+          {canWrite && actions.length > 0 ? (
             <article className="ds-card">
               <h2>{t("Stav nabídky", "State of the quote")}</h2>
               <div className="stack">

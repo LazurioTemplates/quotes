@@ -75,6 +75,67 @@ describe("the Application's writer rule", () => {
   });
 });
 
+describe("the page learns the writer rule from /api/status", () => {
+  const mayWrite = async (env: Env, caller: GatewayCaller) => {
+    const response = await api(env)(gatewayRequest("/api/status", { caller }));
+    expect(response.status).toBe(200);
+    return (await response.json()).mayWrite as boolean;
+  };
+
+  for (const role of ["admin", "user"] as const) {
+    test(`an Application ${role} may write with the writer`, async () => {
+      expect(await mayWrite(hosted(true), { role })).toBe(true);
+    });
+    test(`an Application ${role} may not write without it`, async () => {
+      expect(await mayWrite(hosted(false), { role })).toBe(false);
+    });
+  }
+
+  test("without the variable, the Environment's own entry may write and the application may not", async () => {
+    const env = { ...hosted(), LAZURIO_RUNTIME_DATA_WRITER: undefined };
+    expect(await mayWrite(env, { role: "environment" })).toBe(true);
+    expect(await mayWrite(env, { role: "admin" })).toBe(false);
+  });
+
+  test("a request without a role learns nothing", async () => {
+    const response = await api(hosted(true))(
+      gatewayRequest("/api/status", { caller: { role: "none" } }),
+    );
+    expect(response.status).toBe(403);
+  });
+});
+
+describe("a runtime stating production never writes without the writer", () => {
+  const production = {
+    ...hosted(),
+    LAZURIO_RUNTIME_DATA_WRITER: undefined,
+    LAZURIO_RUNTIME_DEPLOYMENT: "production",
+  };
+
+  test("the Environment's own entry is refused, and the status offers no writing", async () => {
+    const response = await api(production)(roadmapChange({ role: "environment" }));
+    expect(response.status).toBe(409);
+    expect((await response.json()).code).toBe("data_read_only");
+    const status = await api(production)(
+      gatewayRequest("/api/status", { caller: { role: "environment" } }),
+    );
+    expect((await status.json()).mayWrite).toBe(false);
+  });
+
+  test("a local entry is refused too", async () => {
+    const env = { ...localEnvironment(), LAZURIO_RUNTIME_DEPLOYMENT: "production" };
+    const request = new Request("http://127.0.0.1:43100/api/draft/pull", {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: TEST_ORIGIN },
+      body: "{}",
+    });
+    expect(accessOf(request, env)).toEqual({ admitted: true, mayWrite: false });
+    const response = await api(env)(request);
+    expect(response.status).toBe(409);
+    expect((await response.json()).code).toBe("data_read_only");
+  });
+});
+
 describe("who came", () => {
   test("a request through the gateway without a role gets nothing", async () => {
     const read = await api(hosted(true))(

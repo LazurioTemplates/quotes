@@ -40,7 +40,10 @@ const text = (value: unknown) => ({
 
 const string = (description: string) => ({ type: "string", description });
 
-export function quoteTools(client: Client, locale: Locale): Tool[] {
+/** The tools that change data; a copy that may not write does not offer them. */
+export const WRITE_TOOLS = new Set(["create_quote_draft", "preview_price_list_import"]);
+
+export function quoteTools(client: Client, locale: Locale, options: { canWrite: boolean }): Tool[] {
   const t = (cs: string, en: string) => pick(locale, cs, en);
   /** A refusal is an answer with its reason, never a thrown page error. */
   const answer = async (operation: () => Promise<unknown>) => {
@@ -58,7 +61,7 @@ export function quoteTools(client: Client, locale: Locale): Tool[] {
       .toLowerCase()
       .split(/\s+/)
       .filter(Boolean);
-  return [
+  const tools: Tool[] = [
     {
       name: "find_items",
       description: t(
@@ -224,6 +227,7 @@ export function quoteTools(client: Client, locale: Locale): Tool[] {
         ),
     },
   ];
+  return options.canWrite ? tools : tools.filter((tool) => !WRITE_TOOLS.has(tool.name));
 }
 
 interface ModelContext {
