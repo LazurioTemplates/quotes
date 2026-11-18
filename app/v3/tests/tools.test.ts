@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { createMemoryStore } from "../src/data/memory-store.ts";
 import { createApi } from "../src/server/api.ts";
 import { api, setApiLocale } from "../src/ui/api.ts";
-import { quoteTools, registerTools } from "../src/ui/tools.ts";
+import { quoteTools, registerTools, type Tool } from "../src/ui/tools.ts";
 import { sampleData } from "./support/seed.ts";
 
 const ORIGIN = "http://127.0.0.1:24928";
@@ -83,6 +83,83 @@ describe("WebMCP tools", () => {
       expect(email.print).toBe("/print/quotes/NAB-2026-0002-v2?lang=cs");
       const refused = await call("open_quote", { id: "NAB-9999-v1" });
       expect(refused.refused).toBe("not_found");
+    });
+  });
+
+  describe("registering again as the status changes", () => {
+    const writable = () => quoteTools(api, "cs", { canWrite: true });
+    const readable = () => quoteTools(api, "cs", { canWrite: false });
+    const answer = async (tool: Tool | undefined) =>
+      JSON.parse(
+        (await tool?.execute({ customer_id: "C-0001", title: "X" }))?.content[0]?.text ?? "null",
+      );
+
+    test("a browser that only registers never sees a name twice, and a stale write tool refuses", async () => {
+      const held = new Map<string, Tool>();
+      const context = {
+        registerTool: (tool: Tool) => {
+          if (held.has(tool.name)) throw new Error("InvalidStateError: Duplicate tool name");
+          held.set(tool.name, tool);
+        },
+      };
+      const host = { document: { modelContext: context } };
+      const stop = registerTools(writable(), host);
+      stop(); // React running the effect twice
+      const again = registerTools(writable(), host);
+      again();
+      registerTools(readable(), host);
+      expect(held.size).toBe(8);
+      expect((await answer(held.get("create_quote_draft"))).refused).toBe("data_read_only");
+      expect((await answer(held.get("find_customers")))?.refused).not.toBe("data_read_only");
+    });
+
+    test("a browser that unregisters drops the write tools on a read-only copy", () => {
+      const held = new Set<string>();
+      const context = {
+        registerTool: (tool: Tool) => {
+          if (held.has(tool.name)) throw new Error("InvalidStateError: Duplicate tool name");
+          held.add(tool.name);
+        },
+        unregisterTool: (name: string) => held.delete(name),
+      };
+      const host = { navigator: { modelContext: context } };
+      registerTools(writable(), host)();
+      registerTools(readable(), host);
+      expect([...held].sort()).toEqual(
+        readable()
+          .map((tool) => tool.name)
+          .sort(),
+      );
+    });
+
+    test("a registration that unregisters itself is used", () => {
+      const held = new Set<string>();
+      const context = {
+        registerTool: (tool: Tool) => {
+          if (held.has(tool.name)) throw new Error("InvalidStateError: Duplicate tool name");
+          held.add(tool.name);
+          return { unregister: () => held.delete(tool.name) };
+        },
+      };
+      const host = { navigator: { modelContext: context } };
+      registerTools(writable(), host);
+      registerTools(readable(), host);
+      expect(held.has("create_quote_draft")).toBe(false);
+      expect(held.has("find_quotes")).toBe(true);
+    });
+
+    test("a browser with only provideContext gets the whole set replaced", () => {
+      const sets: string[][] = [];
+      const host = {
+        navigator: {
+          modelContext: {
+            provideContext: (c: { tools: Tool[] }) => sets.push(c.tools.map((t) => t.name)),
+          },
+        },
+      };
+      registerTools(writable(), host);
+      registerTools(readable(), host);
+      expect(sets.at(-1)).toEqual(readable().map((tool) => tool.name));
     });
   });
 

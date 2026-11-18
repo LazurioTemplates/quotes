@@ -1,5 +1,5 @@
 import { describe, expect, setDefaultTimeout, test } from "bun:test";
-import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { toStableYaml } from "@lazurio/repository-db";
 import { createRepositoryDbStore } from "../src/data/repository-db-store.ts";
@@ -242,6 +242,70 @@ describe("repository-db store", () => {
       expect(events).toEqual([]);
       await edit("First edit");
       await edit("Second edit");
+    } finally {
+      stop();
+      store.close();
+      fixture.cleanup();
+    }
+  });
+
+  test("an open read-only page hears when its data become available", async () => {
+    const fixture = createFixtureRepo();
+    // The page opens before the host has mounted the data checkout.
+    renameSync(fixture.mountRoot, `${fixture.mountRoot}.later`);
+    const store = createRepositoryDbStore({
+      mountRoot: fixture.mountRoot,
+      expect: { remote: fixture.origin, branch: "v3", within: fixture.moduleRoot },
+      intervalMs: 20,
+      writes: false,
+    });
+    const events: string[] = [];
+    const stop = store.subscribe((event) => events.push(event.type));
+    try {
+      await Bun.sleep(60);
+      expect(events).toEqual([]);
+      expect((await store.available()).ok).toBe(false);
+      renameSync(`${fixture.mountRoot}.later`, fixture.mountRoot);
+      for (let waited = 0; !events.includes("records-changed") && waited < 3000; waited += 20)
+        await Bun.sleep(20);
+      expect(events).toContain("records-changed");
+      expect(events).toContain("draft-changed");
+      expect((await store.available()).ok).toBe(true);
+      expect((await store.listCustomers()).length).toBeGreaterThan(0);
+    } finally {
+      stop();
+      store.close();
+      fixture.cleanup();
+    }
+  });
+
+  test("an open read-only page hears a fetched newer state it does not pull", async () => {
+    const fixture = createFixtureRepo();
+    const store = createRepositoryDbStore({
+      mountRoot: fixture.mountRoot,
+      expect: { remote: fixture.origin, branch: "v3", within: fixture.moduleRoot },
+      intervalMs: 20,
+      writes: false,
+    });
+    const events: string[] = [];
+    const stop = store.subscribe((event) => events.push(event.type));
+    try {
+      await Bun.sleep(60);
+      expect(events).toEqual([]);
+      expect((await store.draft()).status?.state).toBe("published");
+      const colleague = colleagueClone(fixture);
+      writeFileSync(join(colleague, "colleague.txt"), "newer work\n");
+      git(colleague, ["add", "colleague.txt"]);
+      git(colleague, ["commit", "--quiet", "--message", "A colleague's newer work"]);
+      git(colleague, ["push", "--quiet"]);
+      const head = git(fixture.mountRoot, ["rev-parse", "HEAD"]);
+      // The host fetches but does not pull yet; the App itself does neither.
+      git(fixture.mountRoot, ["fetch", "--quiet"]);
+      for (let waited = 0; !events.includes("draft-changed") && waited < 3000; waited += 20)
+        await Bun.sleep(20);
+      expect(events).toContain("draft-changed");
+      expect((await store.draft()).status?.state).toBe("pull_needed");
+      expect(git(fixture.mountRoot, ["rev-parse", "HEAD"])).toBe(head);
     } finally {
       stop();
       store.close();
