@@ -7,11 +7,11 @@ import {
   withHealth,
 } from "@lazurio/module-kit";
 import type { QuotesStore } from "../data/store.ts";
+import { accessOf, LISTENER } from "./access.ts";
 import { createApi } from "./api.ts";
 import { createPrintHandler } from "./print.tsx";
 import { clientDirectory, createStaticHandler } from "./static.ts";
 
-const LISTENER = "app";
 export const HEALTH_PATH = "/healthz";
 
 /**
@@ -19,7 +19,14 @@ export const HEALTH_PATH = "/healthz";
  * pages, the health path and the client. Host and port come only from the
  * Lazurio listener (Module Standard); without them the process exits 2.
  */
-export async function serve(createStore: () => QuotesStore, label: string) {
+export async function serve(
+  createStore: () => QuotesStore,
+  label: string,
+  options: {
+    /** Only the demo, whose data live in memory, admits and writes without Lazurio. */
+    access?: (request: Request) => { admitted: boolean; mayWrite: boolean };
+  } = {},
+) {
   let app: Listener;
   try {
     app = listener(LISTENER);
@@ -36,7 +43,8 @@ export async function serve(createStore: () => QuotesStore, label: string) {
     origins.add(`http://${host.includes(":") ? `[${host}]` : host}:${app.port}`);
   }
   if (app.externalOrigin) origins.add(app.externalOrigin);
-  const api = createApi(store, { allowedOrigins: origins });
+  const access = options.access ?? ((request: Request) => accessOf(request));
+  const api = createApi(store, { allowedOrigins: origins, access });
   const print = createPrintHandler(store);
 
   const hostAllowed = (req: Request) => {
@@ -49,24 +57,30 @@ export async function serve(createStore: () => QuotesStore, label: string) {
 
   const production = process.env.NODE_ENV === "production";
   const serveClient = production ? createStaticHandler(clientDirectory()) : null;
-  const handle = withHealth(async (req: Request) => {
-    const url = new URL(req.url);
-    if (url.pathname.startsWith("/api/")) return api(req);
-    if (url.pathname.startsWith("/print/") && req.method === "GET") {
-      try {
-        const page = await print(url.pathname, url.searchParams.get("lang"));
-        if (page) return page;
-      } catch (error) {
-        return new Response(error instanceof Error ? error.message : String(error), {
-          status: 503,
-        });
+  const handle = withHealth(
+    async (req: Request) => {
+      const url = new URL(req.url);
+      if (url.pathname.startsWith("/api/")) return api(req);
+      if (url.pathname.startsWith("/print/") && req.method === "GET") {
+        // A print page shows a quote's data: the same role as the API.
+        if (!access(req).admitted) return new Response("Forbidden", { status: 403 });
+        try {
+          const page = await print(url.pathname, url.searchParams.get("lang"));
+          if (page) return page;
+        } catch (error) {
+          return new Response(error instanceof Error ? error.message : String(error), {
+            status: 503,
+          });
+        }
       }
-    }
-    if (serveClient && (req.method === "GET" || req.method === "HEAD")) {
-      return serveClient(url.pathname);
-    }
-    return new Response("Not found", { status: 404 });
-  }, HEALTH_PATH);
+      if (serveClient && (req.method === "GET" || req.method === "HEAD")) {
+        return serveClient(url.pathname);
+      }
+      return new Response("Not found", { status: 404 });
+    },
+    HEALTH_PATH,
+    async () => (await store.available()).ok,
+  );
   const guarded = (req: Request) =>
     hostAllowed(req) ? handle(req) : new Response("Forbidden host", { status: 403 });
 

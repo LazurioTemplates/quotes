@@ -18,6 +18,8 @@ import { createService, type QuotesService } from "../service/quotes-service.ts"
 export interface ApiOptions {
   /** Origins a writing request may come from (the App's own, loopback and hosted). */
   allowedOrigins: ReadonlySet<string>;
+  /** Who came and whether they may write now; `accessOf` of `access.ts` in the App. */
+  access: (request: Request) => { admitted: boolean; mayWrite: boolean };
   /** Today's date for new records; injectable for tests. */
   today?: () => string;
 }
@@ -378,6 +380,26 @@ export function createApi(store: QuotesStore, options: ApiOptions) {
     const locale = localeOfAcceptLanguage(req.headers.get("accept-language"));
     const refused = writeRefusal(req, options.allowedOrigins, locale);
     if (refused) return refused;
+    // Who came: no application role grants nothing (decision 0231).
+    const access = options.access(req);
+    if (!access.admitted)
+      return refusal(
+        "forbidden",
+        locale === "en"
+          ? "Quotes needs an application role."
+          : "Cenové nabídky potřebují roli v aplikaci.",
+        403,
+      );
+    // One writer: a copy that may not write refuses every change before it
+    // reaches the store, so no draft, publish or pull starts there either.
+    if (WRITE_METHODS.has(req.method) && !access.mayWrite)
+      return refusal(
+        "data_read_only",
+        locale === "en"
+          ? "This copy of Quotes does not change data now; it only reads them."
+          : "Tato kopie Cenových nabídek teď data nemění, jen je čte.",
+        409,
+      );
     try {
       return await route(req, url, locale);
     } catch (error) {

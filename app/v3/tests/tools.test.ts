@@ -11,6 +11,7 @@ const ORIGIN = "http://127.0.0.1:24928";
 function withApi<T>(run: () => Promise<T>): Promise<T> {
   const server = createApi(createMemoryStore(sampleData()), {
     allowedOrigins: new Set([ORIGIN]),
+    access: () => ({ admitted: true, mayWrite: true }),
     today: () => "2026-11-06",
   });
   const original = globalThis.fetch;
