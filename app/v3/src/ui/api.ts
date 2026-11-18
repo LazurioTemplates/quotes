@@ -108,16 +108,26 @@ const MESSAGES: Record<string, Localized> = {
   },
 };
 
-async function request<T>(path: string, init?: { method: string; body: unknown }): Promise<T> {
+/** Who sends a request: the interface (`ui`) or the page's tools (`webmcp`). */
+export type ClientChannel = "ui" | "webmcp";
+
+async function send<T>(
+  channel: ClientChannel,
+  path: string,
+  init?: { method: string; body: unknown },
+): Promise<T> {
+  // A page tool says so, so the server records its change as WebMCP.
+  const said: Record<string, string> =
+    channel === "webmcp" ? { "x-lazurio-channel": "webmcp" } : {};
   const response = await fetch(
     path,
     init
       ? {
           method: init.method,
-          headers: { "content-type": "application/json", "accept-language": locale },
+          headers: { "content-type": "application/json", "accept-language": locale, ...said },
           body: JSON.stringify(init.body),
         }
-      : { headers: { accept: "application/json", "accept-language": locale } },
+      : { headers: { accept: "application/json", "accept-language": locale, ...said } },
   );
   const data = (await response.json().catch(() => null)) as
     | (T & { code?: string; message?: string; issues?: FieldIssue[] })
@@ -133,8 +143,6 @@ async function request<T>(path: string, init?: { method: string; body: unknown }
   return data as T;
 }
 
-const put = <T>(path: string, body: unknown) => request<T>(path, { method: "PUT", body });
-const post = <T>(path: string, body: unknown) => request<T>(path, { method: "POST", body });
 const at = (base: string, id: string) => `${base}/${encodeURIComponent(id)}`;
 
 export interface ImportRequest {
@@ -143,58 +151,71 @@ export interface ImportRequest {
   options: ImportOptions;
 }
 
-export const api = {
-  /** Whether the data are open, and whether this copy lets the person change them now. */
-  status: () =>
-    request<{ ok: boolean; code?: string; message?: string; mayWrite?: boolean }>("/api/status"),
-  settings: () => request<Stored<Settings>>("/api/settings"),
-  saveSettings: (record: Settings, baseRevision: string) =>
-    put<Stored<Settings>>("/api/settings", { record, baseRevision }),
-  categories: () => request<Stored<Category>[]>("/api/categories"),
-  createCategory: (name: string) => post<Stored<Category>>("/api/categories", { name }),
-  saveCategory: (record: Category, baseRevision: string) =>
-    put<Stored<Category>>(at("/api/categories", record.id), { record, baseRevision }),
-  items: () => request<Stored<Item>[]>("/api/items"),
-  createItem: (record: Item) => post<Stored<Item>>("/api/items", { record }),
-  saveItem: (record: Item, baseRevision: string, note?: string) =>
-    put<Stored<Item>>(at("/api/items", record.code), {
-      record,
-      baseRevision,
-      ...(note ? { note } : {}),
-    }),
-  importPreview: (input: ImportRequest) =>
-    post<{ preview: ImportPreview; token: string }>("/api/import/preview", input),
-  /** Saves the chosen rows of exactly the preview `token` names; a stale preview is refused. */
-  importApply: (input: ImportRequest & { token: string; lines: number[] }) =>
-    post<Stored<Item>[]>("/api/import/apply", input),
-  customers: () => request<Stored<Customer>[]>("/api/customers"),
-  createCustomer: (record: Omit<Customer, "id">) =>
-    post<Stored<Customer>>("/api/customers", { record }),
-  saveCustomer: (record: Customer, baseRevision: string) =>
-    put<Stored<Customer>>(at("/api/customers", record.id), { record, baseRevision }),
-  quotes: () => request<Stored<Quote>[]>("/api/quotes"),
-  quote: (id: string) => request<Stored<Quote>>(at("/api/quotes", id)),
-  createQuote: (input: { customer_id: string; title: string }) =>
-    post<Stored<Quote>>("/api/quotes", input),
-  saveQuote: (id: string, record: Quote, baseRevision: string) =>
-    put<Stored<Quote>>(at("/api/quotes", id), { record, baseRevision }),
-  act: (id: string, action: QuoteAction, baseRevision: string) =>
-    post<Stored<Quote>>(`${at("/api/quotes", id)}/action`, { action, baseRevision }),
-  newVersion: (id: string) => post<Stored<Quote>>(`${at("/api/quotes", id)}/version`, {}),
-  checkQuote: (id: string) => request<QuoteIssue[]>(`${at("/api/quotes", id)}/check`),
-  email: (id: string) => request<QuoteEmail>(`${at("/api/quotes", id)}/email`),
-  check: () => request<RuleIssue[]>("/api/check"),
-  draft: () => request<DraftPanelInput>("/api/draft"),
-  publish: (expectedRevision: string) =>
-    post<{ ok: true }>("/api/draft/publish", { expectedRevision }),
-  finishSend: (expectedHead: string) =>
-    post<{ ok: true }>("/api/draft/finish-send", { expectedHead }),
-  discard: (
-    scope: { kind: "draft" } | { kind: "record"; path: string },
-    expectedRevision: string,
-  ) => post<{ ok: true }>("/api/draft/discard", { scope, expectedRevision }),
-  pull: () => post<{ ok: true }>("/api/draft/pull", {}),
-};
+/** The API client for one channel. */
+function makeApi(channel: ClientChannel) {
+  const request = <T>(path: string, init?: { method: string; body: unknown }) =>
+    send<T>(channel, path, init);
+  const put = <T>(path: string, body: unknown) => request<T>(path, { method: "PUT", body });
+  const post = <T>(path: string, body: unknown) => request<T>(path, { method: "POST", body });
+  return {
+    /** Whether the data are open, and whether this copy lets the person change them now. */
+    status: () =>
+      request<{ ok: boolean; code?: string; message?: string; mayWrite?: boolean }>("/api/status"),
+    settings: () => request<Stored<Settings>>("/api/settings"),
+    saveSettings: (record: Settings, baseRevision: string) =>
+      put<Stored<Settings>>("/api/settings", { record, baseRevision }),
+    categories: () => request<Stored<Category>[]>("/api/categories"),
+    createCategory: (name: string) => post<Stored<Category>>("/api/categories", { name }),
+    saveCategory: (record: Category, baseRevision: string) =>
+      put<Stored<Category>>(at("/api/categories", record.id), { record, baseRevision }),
+    items: () => request<Stored<Item>[]>("/api/items"),
+    createItem: (record: Item) => post<Stored<Item>>("/api/items", { record }),
+    saveItem: (record: Item, baseRevision: string, note?: string) =>
+      put<Stored<Item>>(at("/api/items", record.code), {
+        record,
+        baseRevision,
+        ...(note ? { note } : {}),
+      }),
+    importPreview: (input: ImportRequest) =>
+      post<{ preview: ImportPreview; token: string }>("/api/import/preview", input),
+    /** Saves the chosen rows of exactly the preview `token` names; a stale preview is refused. */
+    importApply: (input: ImportRequest & { token: string; lines: number[] }) =>
+      post<Stored<Item>[]>("/api/import/apply", input),
+    customers: () => request<Stored<Customer>[]>("/api/customers"),
+    createCustomer: (record: Omit<Customer, "id">) =>
+      post<Stored<Customer>>("/api/customers", { record }),
+    saveCustomer: (record: Customer, baseRevision: string) =>
+      put<Stored<Customer>>(at("/api/customers", record.id), { record, baseRevision }),
+    quotes: () => request<Stored<Quote>[]>("/api/quotes"),
+    quote: (id: string) => request<Stored<Quote>>(at("/api/quotes", id)),
+    createQuote: (input: { customer_id: string; title: string }) =>
+      post<Stored<Quote>>("/api/quotes", input),
+    saveQuote: (id: string, record: Quote, baseRevision: string) =>
+      put<Stored<Quote>>(at("/api/quotes", id), { record, baseRevision }),
+    act: (id: string, action: QuoteAction, baseRevision: string) =>
+      post<Stored<Quote>>(`${at("/api/quotes", id)}/action`, { action, baseRevision }),
+    newVersion: (id: string) => post<Stored<Quote>>(`${at("/api/quotes", id)}/version`, {}),
+    checkQuote: (id: string) => request<QuoteIssue[]>(`${at("/api/quotes", id)}/check`),
+    email: (id: string) => request<QuoteEmail>(`${at("/api/quotes", id)}/email`),
+    check: () => request<RuleIssue[]>("/api/check"),
+    draft: () => request<DraftPanelInput>("/api/draft"),
+    publish: (expectedRevision: string) =>
+      post<{ ok: true }>("/api/draft/publish", { expectedRevision }),
+    finishSend: (expectedHead: string) =>
+      post<{ ok: true }>("/api/draft/finish-send", { expectedHead }),
+    discard: (
+      scope: { kind: "draft" } | { kind: "record"; path: string },
+      expectedRevision: string,
+    ) => post<{ ok: true }>("/api/draft/discard", { scope, expectedRevision }),
+    pull: () => post<{ ok: true }>("/api/draft/pull", {}),
+  };
+}
+
+/** The interface's client: its changes are recorded with the channel `ui`. */
+export const api = makeApi("ui");
+
+/** The page tools' client: its changes are recorded with the channel `webmcp`. */
+export const webmcpApi = makeApi("webmcp");
 
 /** The print page of a quote version in the interface's language; the browser prints it to PDF. */
 export function printUrl(id: string, language: Locale = locale): string {

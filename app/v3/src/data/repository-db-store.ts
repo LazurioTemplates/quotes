@@ -24,14 +24,25 @@ import {
 } from "../domain/collections.ts";
 import type { Localized } from "../i18n/locale.ts";
 import { restoringOnFailure } from "./draft-restore.ts";
+import { currentOrigin, originKind } from "./origin.ts";
 import { createRecordStore, type Put } from "./record-store.ts";
 import { type Entry, emptySnapshot, parseIn, type Snapshot } from "./records.ts";
 import { quotesReviewAdapter } from "./review-adapter.ts";
 import type { DraftCard, QuotesStore, StoreEvent } from "./store.ts";
 import { readOnly, StoreError } from "./store.ts";
 
-/** `Repository-Db-Source` of every publish from this App. */
+/** This App in `Repository-Db-Source`; the channel follows it (`quotes-v3/ui`). */
 const SOURCE = "quotes-v3";
+
+/** Who made a change and by which channel, as repository-db records it. */
+function attribution() {
+  const origin = currentOrigin();
+  return {
+    kind: originKind(origin.channel),
+    source: `${SOURCE}/${origin.channel}`,
+    ...(origin.subject ? { actor: origin.subject } : {}),
+  };
+}
 
 export interface RepositoryDbStoreOptions {
   /** The data checkout, the Module's `db/`. It may not exist yet. */
@@ -232,8 +243,10 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Quot
     // before it is released. Nothing an engine writer saves can land between
     // a check and a write, also for a save of several records with the
     // revisions of others it depends on (an import).
-    write: (kind, operation) =>
-      engine(() =>
+    write: (kind, operation) => {
+      // The origin of the request, taken before the write waits in the queue.
+      const by = attribution();
+      return engine(() =>
         host.run(kind, (db) => {
           const written: string[] = [];
           const gate = assertDataPath(mountRoot, db.config.layout.data);
@@ -268,10 +281,11 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Quot
               }
             }),
           );
-          if (written.length > 0) db.recordOrigin(written, { kind: "app", source: SOURCE });
+          if (written.length > 0) db.recordOrigin(written, by);
           return result;
         }),
-      ),
+      );
+    },
     async draft(locale): Promise<DraftCard> {
       // The host computes its status in the background; before the first
       // check (or without a timer) it is computed now.
@@ -313,12 +327,16 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Quot
       );
     },
     async publish({ expectedRevision, actor, summary }) {
+      // Who published and by which channel; a caller without a subject leaves
+      // the actor to the engine (the Environment's Git identity).
+      const by = attribution();
+      const publisher = actor ?? by.actor;
       await engine(() =>
         host.run("publish", (db) =>
           db.publish({
             expectedRevision,
-            source: SOURCE,
-            ...(actor ? { actor } : {}),
+            source: by.source,
+            ...(publisher ? { actor: publisher } : {}),
             ...(summary ? { summary } : {}),
           }),
         ),

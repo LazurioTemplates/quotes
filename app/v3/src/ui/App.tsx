@@ -5,7 +5,7 @@ import type { Category, Item } from "../domain/catalog.ts";
 import type { Customer } from "../domain/customer.ts";
 import type { Quote } from "../domain/quote.ts";
 import type { Settings } from "../domain/settings.ts";
-import { ApiError, api, type Stored, subscribe } from "./api.ts";
+import { ApiError, api, type Stored, subscribe, webmcpApi } from "./api.ts";
 import { Layout } from "./components/Layout.tsx";
 import { useLocale, useT } from "./i18n.tsx";
 import { CustomerListPage } from "./pages/CustomerListPage.tsx";
@@ -66,7 +66,7 @@ export function App() {
   // The page's tools follow the same status: reading tools only until it says
   // this copy writes for the visitor.
   useEffect(
-    () => registerTools(quoteTools(api, locale, { canWrite: canWrite === true })),
+    () => registerTools(quoteTools(webmcpApi, locale, { canWrite: canWrite === true })),
     [canWrite, locale],
   );
 

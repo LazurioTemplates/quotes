@@ -18,6 +18,13 @@ Standard `MS-19`), on the stack profile `app-data@2026.12`.
   process midway can leave part of an import in the draft; the draft review
   shows every item, and each can be returned (Lazurio/repository-db#45 for an
   atomic write).
+- Every change records who made it and by which channel (Module Standard, One
+  data port): the person's subject and `ui`, `webmcp` (the page's tools, which
+  say so in the `x-lazurio-channel` header) or `import`. A draft records them
+  through repository-db's `recordOrigin` (an agent's channel as `agent`), a
+  publication as `Repository-Db-Actor` and `Repository-Db-Source:
+  quotes-v3/<channel>`. A caller without a subject (a local entry) records
+  none, and nothing is invented.
 
 ### For whoever runs it
 
