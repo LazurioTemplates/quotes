@@ -7,10 +7,18 @@ import { AsyncLocalStorage } from "node:async_hooks";
  */
 export type Channel = "ui" | "mcp" | "webmcp" | "import" | "cli";
 
+const CHANNELS: readonly Channel[] = ["ui", "mcp", "webmcp", "import", "cli"];
+
+/** The channel a request states in its header; null when it states none it knows. */
+export function channelOf(stated: string | null): Channel | null {
+  return CHANNELS.find((channel) => channel === stated) ?? null;
+}
+
 export interface Origin {
   /** The person's `subject`; null for a caller without one (a local entry, the CLI), never invented. */
   subject: string | null;
-  channel: Channel;
+  /** The channel the caller stated; null when it stated none. */
+  channel: Channel | null;
 }
 
 const ORIGIN = new AsyncLocalStorage<Origin>();
