@@ -2,8 +2,10 @@ import { describe, expect, test } from "bun:test";
 import { mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type Context, parseArgs, run } from "../src/cli/quotes.ts";
+import { type Context, cliOrigin, parseArgs, run } from "../src/cli/quotes.ts";
 import { createMemoryStore } from "../src/data/memory-store.ts";
+import { currentOrigin, type Origin } from "../src/data/origin.ts";
+import type { QuotesStore } from "../src/data/store.ts";
 import type { Locale } from "../src/i18n/locale.ts";
 import { createService } from "../src/service/quotes-service.ts";
 import { sampleData } from "./support/seed.ts";
@@ -164,5 +166,43 @@ describe("the agent's command line", () => {
     const { value, output } = context();
     expect(await run(parseArgs(["nonsense"]), value)).toBe(2);
     expect(output[0]).toContain("Usage: bun run quotes");
+  });
+
+  test("records its changes as the command line, without a person; an import as an import", async () => {
+    const { value } = context();
+    const seen: (Origin | null)[] = [];
+    // Every save the command makes, with the origin it is made under.
+    const store = new Proxy(value.store, {
+      get(target, key, receiver) {
+        const member = Reflect.get(target, key, receiver);
+        if (typeof key !== "string" || !key.startsWith("save") || typeof member !== "function")
+          return member;
+        return (...args: unknown[]) => {
+          seen.push(currentOrigin());
+          return (member as (...a: unknown[]) => unknown).apply(target, args);
+        };
+      },
+    }) as QuotesStore;
+    const spied: Context = {
+      ...value,
+      store,
+      service: createService(store, { today: () => "2026-11-06" }),
+    };
+    await withFile(
+      "inquiry.json",
+      JSON.stringify({
+        customer: { name: "Nová firma s.r.o." },
+        title: "Stůl",
+        lines: [{ code: "NAB-STUL-160", quantity: 1 }],
+      }),
+      async (path) => {
+        expect(await run(parseArgs(["quote:new", "--input", path]), spied)).toBe(0);
+      },
+    );
+    expect(seen.length).toBeGreaterThan(0);
+    expect(seen.every((origin) => origin?.channel === "cli" && origin.subject === null)).toBe(true);
+    expect(currentOrigin()).toBeNull();
+    expect(cliOrigin("import:apply")).toEqual({ subject: null, channel: "import" });
+    expect(cliOrigin("quote:act")).toEqual({ subject: null, channel: "cli" });
   });
 });

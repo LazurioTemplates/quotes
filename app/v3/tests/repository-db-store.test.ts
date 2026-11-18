@@ -1,12 +1,12 @@
 import { describe, expect, setDefaultTimeout, test } from "bun:test";
-import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { toStableYaml } from "@lazurio/repository-db";
 import { createRepositoryDbStore } from "../src/data/repository-db-store.ts";
 import { copyWrites } from "../src/server/access.ts";
 import { storeContract } from "./store-contract.ts";
 import { colleagueClone, createFixtureRepo, git } from "./support/fixture-repo.ts";
-import { newQuote } from "./support/seed.ts";
+import { newItem, newQuote } from "./support/seed.ts";
 
 // These tests run real Git and the data repository's validator for every
 // publish. On a Windows runner one publish takes several seconds, more than
@@ -308,6 +308,30 @@ describe("repository-db store", () => {
       expect(git(fixture.mountRoot, ["rev-parse", "HEAD"])).toBe(head);
     } finally {
       stop();
+      store.close();
+      fixture.cleanup();
+    }
+  });
+
+  test("an import that fails midway leaves no part of it in the draft", async () => {
+    const fixture = createFixtureRepo();
+    const store = storeOver(fixture);
+    try {
+      const before = git(fixture.mountRoot, ["status", "--porcelain"]);
+      // The second item's file cannot be written: a directory stands there.
+      const blocked = join(fixture.mountRoot, "data/items/NAB-ZIDLE.yaml");
+      mkdirSync(blocked, { recursive: true });
+      writeFileSync(join(blocked, "keep"), "x\n");
+      await expect(
+        store.saveItems([
+          { value: newItem("NAB-STOLEK"), baseRevision: null },
+          { value: newItem("NAB-ZIDLE", "Židle"), baseRevision: null },
+        ]),
+      ).rejects.toThrow();
+      expect(existsSync(join(fixture.mountRoot, "data/items/NAB-STOLEK.yaml"))).toBe(false);
+      rmSync(blocked, { recursive: true, force: true });
+      expect(git(fixture.mountRoot, ["status", "--porcelain"])).toBe(before);
+    } finally {
       store.close();
       fixture.cleanup();
     }

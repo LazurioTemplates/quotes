@@ -12,6 +12,23 @@ Standard `MS-19`), on the stack profile `app-data@2026.12`.
   quote and no draft action; a record's form shows its fields disabled. Its
   WebMCP tools only read. A refused change and a missing application role are
   explained in Czech and English.
+- An import of several items that fails while it is being written takes back
+  the items it had already written, as far as the data repository allows.
+  Every check still runs before the first item is written. A stop of the
+  process midway can leave part of an import in the draft; the draft review
+  shows every item, and each can be returned (Lazurio/repository-db#45 for an
+  atomic write).
+- Every change records who made it and by which channel (Module Standard, One
+  data port): the person's subject and `ui`, `webmcp` (the page's tools, which
+  say so in the `x-lazurio-channel` header) or `import`. A draft records them
+  through repository-db's `recordOrigin` (an agent's channel as `agent`), a
+  publication as `Repository-Db-Actor` and `Repository-Db-Source:
+  quotes-v3/<channel>`. A caller without a subject (a local entry) records
+  none, and nothing is invented. The agent's command line records its changes
+  as `cli` (an import as `import`), without a person; a change nobody stated
+  the origin of is `unknown`, source `quotes-v3`. The origin is a hint: it is
+  recorded under the draft write gate, and a failure to record it never fails
+  a saved write.
 
 ### For whoever runs it
 

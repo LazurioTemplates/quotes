@@ -8,6 +8,7 @@ import { z } from "zod";
 import dataRepository from "../../config/data-repository.json";
 import { readDataDirectory } from "../data/directory.ts";
 import { createMemoryStore } from "../data/memory-store.ts";
+import { type Origin, withOrigin } from "../data/origin.ts";
 import { createRepositoryDbStore } from "../data/repository-db-store.ts";
 import { type QuotesStore, StoreError } from "../data/store.ts";
 import { calculateQuote } from "../domain/calculate.ts";
@@ -160,8 +161,21 @@ function describeQuote(
   ].join("\n");
 }
 
-/** Runs one command; returns the exit code. */
-export async function run(options: Options, context: Context): Promise<number> {
+/**
+ * Runs one command; returns the exit code. The command line is an agent's
+ * channel, without a person: its changes are recorded as `cli`, an import's
+ * as `import` (Module Standard, One data port: author and channel).
+ */
+export function run(options: Options, context: Context): Promise<number> {
+  return withOrigin(cliOrigin(options.command), () => runCommand(options, context));
+}
+
+/** The origin of a command's changes: no person, `import` or `cli`. */
+export function cliOrigin(command: string): Origin {
+  return { subject: null, channel: command.startsWith("import:") ? "import" : "cli" };
+}
+
+async function runCommand(options: Options, context: Context): Promise<number> {
   const { store, service, locale, json, out } = context;
   const t = (cs: string, en: string) => pick(locale, cs, en);
   const flag = (name: string) => {

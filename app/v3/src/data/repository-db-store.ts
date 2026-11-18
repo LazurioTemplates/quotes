@@ -23,14 +23,32 @@ import {
   recordId,
 } from "../domain/collections.ts";
 import type { Localized } from "../i18n/locale.ts";
+import { restoringOnFailure } from "./draft-restore.ts";
+import { currentOrigin, originKind } from "./origin.ts";
 import { createRecordStore, type Put } from "./record-store.ts";
 import { type Entry, emptySnapshot, parseIn, type Snapshot } from "./records.ts";
 import { quotesReviewAdapter } from "./review-adapter.ts";
 import type { DraftCard, QuotesStore, StoreEvent } from "./store.ts";
 import { readOnly, StoreError } from "./store.ts";
 
-/** `Repository-Db-Source` of every publish from this App. */
+/** This App in `Repository-Db-Source`; the channel follows it (`quotes-v3/ui`). */
 const SOURCE = "quotes-v3";
+
+/** Who made a change and by which channel, as repository-db records it. */
+function attribution(): {
+  kind: "app" | "agent" | "unknown";
+  source: string;
+  actor?: string;
+} {
+  const origin = currentOrigin();
+  // Where nobody stated the origin, it is unknown: no channel, no person.
+  if (origin === null) return { kind: "unknown", source: SOURCE };
+  return {
+    kind: originKind(origin.channel),
+    source: `${SOURCE}/${origin.channel}`,
+    ...(origin.subject ? { actor: origin.subject } : {}),
+  };
+}
 
 export interface RepositoryDbStoreOptions {
   /** The data checkout, the Module's `db/`. It may not exist yet. */
@@ -231,36 +249,59 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Quot
     // before it is released. Nothing an engine writer saves can land between
     // a check and a write, also for a save of several records with the
     // revisions of others it depends on (an import).
-    write: (kind, operation) =>
-      engine(() =>
+    write: (kind, operation) => {
+      // The origin of the request, taken before the write waits in the queue.
+      const by = attribution();
+      return engine(() =>
         host.run(kind, (db) => {
           const written: string[] = [];
           const gate = assertDataPath(mountRoot, db.config.layout.data);
           const result = writeRecordDraft(mountRoot, gate, {}, () => {
-            const put: Put = (collection, id, value, baseRevision) => {
-              const path = pathOf(db, collection, id);
-              const file = assertDataPath(mountRoot, path);
-              // The gate is held: the file is the version the checks read.
-              if (recordRevision(file) !== baseRevision) {
-                throw new StoreError("record_changed", {
-                  cs: `${path} se mezitím změnil; nic se neuložilo.`,
-                  en: `${path} changed meanwhile; nothing was saved.`,
+            // A write that fails midway takes back the records it already
+            // wrote, before the gate is released, as far as it can.
+            const value = restoringOnFailure((remember) => {
+              const put: Put = (collection, id, value, baseRevision) => {
+                const path = pathOf(db, collection, id);
+                const file = assertDataPath(mountRoot, path);
+                // The gate is held: the file is the version the checks read.
+                if (recordRevision(file) !== baseRevision) {
+                  throw new StoreError("record_changed", {
+                    cs: `${path} se mezitím změnil; nic se neuložilo.`,
+                    en: `${path} changed meanwhile; nothing was saved.`,
+                  });
+                }
+                remember(file);
+                writeYamlFileAtomic(file, {
+                  schemaVersion: collections[collection].schemaVersion,
+                  id,
+                  record: value,
                 });
+                written.push(path);
+                return recordRevision(file) as string;
+              };
+              try {
+                return operation(snapshot(db), put);
+              } catch (error) {
+                written.length = 0;
+                throw error;
               }
-              writeYamlFileAtomic(file, {
-                schemaVersion: collections[collection].schemaVersion,
-                id,
-                record: value,
-              });
-              written.push(path);
-              return recordRevision(file) as string;
-            };
-            return operation(snapshot(db), put);
+            });
+            // The origin is a hint that informs and never gates: recorded
+            // still under the gate, so a later writer's hint comes after this
+            // one, and a failure to record it never fails the saved write.
+            if (written.length > 0) {
+              try {
+                db.recordOrigin(written, by);
+              } catch {
+                // The records are saved; only their origin hint is missing.
+              }
+            }
+            return value;
           });
-          if (written.length > 0) db.recordOrigin(written, { kind: "app", source: SOURCE });
           return result;
         }),
-      ),
+      );
+    },
     async draft(locale): Promise<DraftCard> {
       // The host computes its status in the background; before the first
       // check (or without a timer) it is computed now.
@@ -302,12 +343,16 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Quot
       );
     },
     async publish({ expectedRevision, actor, summary }) {
+      // Who published and by which channel; a caller without a subject leaves
+      // the actor to the engine (the Environment's Git identity).
+      const by = attribution();
+      const publisher = actor ?? by.actor;
       await engine(() =>
         host.run("publish", (db) =>
           db.publish({
             expectedRevision,
-            source: SOURCE,
-            ...(actor ? { actor } : {}),
+            source: by.source,
+            ...(publisher ? { actor: publisher } : {}),
             ...(summary ? { summary } : {}),
           }),
         ),

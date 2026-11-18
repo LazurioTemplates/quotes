@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { type Channel, withOrigin } from "../data/origin.ts";
 import { issuesOf } from "../data/records.ts";
 import { type QuotesStore, readOnly, StoreError } from "../data/store.ts";
 import { category, item } from "../domain/catalog.ts";
@@ -19,7 +20,7 @@ export interface ApiOptions {
   /** Origins a writing request may come from (the App's own, loopback and hosted). */
   allowedOrigins: ReadonlySet<string>;
   /** Who came and whether they may write now; `accessOf` of `access.ts` in the App. */
-  access: (request: Request) => { admitted: boolean; mayWrite: boolean };
+  access: (request: Request) => { admitted: boolean; mayWrite: boolean; subject?: string | null };
   /** Today's date for new records; injectable for tests. */
   today?: () => string;
 }
@@ -163,6 +164,9 @@ function writeRefusal(
   }
   return null;
 }
+
+/** The header a page tool sends so its changes are recorded as WebMCP. */
+export const CHANNEL_HEADER = "x-lazurio-channel";
 
 export function createApi(store: QuotesStore, options: ApiOptions) {
   const serviceOver = (port: QuotesStore): QuotesService =>
@@ -413,7 +417,17 @@ export function createApi(store: QuotesStore, options: ApiOptions) {
         409,
       );
     try {
-      return await route(req, url, locale, access.mayWrite, access.mayWrite ? writing : reading);
+      // Who made the change and by which channel (Module Standard, One data
+      // port): the import, a page tool that says so, or the interface. The
+      // page's statement is the App's, not a proof.
+      const channel: Channel = url.pathname.startsWith("/api/import/")
+        ? "import"
+        : req.headers.get(CHANNEL_HEADER) === "webmcp"
+          ? "webmcp"
+          : "ui";
+      return await withOrigin({ subject: access.subject ?? null, channel }, () =>
+        route(req, url, locale, access.mayWrite, access.mayWrite ? writing : reading),
+      );
     } catch (error) {
       return errorResponse(error, locale);
     }
