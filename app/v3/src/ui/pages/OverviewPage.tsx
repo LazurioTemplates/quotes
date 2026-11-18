@@ -6,6 +6,7 @@ import type { AppData } from "../App.tsx";
 import { PageHeader, StatusChip } from "../components/common.tsx";
 import { useFormat, useT } from "../i18n.tsx";
 import { href } from "../routes.ts";
+import { useCanWrite } from "../write.tsx";
 
 const ITEMS = {
   cs: { one: "položka", few: "položky", many: "položek" },
@@ -14,6 +15,7 @@ const ITEMS = {
 
 export function OverviewPage({ data, today = localToday() }: { data: AppData; today?: string }) {
   const t = useT();
+  const canWrite = useCanWrite();
   const f = useFormat();
   const settings = data.settings.value;
   const latest = latestVersions(data.quotes.map((entry) => entry.value));
@@ -63,9 +65,11 @@ export function OverviewPage({ data, today = localToday() }: { data: AppData; to
           "What waits for the customer's answer, what is in progress and what needs closing.",
         )}
         actions={
-          <Button variant="primary" href={href({ page: "new-quote" })}>
-            {t("Nová nabídka", "New quote")}
-          </Button>
+          canWrite ? (
+            <Button variant="primary" href={href({ page: "new-quote" })}>
+              {t("Nová nabídka", "New quote")}
+            </Button>
+          ) : null
         }
       />
       <div className="stats">
@@ -154,11 +158,16 @@ export function OverviewPage({ data, today = localToday() }: { data: AppData; to
             : t("Žádná cena v příštím měsíci nekončí.", "No price ends in the next month.")}{" "}
           <a href={href({ page: "items", category: null })}>
             {t("Otevřít ceník", "Open the price list")}
-          </a>{" "}
-          ·{" "}
-          <a href={href({ page: "import" })}>
-            {t("Načíst ceník dodavatele", "Import a supplier's price list")}
           </a>
+          {canWrite ? (
+            <>
+              {" "}
+              ·{" "}
+              <a href={href({ page: "import" })}>
+                {t("Načíst ceník dodavatele", "Import a supplier's price list")}
+              </a>
+            </>
+          ) : null}
         </p>
       </article>
     </section>

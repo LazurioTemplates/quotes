@@ -21,6 +21,8 @@ import { QuoteEditPage } from "./pages/QuoteEditPage.tsx";
 import { QuoteListPage } from "./pages/QuoteListPage.tsx";
 import { SettingsPage } from "./pages/SettingsPage.tsx";
 import { parseRoute, type Route } from "./routes.ts";
+import { quoteTools, registerTools } from "./tools.ts";
+import { followWriteStatus, useCanWrite, WriteContext } from "./write.tsx";
 
 /** Everything the pages read, loaded once and again whenever the data moves. */
 export interface AppData {
@@ -51,6 +53,22 @@ export function App() {
   const [data, setData] = useState<AppData | null>(null);
   const [draft, setDraft] = useState<DraftPanelInput | null>(null);
   const [error, setError] = useState<ApiError | Error | null>(null);
+  // The one writer rule for this visitor: `null` until the server said it.
+  const [canWrite, setCanWrite] = useState<boolean | null>(null);
+  useEffect(() => followWriteStatus(api.status, setCanWrite), []);
+  const reloadStatus = useCallback(async () => {
+    await api.status().then(
+      (status) => setCanWrite(status.mayWrite === true),
+      () => {},
+    );
+  }, []);
+
+  // The page's tools follow the same status: reading tools only until it says
+  // this copy writes for the visitor.
+  useEffect(
+    () => registerTools(quoteTools(api, locale, { canWrite: canWrite === true })),
+    [canWrite, locale],
+  );
 
   const reload = useCallback(async () => {
     try {
@@ -75,38 +93,53 @@ export function App() {
     void reload();
     void reloadDraft();
     return subscribe((type) => {
-      if (type === "records-changed") void reload();
+      if (type === "records-changed") {
+        void reload();
+        void reloadStatus();
+      }
       void reloadDraft();
     });
-  }, [reload, reloadDraft]);
+  }, [reload, reloadDraft, reloadStatus]);
 
   const changed = async () => {
-    await Promise.all([reload(), reloadDraft()]);
+    await Promise.all([reload(), reloadDraft(), reloadStatus()]);
   };
 
   const quiet =
     error instanceof ApiError &&
     (error.code === "mount_unavailable" || error.code === "settings_missing");
   return (
-    <Layout route={route} draft={draft}>
-      {error ? (
-        <Alert
-          tone={quiet ? "info" : "danger"}
-          live={quiet ? "polite" : "assertive"}
-          locale={locale}
-        >
-          <strong>
-            {quiet
-              ? t("Data zatím nejsou k dispozici.", "The data is not available yet.")
-              : t("Data se nepodařilo načíst.", "The data could not be loaded.")}
-          </strong>{" "}
-          {error.message}
-        </Alert>
-      ) : null}
-      {data ? <Page route={route} data={data} onChanged={changed} /> : null}
-      {!data && !error ? <p className="muted">{t("Načítám…", "Loading…")}</p> : null}
-    </Layout>
+    <WriteContext.Provider value={canWrite}>
+      <Layout route={route} draft={draft}>
+        {error ? (
+          <Alert
+            tone={quiet ? "info" : "danger"}
+            live={quiet ? "polite" : "assertive"}
+            locale={locale}
+          >
+            <strong>
+              {quiet
+                ? t("Data zatím nejsou k dispozici.", "The data is not available yet.")
+                : t("Data se nepodařilo načíst.", "The data could not be loaded.")}
+            </strong>{" "}
+            {error.message}
+          </Alert>
+        ) : null}
+        {data ? <Page route={route} data={data} onChanged={changed} /> : null}
+        {!data && !error ? <p className="muted">{t("Načítám…", "Loading…")}</p> : null}
+      </Layout>
+    </WriteContext.Provider>
   );
+}
+
+/**
+ * The key of a record's detail page. A copy that writes keeps the page while
+ * the record changes, so what the person is typing stays; a copy that may
+ * not write shows the record as it is now, so a new revision opens the page
+ * afresh with its fields filled from it.
+ */
+export function detailKey(id: string, revision: string | undefined, canWrite: boolean): string {
+  return canWrite ? id : `${id}@${revision ?? ""}`;
 }
 
 function Page({
@@ -119,6 +152,15 @@ function Page({
   onChanged: () => Promise<void>;
 }) {
   const t = useT();
+  const canWrite = useCanWrite();
+  // A copy that may not write opens no form that only creates or edits; the
+  // notice above says why. A quote opens as its detail.
+  if (!canWrite) {
+    if (route.page === "edit-quote")
+      return <QuoteDetailPage key={route.id} data={data} id={route.id} onChanged={onChanged} />;
+    if (["new-quote", "new-item", "new-customer", "import"].includes(route.page))
+      return <OverviewPage data={data} />;
+  }
   switch (route.page) {
     case "overview":
       return <OverviewPage data={data} />;
@@ -135,7 +177,18 @@ function Page({
     case "new-item":
       return <ItemPage key="new" data={data} code={null} onChanged={onChanged} />;
     case "item":
-      return <ItemPage key={route.code} data={data} code={route.code} onChanged={onChanged} />;
+      return (
+        <ItemPage
+          key={detailKey(
+            route.code,
+            data.items.find((entry) => entry.value.code === route.code)?.revision,
+            canWrite,
+          )}
+          data={data}
+          code={route.code}
+          onChanged={onChanged}
+        />
+      );
     case "import":
       return <ImportPage data={data} onChanged={onChanged} />;
     case "customers":
@@ -143,7 +196,18 @@ function Page({
     case "new-customer":
       return <CustomerPage key="new" data={data} id={null} onChanged={onChanged} />;
     case "customer":
-      return <CustomerPage key={route.id} data={data} id={route.id} onChanged={onChanged} />;
+      return (
+        <CustomerPage
+          key={detailKey(
+            route.id,
+            data.customers.find((entry) => entry.value.id === route.id)?.revision,
+            canWrite,
+          )}
+          data={data}
+          id={route.id}
+          onChanged={onChanged}
+        />
+      );
     case "settings":
       return <SettingsPage key={data.settings.revision} data={data} onChanged={onChanged} />;
     case "draft":

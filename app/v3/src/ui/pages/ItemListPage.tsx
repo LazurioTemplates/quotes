@@ -8,6 +8,7 @@ import { api } from "../api.ts";
 import { ErrorNotice, PageHeader } from "../components/common.tsx";
 import { useFormat, useT } from "../i18n.tsx";
 import { href } from "../routes.ts";
+import { useCanWrite } from "../write.tsx";
 
 export function ItemListPage({
   data,
@@ -21,6 +22,7 @@ export function ItemListPage({
   today?: string;
 }) {
   const t = useT();
+  const canWrite = useCanWrite();
   const f = useFormat();
   const [search, setSearch] = useState("");
   const [showArchived, setShowArchived] = useState(false);
@@ -65,14 +67,16 @@ export function ItemListPage({
           "The items quotes are made of. Prices exclude VAT; every change of a price goes into the item's history.",
         )}
         actions={
-          <>
-            <Button variant="secondary" href={href({ page: "import" })}>
-              {t("Import ceníku dodavatele", "Import a supplier's price list")}
-            </Button>
-            <Button variant="primary" href={href({ page: "new-item" })}>
-              {t("Nová položka", "New item")}
-            </Button>
-          </>
+          canWrite ? (
+            <>
+              <Button variant="secondary" href={href({ page: "import" })}>
+                {t("Import ceníku dodavatele", "Import a supplier's price list")}
+              </Button>
+              <Button variant="primary" href={href({ page: "new-item" })}>
+                {t("Nová položka", "New item")}
+              </Button>
+            </>
+          ) : null
         }
       />
       <nav className="filters" aria-label={t("Kategorie", "Categories")}>
@@ -184,18 +188,20 @@ export function ItemListPage({
             </li>
           ))}
         </ul>
-        <form className="inline-form" onSubmit={addCategory}>
-          <input
-            className="ds-input"
-            placeholder={t("Nová kategorie", "New category")}
-            value={newCategory}
-            onChange={(event) => setNewCategory(event.target.value)}
-            aria-label={t("Název nové kategorie", "Name of the new category")}
-          />
-          <Button variant="secondary" type="submit" disabled={!newCategory.trim()}>
-            {t("Přidat", "Add")}
-          </Button>
-        </form>
+        {canWrite ? (
+          <form className="inline-form" onSubmit={addCategory}>
+            <input
+              className="ds-input"
+              placeholder={t("Nová kategorie", "New category")}
+              value={newCategory}
+              onChange={(event) => setNewCategory(event.target.value)}
+              aria-label={t("Název nové kategorie", "Name of the new category")}
+            />
+            <Button variant="secondary" type="submit" disabled={!newCategory.trim()}>
+              {t("Přidat", "Add")}
+            </Button>
+          </form>
+        ) : null}
       </article>
     </section>
   );

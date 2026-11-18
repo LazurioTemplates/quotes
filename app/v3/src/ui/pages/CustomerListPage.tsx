@@ -5,9 +5,11 @@ import type { AppData } from "../App.tsx";
 import { PageHeader } from "../components/common.tsx";
 import { useT } from "../i18n.tsx";
 import { href } from "../routes.ts";
+import { useCanWrite } from "../write.tsx";
 
 export function CustomerListPage({ data }: { data: AppData }) {
   const t = useT();
+  const canWrite = useCanWrite();
   const [search, setSearch] = useState("");
   const query = search.trim().toLowerCase();
   const latest = latestVersions(data.quotes.map((entry) => entry.value));
@@ -27,9 +29,11 @@ export function CustomerListPage({ data }: { data: AppData }) {
           "The contacts you send quotes to. A quote copies the customer's details while it is a draft.",
         )}
         actions={
-          <Button variant="primary" href={href({ page: "new-customer" })}>
-            {t("Nový zákazník", "New customer")}
-          </Button>
+          canWrite ? (
+            <Button variant="primary" href={href({ page: "new-customer" })}>
+              {t("Nový zákazník", "New customer")}
+            </Button>
+          ) : null
         }
       />
       <div className="toolbar-row">

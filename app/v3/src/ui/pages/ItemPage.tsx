@@ -7,6 +7,7 @@ import { api } from "../api.ts";
 import { ErrorNotice, Field, fieldErrors, PageHeader } from "../components/common.tsx";
 import { useFormat, useT } from "../i18n.tsx";
 import { href, navigate } from "../routes.ts";
+import { useCanWrite } from "../write.tsx";
 
 /** One item: its details, its price with the margin, and its price history. A new item without a code. */
 export function ItemPage({
@@ -21,6 +22,7 @@ export function ItemPage({
   today?: string;
 }) {
   const t = useT();
+  const canWrite = useCanWrite();
   const f = useFormat();
   const settings = data.settings.value;
   const stored = code ? data.items.find((entry) => entry.value.code === code) : undefined;
@@ -118,217 +120,221 @@ export function ItemPage({
       />
       <div className="detail-grid">
         <form className="form" onSubmit={save}>
-          <ErrorNotice error={error} />
-          <article className="ds-card">
-            <div className="form-row">
-              {stored ? null : (
-                <Field
-                  label={t("Kód", "Code")}
-                  hint={t(
-                    "Písmena, číslice, tečka, podtržítko a pomlčka; později se nemění.",
-                    "Letters, digits, dot, underscore and hyphen; it never changes later.",
-                  )}
-                  error={errors.code}
-                >
+          <fieldset className="form-fieldset" disabled={!canWrite}>
+            <ErrorNotice error={error} />
+            <article className="ds-card">
+              <div className="form-row">
+                {stored ? null : (
+                  <Field
+                    label={t("Kód", "Code")}
+                    hint={t(
+                      "Písmena, číslice, tečka, podtržítko a pomlčka; později se nemění.",
+                      "Letters, digits, dot, underscore and hyphen; it never changes later.",
+                    )}
+                    error={errors.code}
+                  >
+                    <input
+                      value={form.code}
+                      onChange={(event) => update({ code: event.target.value.trim() })}
+                      required
+                    />
+                  </Field>
+                )}
+                <Field label={t("Název", "Name")} error={errors.name}>
                   <input
-                    value={form.code}
-                    onChange={(event) => update({ code: event.target.value.trim() })}
+                    value={form.name}
+                    onChange={(event) => update({ name: event.target.value })}
                     required
                   />
                 </Field>
-              )}
-              <Field label={t("Název", "Name")} error={errors.name}>
-                <input
-                  value={form.name}
-                  onChange={(event) => update({ name: event.target.value })}
-                  required
-                />
-              </Field>
-            </div>
-            <div className="form-row">
-              <Field label={t("Kategorie", "Category")} error={errors.category}>
-                <select
-                  value={form.category}
-                  onChange={(event) => update({ category: event.target.value })}
-                >
-                  {data.categories.map(({ value }) => (
-                    <option key={value.id} value={value.id}>
-                      {value.name}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label={t("Měrná jednotka", "Unit")} error={errors.unit}>
-                <input
-                  value={form.unit}
-                  onChange={(event) => update({ unit: event.target.value })}
-                  list="units"
-                />
-              </Field>
-              <Field label={t("Sazba DPH", "VAT rate")} error={errors.vat_rate}>
-                <select
-                  value={form.vat_rate}
-                  onChange={(event) => update({ vat_rate: event.target.value })}
-                >
-                  {settings.vat_rates.map((rate) => (
-                    <option key={rate.id} value={rate.id}>
-                      {rate.label} {f.percent(rate.percent)}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-            </div>
-            <datalist id="units">
-              {(f.locale === "en"
-                ? ["pc", "h", "m", "m²", "pack", "flat", "person", "day"]
-                : ["ks", "hod", "m", "m²", "bal.", "paušál", "os.", "den"]
-              ).map((unit) => (
-                <option key={unit} value={unit} />
-              ))}
-            </datalist>
-          </article>
+              </div>
+              <div className="form-row">
+                <Field label={t("Kategorie", "Category")} error={errors.category}>
+                  <select
+                    value={form.category}
+                    onChange={(event) => update({ category: event.target.value })}
+                  >
+                    {data.categories.map(({ value }) => (
+                      <option key={value.id} value={value.id}>
+                        {value.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label={t("Měrná jednotka", "Unit")} error={errors.unit}>
+                  <input
+                    value={form.unit}
+                    onChange={(event) => update({ unit: event.target.value })}
+                    list="units"
+                  />
+                </Field>
+                <Field label={t("Sazba DPH", "VAT rate")} error={errors.vat_rate}>
+                  <select
+                    value={form.vat_rate}
+                    onChange={(event) => update({ vat_rate: event.target.value })}
+                  >
+                    {settings.vat_rates.map((rate) => (
+                      <option key={rate.id} value={rate.id}>
+                        {rate.label} {f.percent(rate.percent)}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+              <datalist id="units">
+                {(f.locale === "en"
+                  ? ["pc", "h", "m", "m²", "pack", "flat", "person", "day"]
+                  : ["ks", "hod", "m", "m²", "bal.", "paušál", "os.", "den"]
+                ).map((unit) => (
+                  <option key={unit} value={unit} />
+                ))}
+              </datalist>
+            </article>
 
-          <article className="ds-card">
-            <h2>{t("Cena bez DPH", "Price excl. VAT")}</h2>
-            <div className="form-row">
-              <Field
-                label={t("Nákupní cena", "Purchase price")}
-                hint={t("Nepovinná; slouží k výpočtu marže.", "Optional; it gives the margin.")}
-                error={purchase === null ? amountHint : errors.purchase_price}
-              >
-                <input
-                  inputMode="decimal"
-                  value={purchaseText}
-                  onChange={(event) => setPurchaseText(event.target.value)}
-                />
-              </Field>
-              <Field
-                label={t("Prodejní cena", "Sale price")}
-                error={sale === null ? amountHint : errors.sale_price}
-              >
-                <input
-                  inputMode="decimal"
-                  value={saleText}
-                  onChange={(event) => setSaleText(event.target.value)}
-                  required
-                />
-              </Field>
-              <Field
-                label={t("Marže", "Margin")}
-                hint={t("Z prodejní ceny.", "Of the sale price.")}
-              >
-                <output
-                  className={
-                    margin !== null && margin < (settings.min_margin_percent ?? 0)
-                      ? "warning"
+            <article className="ds-card">
+              <h2>{t("Cena bez DPH", "Price excl. VAT")}</h2>
+              <div className="form-row">
+                <Field
+                  label={t("Nákupní cena", "Purchase price")}
+                  hint={t("Nepovinná; slouží k výpočtu marže.", "Optional; it gives the margin.")}
+                  error={purchase === null ? amountHint : errors.purchase_price}
+                >
+                  <input
+                    inputMode="decimal"
+                    value={purchaseText}
+                    onChange={(event) => setPurchaseText(event.target.value)}
+                  />
+                </Field>
+                <Field
+                  label={t("Prodejní cena", "Sale price")}
+                  error={sale === null ? amountHint : errors.sale_price}
+                >
+                  <input
+                    inputMode="decimal"
+                    value={saleText}
+                    onChange={(event) => setSaleText(event.target.value)}
+                    required
+                  />
+                </Field>
+                <Field
+                  label={t("Marže", "Margin")}
+                  hint={t("Z prodejní ceny.", "Of the sale price.")}
+                >
+                  <output
+                    className={
+                      margin !== null && margin < (settings.min_margin_percent ?? 0)
+                        ? "warning"
+                        : undefined
+                    }
+                  >
+                    {margin === null ? "–" : f.percent(margin)}
+                  </output>
+                </Field>
+              </div>
+              <div className="form-row">
+                <Field
+                  label={
+                    stored
+                      ? t("Nová cena platí od", "The new price applies from")
+                      : t("Cena platí od", "The price applies from")
+                  }
+                  hint={
+                    stored
+                      ? t(
+                          "Když datum nezměníte, nová cena platí od dneška.",
+                          "Unless you change the date, a new price applies from today.",
+                        )
                       : undefined
                   }
+                  error={errors.valid_from}
                 >
-                  {margin === null ? "–" : f.percent(margin)}
-                </output>
-              </Field>
-            </div>
-            <div className="form-row">
-              <Field
-                label={
-                  stored
-                    ? t("Nová cena platí od", "The new price applies from")
-                    : t("Cena platí od", "The price applies from")
-                }
-                hint={
-                  stored
-                    ? t(
-                        "Když datum nezměníte, nová cena platí od dneška.",
-                        "Unless you change the date, a new price applies from today.",
-                      )
-                    : undefined
-                }
-                error={errors.valid_from}
-              >
-                <input
-                  type="date"
-                  value={form.valid_from}
-                  onChange={(event) => update({ valid_from: event.target.value })}
-                />
-              </Field>
-              <Field
-                label={t("Cena platí do", "The price applies until")}
-                hint={t(
-                  "Nepovinné, např. do konce akce dodavatele.",
-                  "Optional, e.g. until a supplier's offer ends.",
-                )}
-                error={errors.valid_to}
-              >
-                <input
-                  type="date"
-                  value={form.valid_to ?? ""}
-                  onChange={(event) => update({ valid_to: optional(event.target.value) })}
-                />
-              </Field>
-            </div>
-            {priceChanged ? (
-              <Field
-                label={t("Důvod změny ceny", "Why the price changes")}
-                hint={t("Zapíše se do historie cen.", "It goes into the price history.")}
-              >
-                <input
-                  value={note}
-                  onChange={(event) => setNote(event.target.value)}
-                  placeholder={t(
-                    "Např. nový ceník dodavatele",
-                    "E.g. the supplier's new price list",
+                  <input
+                    type="date"
+                    value={form.valid_from}
+                    onChange={(event) => update({ valid_from: event.target.value })}
+                  />
+                </Field>
+                <Field
+                  label={t("Cena platí do", "The price applies until")}
+                  hint={t(
+                    "Nepovinné, např. do konce akce dodavatele.",
+                    "Optional, e.g. until a supplier's offer ends.",
                   )}
-                />
-              </Field>
-            ) : null}
-          </article>
+                  error={errors.valid_to}
+                >
+                  <input
+                    type="date"
+                    value={form.valid_to ?? ""}
+                    onChange={(event) => update({ valid_to: optional(event.target.value) })}
+                  />
+                </Field>
+              </div>
+              {priceChanged ? (
+                <Field
+                  label={t("Důvod změny ceny", "Why the price changes")}
+                  hint={t("Zapíše se do historie cen.", "It goes into the price history.")}
+                >
+                  <input
+                    value={note}
+                    onChange={(event) => setNote(event.target.value)}
+                    placeholder={t(
+                      "Např. nový ceník dodavatele",
+                      "E.g. the supplier's new price list",
+                    )}
+                  />
+                </Field>
+              ) : null}
+            </article>
 
-          <article className="ds-card">
-            <div className="form-row">
-              <Field label={t("Dodavatel", "Supplier")} error={errors.supplier}>
-                <input
-                  value={form.supplier ?? ""}
-                  onChange={(event) => update({ supplier: optional(event.target.value) })}
+            <article className="ds-card">
+              <div className="form-row">
+                <Field label={t("Dodavatel", "Supplier")} error={errors.supplier}>
+                  <input
+                    value={form.supplier ?? ""}
+                    onChange={(event) => update({ supplier: optional(event.target.value) })}
+                  />
+                </Field>
+                <Field
+                  label={t("Kód dodavatele", "Supplier's code")}
+                  hint={t(
+                    "Podle něj import ceníku dodavatele položku najde.",
+                    "The import of the supplier's price list finds the item by it.",
+                  )}
+                  error={errors.supplier_code}
+                >
+                  <input
+                    value={form.supplier_code ?? ""}
+                    onChange={(event) => update({ supplier_code: optional(event.target.value) })}
+                  />
+                </Field>
+              </div>
+              <Field label={t("Popis", "Description")} error={errors.description}>
+                <textarea
+                  rows={2}
+                  value={form.description ?? ""}
+                  onChange={(event) => update({ description: optional(event.target.value) })}
                 />
               </Field>
-              <Field
-                label={t("Kód dodavatele", "Supplier's code")}
-                hint={t(
-                  "Podle něj import ceníku dodavatele položku najde.",
-                  "The import of the supplier's price list finds the item by it.",
+              <Checkbox
+                id="item-archived"
+                label={t(
+                  "Vyřazená položka (do nových nabídek se nenabízí)",
+                  "Retired item (not offered for new quotes)",
                 )}
-                error={errors.supplier_code}
-              >
-                <input
-                  value={form.supplier_code ?? ""}
-                  onChange={(event) => update({ supplier_code: optional(event.target.value) })}
-                />
-              </Field>
-            </div>
-            <Field label={t("Popis", "Description")} error={errors.description}>
-              <textarea
-                rows={2}
-                value={form.description ?? ""}
-                onChange={(event) => update({ description: optional(event.target.value) })}
+                checked={form.archived === true}
+                onChange={(event) => update({ archived: event.target.checked || undefined })}
               />
-            </Field>
-            <Checkbox
-              id="item-archived"
-              label={t(
-                "Vyřazená položka (do nových nabídek se nenabízí)",
-                "Retired item (not offered for new quotes)",
-              )}
-              checked={form.archived === true}
-              onChange={(event) => update({ archived: event.target.checked || undefined })}
-            />
-          </article>
-          <div className="form-actions">
-            <Button variant="primary" type="submit" disabled={busy || invalid}>
-              {stored
-                ? t("Uložit do konceptu", "Save to the draft")
-                : t("Založit položku", "Create the item")}
-            </Button>
-          </div>
+            </article>
+            {canWrite ? (
+              <div className="form-actions">
+                <Button variant="primary" type="submit" disabled={busy || invalid}>
+                  {stored
+                    ? t("Uložit do konceptu", "Save to the draft")
+                    : t("Založit položku", "Create the item")}
+                </Button>
+              </div>
+            ) : null}
+          </fieldset>
         </form>
 
         {stored ? (

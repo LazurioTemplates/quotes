@@ -8,7 +8,11 @@ const ORIGIN = "http://127.0.0.1:24928";
 
 function setup(locale: "cs" | "en" = "cs") {
   const store = createMemoryStore(sampleData(locale));
-  const api = createApi(store, { allowedOrigins: new Set([ORIGIN]), today: () => "2026-11-06" });
+  const api = createApi(store, {
+    allowedOrigins: new Set([ORIGIN]),
+    access: () => ({ admitted: true, mayWrite: true }),
+    today: () => "2026-11-06",
+  });
   const call = (
     method: string,
     path: string,

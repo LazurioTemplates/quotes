@@ -40,7 +40,10 @@ const text = (value: unknown) => ({
 
 const string = (description: string) => ({ type: "string", description });
 
-export function quoteTools(client: Client, locale: Locale): Tool[] {
+/** The tools that change data; a copy that may not write does not offer them. */
+export const WRITE_TOOLS = new Set(["create_quote_draft", "preview_price_list_import"]);
+
+export function quoteTools(client: Client, locale: Locale, options: { canWrite: boolean }): Tool[] {
   const t = (cs: string, en: string) => pick(locale, cs, en);
   /** A refusal is an answer with its reason, never a thrown page error. */
   const answer = async (operation: () => Promise<unknown>) => {
@@ -58,7 +61,7 @@ export function quoteTools(client: Client, locale: Locale): Tool[] {
       .toLowerCase()
       .split(/\s+/)
       .filter(Boolean);
-  return [
+  const tools: Tool[] = [
     {
       name: "find_items",
       description: t(
@@ -224,6 +227,7 @@ export function quoteTools(client: Client, locale: Locale): Tool[] {
         ),
     },
   ];
+  return options.canWrite ? tools : tools.filter((tool) => !WRITE_TOOLS.has(tool.name));
 }
 
 interface ModelContext {
@@ -232,7 +236,35 @@ interface ModelContext {
   provideContext?(context: { tools: Tool[] }): unknown;
 }
 
-/** Registers the tools where the browser has WebMCP; elsewhere does nothing. */
+/** What this page registered in one browser context, by tool name. */
+interface Registered {
+  /** The tools as they are now; a name not here refuses. */
+  current: Map<string, Tool>;
+  /** Names the browser holds, with how to remove each if it can. */
+  held: Map<string, (() => void) | null>;
+}
+
+const REGISTERED = new WeakMap<ModelContext, Registered>();
+
+/** Removes one registration, if the browser offers a way. */
+function removal(context: ModelContext, name: string, registration: unknown): (() => void) | null {
+  const handle = registration as { unregister?: () => void } | null | undefined;
+  if (typeof handle?.unregister === "function") return () => handle.unregister?.();
+  if (context.unregisterTool) return () => context.unregisterTool?.(name);
+  return null;
+}
+
+/**
+ * Makes the browser's WebMCP tools these `tools`, and safe to call again with
+ * another set (the status changed from writable to read-only or back, the
+ * page's language, React running an effect twice). Every name is registered
+ * once, as a wrapper that runs the tool as it is now; a name no longer in
+ * the set is removed where the browser can remove it, and otherwise answers
+ * with a refusal, so a tool that changes data never runs on a copy that may
+ * not write. Where the browser has only `provideContext`, the whole set is
+ * replaced. Elsewhere it does nothing. Returns the function that leaves no
+ * tool of this page in use.
+ */
 export function registerTools(tools: readonly Tool[], host: unknown = globalThis): () => void {
   const scope = host as {
     document?: { modelContext?: ModelContext };
@@ -240,12 +272,50 @@ export function registerTools(tools: readonly Tool[], host: unknown = globalThis
   };
   const context = scope.document?.modelContext ?? scope.navigator?.modelContext;
   if (!context) return () => {};
-  if (context.registerTool) {
-    for (const tool of tools) context.registerTool(tool);
-    return () => {
-      for (const tool of tools) context.unregisterTool?.(tool.name);
-    };
+  if (!context.registerTool) {
+    context.provideContext?.({ tools: [...tools] });
+    return () => context.provideContext?.({ tools: [] });
   }
-  context.provideContext?.({ tools: [...tools] });
-  return () => context.provideContext?.({ tools: [] });
+  let state = REGISTERED.get(context);
+  if (!state) {
+    state = { current: new Map(), held: new Map() };
+    REGISTERED.set(context, state);
+  }
+  const registered = state;
+  const apply = (set: readonly Tool[]) => {
+    registered.current = new Map(set.map((tool) => [tool.name, tool]));
+    for (const [name, remove] of registered.held) {
+      if (registered.current.has(name) || !remove) continue;
+      remove();
+      registered.held.delete(name);
+    }
+    for (const tool of set) {
+      if (registered.held.has(tool.name)) continue;
+      const wrapper: Tool = {
+        name: tool.name,
+        description: tool.description,
+        inputSchema: tool.inputSchema,
+        execute: (input) => {
+          const now = registered.current.get(tool.name);
+          if (now) return now.execute(input);
+          return Promise.resolve(
+            text({
+              refused: "data_read_only",
+              reason: "This copy of Quotes does not change data now; this tool is not available.",
+            }),
+          );
+        },
+      };
+      try {
+        const registration = context.registerTool?.(wrapper);
+        registered.held.set(tool.name, removal(context, tool.name, registration));
+      } catch {
+        // The browser holds this name from an earlier page state it cannot
+        // forget; the wrapper registered then follows `current` too.
+        registered.held.set(tool.name, null);
+      }
+    }
+  };
+  apply(tools);
+  return () => apply([]);
 }

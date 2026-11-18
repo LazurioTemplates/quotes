@@ -3,7 +3,7 @@ import { deriveDraftPanel } from "@lazurio/repository-db";
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { Locale } from "../src/i18n/locale.ts";
-import type { AppData } from "../src/ui/App.tsx";
+import { type AppData, detailKey } from "../src/ui/App.tsx";
 import { englishModel } from "../src/ui/components/DraftCard.tsx";
 import { LocaleContext } from "../src/ui/i18n.tsx";
 import { CustomerListPage } from "../src/ui/pages/CustomerListPage.tsx";
@@ -18,6 +18,7 @@ import { QuoteEditPage } from "../src/ui/pages/QuoteEditPage.tsx";
 import { QuoteListPage } from "../src/ui/pages/QuoteListPage.tsx";
 import { SettingsPage } from "../src/ui/pages/SettingsPage.tsx";
 import { href, parseRoute } from "../src/ui/routes.ts";
+import { followWriteStatus, statusRetryDelay, WriteContext } from "../src/ui/write.tsx";
 import { sampleData } from "./support/seed.ts";
 
 const TODAY = "2026-11-06";
@@ -34,9 +35,12 @@ function appData(locale: Locale): AppData {
   };
 }
 
-function render(locale: Locale, node: ReactNode): string {
+/** A page as a person with the writer sees it, unless `canWrite` says otherwise. */
+function render(locale: Locale, node: ReactNode, canWrite: boolean | null = true): string {
   return renderToStaticMarkup(
-    <LocaleContext.Provider value={locale}>{node}</LocaleContext.Provider>,
+    <LocaleContext.Provider value={locale}>
+      <WriteContext.Provider value={canWrite}>{node}</WriteContext.Provider>
+    </LocaleContext.Provider>,
   );
 }
 
@@ -182,5 +186,119 @@ describe("the Draft & Publish card in English", () => {
       ["discard_draft", "Discard all", true],
     ]);
     expect(english.revision).toBe("r1");
+  });
+});
+
+describe("the one writer rule on the page", () => {
+  const data = appData("en");
+  for (const canWrite of [false, null]) {
+    test(`a copy ${canWrite === false ? "that may not write" : "not yet known to write"} offers no change`, () => {
+      const shown = [
+        render("en", <OverviewPage data={data} today={TODAY} />, canWrite),
+        render("en", <QuoteListPage data={data} status={null} today={TODAY} />, canWrite),
+        render(
+          "en",
+          <QuoteDetailPage data={data} id="Q-2026-0004-v1" onChanged={changed} today={TODAY} />,
+          canWrite,
+        ),
+        render(
+          "en",
+          <QuoteDetailPage data={data} id="Q-2026-0002-v2" onChanged={changed} today={TODAY} />,
+          canWrite,
+        ),
+        render("en", <CustomerListPage data={data} />, canWrite),
+        render("en", <ItemListPage data={data} category={null} onChanged={changed} />, canWrite),
+      ].join("\n");
+      for (const write of ["#/quotes/new", "/edit", "#/new-item", "#/import", "#/customers/new"])
+        expect(shown).not.toContain(write);
+      expect(shown).not.toContain("Edit as a new version");
+      expect(shown).not.toContain("<h2>State of the quote</h2>");
+      expect(shown).not.toContain('type="submit"');
+    });
+  }
+
+  test("a record's form shows its fields disabled and no save", () => {
+    const html = render(
+      "en",
+      <ItemPage data={data} code={data.items[0]?.value.code ?? ""} onChanged={changed} />,
+      false,
+    );
+    expect(html).toContain('<fieldset class="form-fieldset" disabled="">');
+    expect(html).not.toContain("Save to the draft");
+  });
+});
+
+describe("the page learns whether it may write", () => {
+  test("a passing failure of /api/status is asked again until it answers", async () => {
+    const answers: (() => Promise<{ mayWrite?: boolean }>)[] = [
+      () => Promise.reject(new Error("offline")),
+      () => Promise.reject(new Error("offline")),
+      () => Promise.resolve({ mayWrite: true }),
+    ];
+    const waits: number[] = [];
+    const known = await new Promise<boolean>((done) => {
+      followWriteStatus(
+        () => (answers.shift() ?? (() => Promise.resolve({ mayWrite: false })))(),
+        done,
+        async (ms) => {
+          waits.push(ms);
+        },
+      );
+    });
+    expect(known).toBe(true);
+    expect(waits).toEqual([1_000, 2_000]);
+  });
+
+  test("a stopped page asks no more", async () => {
+    let asked = 0;
+    const stop = followWriteStatus(
+      async () => {
+        asked += 1;
+        throw new Error("offline");
+      },
+      () => {
+        throw new Error("never known");
+      },
+      async () => {
+        stop();
+      },
+    );
+    await Bun.sleep(10);
+    expect(asked).toBe(1);
+  });
+
+  test("the pause grows and stays at most 30 s", () => {
+    expect([1, 2, 3, 6, 20].map(statusRetryDelay)).toEqual([1_000, 2_000, 4_000, 30_000, 30_000]);
+  });
+});
+
+describe("an open record's detail on a read-only copy", () => {
+  test("a new revision opens it afresh; a copy that writes keeps what is typed", () => {
+    expect(detailKey("C-0001", "r1", false)).not.toBe(detailKey("C-0001", "r2", false));
+    expect(detailKey("C-0001", "r1", true)).toBe(detailKey("C-0001", "r2", true));
+  });
+
+  test("opened afresh, its fields show the record as it is now", () => {
+    const data = appData("en");
+    const [first, ...rest] = data.items;
+    if (!first) throw new Error("no item");
+    const renamed = {
+      ...data,
+      items: [
+        { ...first, value: { ...first.value, name: "Renamed by a colleague" }, revision: "r2" },
+        ...rest,
+      ],
+    };
+    const html = render(
+      "en",
+      <ItemPage
+        key={detailKey(first.value.code, "r2", false)}
+        data={renamed}
+        code={first.value.code}
+        onChanged={changed}
+      />,
+      false,
+    );
+    expect(html).toContain('value="Renamed by a colleague"');
   });
 });

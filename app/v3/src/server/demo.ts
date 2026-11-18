@@ -18,4 +18,7 @@ if (sample.issues.length > 0) {
   process.exit(1);
 }
 
-await serve(() => createMemoryStore(sample.data), `demo (${locale} example data in memory)`);
+// The demo's data live only in memory: its visitor is admitted and writes.
+await serve(() => createMemoryStore(sample.data), `demo (${locale} example data in memory)`, {
+  access: () => ({ admitted: true, mayWrite: true }),
+});

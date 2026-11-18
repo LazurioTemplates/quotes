@@ -179,3 +179,57 @@ export class StoreError extends Error {
     }));
   }
 }
+
+/** The operations of the port that only read; every other one changes data. */
+type Reads =
+  | "available"
+  | "settings"
+  | "listCategories"
+  | "listItems"
+  | "readCatalog"
+  | "getItem"
+  | "listCustomers"
+  | "getCustomer"
+  | "listQuotes"
+  | "getQuote"
+  | "check"
+  | "draft"
+  | "subscribe"
+  | "close";
+
+/**
+ * Every operation that changes data, publishes or pulls. A new operation of
+ * the port that is not a read must be named here, or this does not compile.
+ */
+export const CHANGES: Readonly<Record<Exclude<keyof QuotesStore, Reads>, true>> = {
+  saveSettings: true,
+  saveCategory: true,
+  saveItem: true,
+  saveItems: true,
+  saveCustomer: true,
+  saveQuote: true,
+  publish: true,
+  finishSend: true,
+  discard: true,
+  pull: true,
+};
+
+/**
+ * The same store for a caller that may not write (the one writer rule of the
+ * Module Standard): every change, publish and pull is refused with
+ * `data_read_only` before it reaches the data; reads pass through.
+ */
+export function readOnly(store: QuotesStore): QuotesStore {
+  const refuse = async () => {
+    throw new StoreError("data_read_only", {
+      cs: "Tato kopie Cenových nabídek teď data nemění, jen je čte.",
+      en: "This copy of Quotes does not change data now; it only reads them.",
+    });
+  };
+  return new Proxy(store, {
+    get(target, key, receiver) {
+      if (typeof key === "string" && Object.hasOwn(CHANGES, key)) return refuse;
+      return Reflect.get(target, key, receiver);
+    },
+  });
+}

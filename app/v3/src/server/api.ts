@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { issuesOf } from "../data/records.ts";
-import { type QuotesStore, StoreError } from "../data/store.ts";
+import { type QuotesStore, readOnly, StoreError } from "../data/store.ts";
 import { category, item } from "../domain/catalog.ts";
 import { isoDate } from "../domain/common.ts";
 import { customer } from "../domain/customer.ts";
@@ -18,6 +18,8 @@ import { createService, type QuotesService } from "../service/quotes-service.ts"
 export interface ApiOptions {
   /** Origins a writing request may come from (the App's own, loopback and hosted). */
   allowedOrigins: ReadonlySet<string>;
+  /** Who came and whether they may write now; `accessOf` of `access.ts` in the App. */
+  access: (request: Request) => { admitted: boolean; mayWrite: boolean };
   /** Today's date for new records; injectable for tests. */
   today?: () => string;
 }
@@ -163,10 +165,12 @@ function writeRefusal(
 }
 
 export function createApi(store: QuotesStore, options: ApiOptions) {
-  const service: QuotesService = createService(
-    store,
-    options.today ? { today: options.today } : {},
-  );
+  const serviceOver = (port: QuotesStore): QuotesService =>
+    createService(port, options.today ? { today: options.today } : {});
+  // A request that may not write gets the store as a read-only view, and the
+  // service over it, so a change is refused at the port too.
+  const writing = { store, service: serviceOver(store) };
+  const reading = { store: readOnly(store), service: serviceOver(readOnly(store)) };
 
   function events(req: Request): Response {
     let stop = () => {};
@@ -204,12 +208,22 @@ export function createApi(store: QuotesStore, options: ApiOptions) {
     return match?.[1] ? decodeURIComponent(match[1]) : null;
   };
 
-  async function route(req: Request, url: URL, locale: Locale): Promise<Response> {
+  async function route(
+    req: Request,
+    url: URL,
+    locale: Locale,
+    mayWrite: boolean,
+    port: { store: QuotesStore; service: QuotesService },
+  ): Promise<Response> {
+    // The store and the service as this request may use them.
+    const { store, service } = port;
     const { pathname } = url;
     const method = req.method;
     const get = method === "GET";
 
-    if (pathname === "/api/status" && get) return json(await store.available());
+    // The one writer rule for this request (Module Standard): the page
+    // offers changes only while `mayWrite` is true.
+    if (pathname === "/api/status" && get) return json({ ...(await store.available()), mayWrite });
     if (pathname === "/api/settings" && get) return json(await store.settings());
     if (pathname === "/api/settings" && method === "PUT") {
       const input = await body(req, save(settings));
@@ -378,8 +392,28 @@ export function createApi(store: QuotesStore, options: ApiOptions) {
     const locale = localeOfAcceptLanguage(req.headers.get("accept-language"));
     const refused = writeRefusal(req, options.allowedOrigins, locale);
     if (refused) return refused;
+    // Who came: no application role grants nothing (decision 0231).
+    const access = options.access(req);
+    if (!access.admitted)
+      return refusal(
+        "forbidden",
+        locale === "en"
+          ? "Quotes needs an application role."
+          : "Cenové nabídky potřebují roli v aplikaci.",
+        403,
+      );
+    // One writer: a copy that may not write refuses every change before it
+    // reaches the store, so no draft, publish or pull starts there either.
+    if (WRITE_METHODS.has(req.method) && !access.mayWrite)
+      return refusal(
+        "data_read_only",
+        locale === "en"
+          ? "This copy of Quotes does not change data now; it only reads them."
+          : "Tato kopie Cenových nabídek teď data nemění, jen je čte.",
+        409,
+      );
     try {
-      return await route(req, url, locale);
+      return await route(req, url, locale, access.mayWrite, access.mayWrite ? writing : reading);
     } catch (error) {
       return errorResponse(error, locale);
     }
