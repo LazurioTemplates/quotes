@@ -170,4 +170,44 @@ describe("repository-db store", () => {
       fixture.cleanup();
     }
   });
+
+  test("an open read-only page hears when the host updates the replica", async () => {
+    const fixture = createFixtureRepo();
+    const store = createRepositoryDbStore({
+      mountRoot: fixture.mountRoot,
+      expect: { remote: fixture.origin, branch: "v3", within: fixture.moduleRoot },
+      intervalMs: 20,
+      writes: false,
+    });
+    const events: string[] = [];
+    const stop = store.subscribe((event) => events.push(event.type));
+    try {
+      await Bun.sleep(60);
+      expect(events).toEqual([]);
+      const colleague = colleagueClone(fixture);
+      const path = git(colleague, ["ls-files", "data/customers"])
+        .split("\n")
+        .find((entry) => entry.endsWith(".yaml"));
+      const file = join(colleague, path ?? "");
+      writeFileSync(
+        file,
+        readFileSync(file, "utf8").replace(/^(\s*)name: .*$/m, "$1name: Replica update"),
+      );
+      git(colleague, ["commit", "--quiet", "--all", "--message", "Rename a customer"]);
+      git(colleague, ["push", "--quiet"]);
+      // The application host updates its replica; the App itself never pulls.
+      git(fixture.mountRoot, ["pull", "--quiet", "--ff-only"]);
+      for (let waited = 0; !events.includes("records-changed") && waited < 3000; waited += 20)
+        await Bun.sleep(20);
+      expect(events).toContain("records-changed");
+      expect(events).toContain("draft-changed");
+      expect((await store.listCustomers()).some((row) => row.value.name === "Replica update")).toBe(
+        true,
+      );
+    } finally {
+      stop();
+      store.close();
+      fixture.cleanup();
+    }
+  });
 });

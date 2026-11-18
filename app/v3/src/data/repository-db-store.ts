@@ -25,7 +25,7 @@ import type { Localized } from "../i18n/locale.ts";
 import { createRecordStore, type Put } from "./record-store.ts";
 import { type Entry, emptySnapshot, parseIn, type Snapshot } from "./records.ts";
 import { quotesReviewAdapter } from "./review-adapter.ts";
-import type { DraftCard, QuotesStore } from "./store.ts";
+import type { DraftCard, QuotesStore, StoreEvent } from "./store.ts";
 import { readOnly, StoreError } from "./store.ts";
 
 /** `Repository-Db-Source` of every publish from this App. */
@@ -66,6 +66,40 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Quot
   });
   const writes = options.writes ?? true;
   if (writes && interval > 0) host.start();
+
+  /**
+   * A copy that may not write runs no sync host, so it watches its checkout
+   * instead: when the host updates the replica (a new commit, a changed
+   * draft), an open page hears it. Only local Git state is read, with no
+   * fetch, pull or write.
+   */
+  const watchers = new Set<(event: StoreEvent) => void>();
+  let seen: string | null | undefined;
+  let lastHead: string | null | undefined;
+  async function watch(): Promise<void> {
+    const next = await host
+      .read((db) => {
+        const local = db.status();
+        return { head: local.head, state: `${local.head}\n${local.dirtyPaths.join("\n")}` };
+      })
+      .catch(() => null);
+    if (!next) return;
+    const changed = seen !== undefined && seen !== next.state;
+    const moved = lastHead !== undefined && lastHead !== next.head;
+    seen = next.state;
+    lastHead = next.head;
+    if (!changed) return;
+    for (const listener of watchers) {
+      if (moved) listener({ type: "records-changed" });
+      listener({ type: "draft-changed" });
+    }
+  }
+  let watching: ReturnType<typeof setInterval> | undefined;
+  if (!writes && interval > 0) {
+    void watch();
+    watching = setInterval(() => void watch(), interval);
+    (watching as { unref?: () => void }).unref?.();
+  }
 
   /**
    * The status the draft card comes from. A copy that writes lets the host
@@ -283,13 +317,19 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Quot
       await engine(() => host.run("pull", (db) => db.pull()));
     },
     subscribe(listener) {
-      return host.subscribe((event) => {
+      watchers.add(listener);
+      const stop = host.subscribe((event) => {
         if (event.type === "remote-pulled") listener({ type: "records-changed" });
         listener({ type: "draft-changed" });
       });
+      return () => {
+        watchers.delete(listener);
+        stop();
+      };
     },
     close() {
       host.stop();
+      if (watching) clearInterval(watching);
     },
   });
   return writes ? store : readOnly(store);
