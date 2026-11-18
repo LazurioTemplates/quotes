@@ -18,7 +18,7 @@ import { QuoteEditPage } from "../src/ui/pages/QuoteEditPage.tsx";
 import { QuoteListPage } from "../src/ui/pages/QuoteListPage.tsx";
 import { SettingsPage } from "../src/ui/pages/SettingsPage.tsx";
 import { href, parseRoute } from "../src/ui/routes.ts";
-import { WriteContext } from "../src/ui/write.tsx";
+import { followWriteStatus, statusRetryDelay, WriteContext } from "../src/ui/write.tsx";
 import { sampleData } from "./support/seed.ts";
 
 const TODAY = "2026-11-06";
@@ -225,5 +225,49 @@ describe("the one writer rule on the page", () => {
     );
     expect(html).toContain('<fieldset class="form-fieldset" disabled="">');
     expect(html).not.toContain("Save to the draft");
+  });
+});
+
+describe("the page learns whether it may write", () => {
+  test("a passing failure of /api/status is asked again until it answers", async () => {
+    const answers: (() => Promise<{ mayWrite?: boolean }>)[] = [
+      () => Promise.reject(new Error("offline")),
+      () => Promise.reject(new Error("offline")),
+      () => Promise.resolve({ mayWrite: true }),
+    ];
+    const waits: number[] = [];
+    const known = await new Promise<boolean>((done) => {
+      followWriteStatus(
+        () => (answers.shift() ?? (() => Promise.resolve({ mayWrite: false })))(),
+        done,
+        async (ms) => {
+          waits.push(ms);
+        },
+      );
+    });
+    expect(known).toBe(true);
+    expect(waits).toEqual([1_000, 2_000]);
+  });
+
+  test("a stopped page asks no more", async () => {
+    let asked = 0;
+    const stop = followWriteStatus(
+      async () => {
+        asked += 1;
+        throw new Error("offline");
+      },
+      () => {
+        throw new Error("never known");
+      },
+      async () => {
+        stop();
+      },
+    );
+    await Bun.sleep(10);
+    expect(asked).toBe(1);
+  });
+
+  test("the pause grows and stays at most 30 s", () => {
+    expect([1, 2, 3, 6, 20].map(statusRetryDelay)).toEqual([1_000, 2_000, 4_000, 30_000, 30_000]);
   });
 });

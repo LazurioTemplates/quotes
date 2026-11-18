@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { posix } from "node:path";
 import {
   assertDataPath,
@@ -70,27 +71,28 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Quot
   /**
    * A copy that may not write runs no sync host, so it watches its checkout
    * instead: when the host updates the replica (a new commit, a changed
-   * draft), an open page hears it. Only local Git state is read, with no
-   * fetch, pull or write.
+   * draft, a changed record of the draft), an open page hears it and reloads
+   * its records and its draft. Only local state is read, with no fetch, pull
+   * or write: the commit, the draft's paths and their contents.
    */
   const watchers = new Set<(event: StoreEvent) => void>();
-  let seen: string | null | undefined;
-  let lastHead: string | null | undefined;
+  let seen: string | undefined;
   async function watch(): Promise<void> {
     const next = await host
       .read((db) => {
         const local = db.status();
-        return { head: local.head, state: `${local.head}\n${local.dirtyPaths.join("\n")}` };
+        return [
+          local.head ?? "",
+          ...local.dirtyPaths.map((path) => draftPrint(mountRoot, path)),
+        ].join("\n");
       })
       .catch(() => null);
-    if (!next) return;
-    const changed = seen !== undefined && seen !== next.state;
-    const moved = lastHead !== undefined && lastHead !== next.head;
-    seen = next.state;
-    lastHead = next.head;
+    if (next === null) return;
+    const changed = seen !== undefined && seen !== next;
+    seen = next;
     if (!changed) return;
     for (const listener of watchers) {
-      if (moved) listener({ type: "records-changed" });
+      listener({ type: "records-changed" });
       listener({ type: "draft-changed" });
     }
   }
@@ -333,6 +335,20 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Quot
     },
   });
   return writes ? store : readOnly(store);
+}
+
+/**
+ * One path of the draft as the watch of a read-only copy compares it: its
+ * contents' hash, read as the engine reads a record (inside the checkout, no
+ * link followed), or that it cannot be read.
+ */
+function draftPrint(mountRoot: string, path: string): string {
+  try {
+    const text = readDataFile(mountRoot, path);
+    return `${path}:${text === null ? "gone" : createHash("sha256").update(text).digest("hex")}`;
+  } catch {
+    return `${path}:unreadable`;
+  }
 }
 
 /** Engine errors keep their code, so the UI words them as the engine documents. */

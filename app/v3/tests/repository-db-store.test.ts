@@ -210,4 +210,42 @@ describe("repository-db store", () => {
       fixture.cleanup();
     }
   });
+
+  test("an open read-only page hears every change of a draft record, also the same one again", async () => {
+    const fixture = createFixtureRepo();
+    const store = createRepositoryDbStore({
+      mountRoot: fixture.mountRoot,
+      expect: { remote: fixture.origin, branch: "v3", within: fixture.moduleRoot },
+      intervalMs: 20,
+      writes: false,
+    });
+    const events: string[] = [];
+    const stop = store.subscribe((event) => events.push(event.type));
+    const recordChanges = () => events.filter((type) => type === "records-changed").length;
+    const path = git(fixture.mountRoot, ["ls-files", "data/customers"])
+      .split("\n")
+      .find((entry) => entry.endsWith(".yaml"));
+    const file = join(fixture.mountRoot, path ?? "");
+    const original = readFileSync(file, "utf8");
+    // The host changes the replica's draft; the App itself never writes.
+    const edit = async (value: string) => {
+      const before = recordChanges();
+      writeFileSync(file, original.replace(/^(\s*)name: .*$/m, `$1name: ${value}`));
+      for (let waited = 0; recordChanges() === before && waited < 3000; waited += 20)
+        await Bun.sleep(20);
+      expect(recordChanges()).toBeGreaterThan(before);
+      expect(events.at(-1)).toBe("draft-changed");
+      expect((await store.listCustomers()).some((row) => row.value.name === value)).toBe(true);
+    };
+    try {
+      await Bun.sleep(60);
+      expect(events).toEqual([]);
+      await edit("First edit");
+      await edit("Second edit");
+    } finally {
+      stop();
+      store.close();
+      fixture.cleanup();
+    }
+  });
 });

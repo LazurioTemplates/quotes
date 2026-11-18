@@ -21,7 +21,8 @@ import { QuoteEditPage } from "./pages/QuoteEditPage.tsx";
 import { QuoteListPage } from "./pages/QuoteListPage.tsx";
 import { SettingsPage } from "./pages/SettingsPage.tsx";
 import { parseRoute, type Route } from "./routes.ts";
-import { useCanWrite } from "./write.tsx";
+import { quoteTools, registerTools } from "./tools.ts";
+import { followWriteStatus, useCanWrite, WriteContext } from "./write.tsx";
 
 /** Everything the pages read, loaded once and again whenever the data moves. */
 export interface AppData {
@@ -52,6 +53,22 @@ export function App() {
   const [data, setData] = useState<AppData | null>(null);
   const [draft, setDraft] = useState<DraftPanelInput | null>(null);
   const [error, setError] = useState<ApiError | Error | null>(null);
+  // The one writer rule for this visitor: `null` until the server said it.
+  const [canWrite, setCanWrite] = useState<boolean | null>(null);
+  useEffect(() => followWriteStatus(api.status, setCanWrite), []);
+  const reloadStatus = useCallback(async () => {
+    await api.status().then(
+      (status) => setCanWrite(status.mayWrite === true),
+      () => {},
+    );
+  }, []);
+
+  // The page's tools follow the same status: reading tools only until it says
+  // this copy writes for the visitor.
+  useEffect(
+    () => registerTools(quoteTools(api, locale, { canWrite: canWrite === true })),
+    [canWrite, locale],
+  );
 
   const reload = useCallback(async () => {
     try {
@@ -76,37 +93,42 @@ export function App() {
     void reload();
     void reloadDraft();
     return subscribe((type) => {
-      if (type === "records-changed") void reload();
+      if (type === "records-changed") {
+        void reload();
+        void reloadStatus();
+      }
       void reloadDraft();
     });
-  }, [reload, reloadDraft]);
+  }, [reload, reloadDraft, reloadStatus]);
 
   const changed = async () => {
-    await Promise.all([reload(), reloadDraft()]);
+    await Promise.all([reload(), reloadDraft(), reloadStatus()]);
   };
 
   const quiet =
     error instanceof ApiError &&
     (error.code === "mount_unavailable" || error.code === "settings_missing");
   return (
-    <Layout route={route} draft={draft}>
-      {error ? (
-        <Alert
-          tone={quiet ? "info" : "danger"}
-          live={quiet ? "polite" : "assertive"}
-          locale={locale}
-        >
-          <strong>
-            {quiet
-              ? t("Data zatím nejsou k dispozici.", "The data is not available yet.")
-              : t("Data se nepodařilo načíst.", "The data could not be loaded.")}
-          </strong>{" "}
-          {error.message}
-        </Alert>
-      ) : null}
-      {data ? <Page route={route} data={data} onChanged={changed} /> : null}
-      {!data && !error ? <p className="muted">{t("Načítám…", "Loading…")}</p> : null}
-    </Layout>
+    <WriteContext.Provider value={canWrite}>
+      <Layout route={route} draft={draft}>
+        {error ? (
+          <Alert
+            tone={quiet ? "info" : "danger"}
+            live={quiet ? "polite" : "assertive"}
+            locale={locale}
+          >
+            <strong>
+              {quiet
+                ? t("Data zatím nejsou k dispozici.", "The data is not available yet.")
+                : t("Data se nepodařilo načíst.", "The data could not be loaded.")}
+            </strong>{" "}
+            {error.message}
+          </Alert>
+        ) : null}
+        {data ? <Page route={route} data={data} onChanged={changed} /> : null}
+        {!data && !error ? <p className="muted">{t("Načítám…", "Loading…")}</p> : null}
+      </Layout>
+    </WriteContext.Provider>
   );
 }
 
