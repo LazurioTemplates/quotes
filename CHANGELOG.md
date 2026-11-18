@@ -12,9 +12,12 @@ Standard `MS-19`), on the stack profile `app-data@2026.12`.
   quote and no draft action; a record's form shows its fields disabled. Its
   WebMCP tools only read. A refused change and a missing application role are
   explained in Czech and English.
-- An import of several items is all or nothing: if writing fails midway, the
-  items already written are taken back, so no half of an import stays in the
-  draft.
+- An import of several items that fails while it is being written takes back
+  the items it had already written, as far as the data repository allows.
+  Every check still runs before the first item is written. A stop of the
+  process midway can leave part of an import in the draft; the draft review
+  shows every item, and each can be returned (Lazurio/repository-db#45 for an
+  atomic write).
 
 ### For whoever runs it
 

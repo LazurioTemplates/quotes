@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { restoringOnFailure } from "../src/data/draft-restore.ts";
 
-describe("a draft of several records is all or nothing", () => {
+describe("a draft of several records that fails midway takes back what it wrote", () => {
   test("a write that fails midway gets every file back and rethrows", () => {
     const root = mkdtempSync(join(tmpdir(), "draft-restore-"));
     try {

@@ -238,8 +238,8 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Quot
           const written: string[] = [];
           const gate = assertDataPath(mountRoot, db.config.layout.data);
           const result = writeRecordDraft(mountRoot, gate, {}, () =>
-            // All or nothing: a write that fails midway gets the records
-            // already written back before the gate is released.
+            // A write that fails midway takes back the records it already
+            // wrote, before the gate is released, as far as it can.
             restoringOnFailure((remember) => {
               const put: Put = (collection, id, value, baseRevision) => {
                 const path = pathOf(db, collection, id);
