@@ -1,8 +1,11 @@
 import { describe, expect, setDefaultTimeout, test } from "bun:test";
+import { existsSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
 import { TEST_ORIGIN } from "@lazurio/module-kit/tools/testing";
 import { createRepositoryDbStore } from "../src/data/repository-db-store.ts";
 import { CHANNEL_HEADER, createApi } from "../src/server/api.ts";
 import { createFixtureRepo, git } from "./support/fixture-repo.ts";
+import { newItem } from "./support/seed.ts";
 
 // Real Git and the data repository's validator run here; see repository-db-store.test.ts.
 setDefaultTimeout(60_000);
@@ -107,6 +110,37 @@ describe("author and channel", () => {
       const trailers = git(fixture.originPath, ["log", "-1", "--format=%(trailers:only)", "v3"]);
       expect(trailers).toContain("Repository-Db-Actor: subject-2");
       expect(trailers).toContain("Repository-Db-Source: quotes-v3/ui");
+    } finally {
+      store.close();
+      fixture.cleanup();
+    }
+  });
+
+  test("a change nobody stated the origin of is recorded as unknown, without a channel or a person", async () => {
+    const { fixture, store, origins } = setup(null);
+    try {
+      await store.saveItem(newItem("NAB-BEZ-PUVODU"), null);
+      const [origin] = await origins();
+      expect(origin).toEqual(expect.objectContaining({ kind: "unknown", source: "quotes-v3" }));
+      expect(origin?.actor).toBeUndefined();
+    } finally {
+      store.close();
+      fixture.cleanup();
+    }
+  });
+
+  test("a failure to record the origin never fails the saved write", async () => {
+    const { fixture, store, call } = setup("subject-3");
+    try {
+      // The origin hint cannot be written: a directory stands where its file goes.
+      mkdirSync(join(fixture.mountRoot, ".repository-db", "draft-origin.json"), {
+        recursive: true,
+      });
+      const response = await call("POST", "/api/customers", { record: { name: "Epsilon s.r.o." } });
+      expect(response.status).toBe(201);
+      const saved = (await response.json()) as { value: { id: string } };
+      expect(await store.getCustomer(saved.value.id)).not.toBeNull();
+      expect(existsSync(join(fixture.mountRoot, "data/customers"))).toBe(true);
     } finally {
       store.close();
       fixture.cleanup();

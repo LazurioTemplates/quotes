@@ -24,7 +24,11 @@ Standard `MS-19`), on the stack profile `app-data@2026.12`.
   through repository-db's `recordOrigin` (an agent's channel as `agent`), a
   publication as `Repository-Db-Actor` and `Repository-Db-Source:
   quotes-v3/<channel>`. A caller without a subject (a local entry) records
-  none, and nothing is invented.
+  none, and nothing is invented. The agent's command line records its changes
+  as `cli` (an import as `import`), without a person; a change nobody stated
+  the origin of is `unknown`, source `quotes-v3`. The origin is a hint: it is
+  recorded under the draft write gate, and a failure to record it never fails
+  a saved write.
 
 ### For whoever runs it
 

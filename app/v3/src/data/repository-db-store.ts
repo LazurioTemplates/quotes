@@ -35,8 +35,14 @@ import { readOnly, StoreError } from "./store.ts";
 const SOURCE = "quotes-v3";
 
 /** Who made a change and by which channel, as repository-db records it. */
-function attribution() {
+function attribution(): {
+  kind: "app" | "agent" | "unknown";
+  source: string;
+  actor?: string;
+} {
   const origin = currentOrigin();
+  // Where nobody stated the origin, it is unknown: no channel, no person.
+  if (origin === null) return { kind: "unknown", source: SOURCE };
   return {
     kind: originKind(origin.channel),
     source: `${SOURCE}/${origin.channel}`,
@@ -250,10 +256,10 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Quot
         host.run(kind, (db) => {
           const written: string[] = [];
           const gate = assertDataPath(mountRoot, db.config.layout.data);
-          const result = writeRecordDraft(mountRoot, gate, {}, () =>
+          const result = writeRecordDraft(mountRoot, gate, {}, () => {
             // A write that fails midway takes back the records it already
             // wrote, before the gate is released, as far as it can.
-            restoringOnFailure((remember) => {
+            const value = restoringOnFailure((remember) => {
               const put: Put = (collection, id, value, baseRevision) => {
                 const path = pathOf(db, collection, id);
                 const file = assertDataPath(mountRoot, path);
@@ -279,9 +285,19 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Quot
                 written.length = 0;
                 throw error;
               }
-            }),
-          );
-          if (written.length > 0) db.recordOrigin(written, by);
+            });
+            // The origin is a hint that informs and never gates: recorded
+            // still under the gate, so a later writer's hint comes after this
+            // one, and a failure to record it never fails the saved write.
+            if (written.length > 0) {
+              try {
+                db.recordOrigin(written, by);
+              } catch {
+                // The records are saved; only their origin hint is missing.
+              }
+            }
+            return value;
+          });
           return result;
         }),
       );
