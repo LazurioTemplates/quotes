@@ -3,7 +3,7 @@ import { deriveDraftPanel } from "@lazurio/repository-db";
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { Locale } from "../src/i18n/locale.ts";
-import type { AppData } from "../src/ui/App.tsx";
+import { type AppData, detailKey } from "../src/ui/App.tsx";
 import { englishModel } from "../src/ui/components/DraftCard.tsx";
 import { LocaleContext } from "../src/ui/i18n.tsx";
 import { CustomerListPage } from "../src/ui/pages/CustomerListPage.tsx";
@@ -269,5 +269,36 @@ describe("the page learns whether it may write", () => {
 
   test("the pause grows and stays at most 30 s", () => {
     expect([1, 2, 3, 6, 20].map(statusRetryDelay)).toEqual([1_000, 2_000, 4_000, 30_000, 30_000]);
+  });
+});
+
+describe("an open record's detail on a read-only copy", () => {
+  test("a new revision opens it afresh; a copy that writes keeps what is typed", () => {
+    expect(detailKey("C-0001", "r1", false)).not.toBe(detailKey("C-0001", "r2", false));
+    expect(detailKey("C-0001", "r1", true)).toBe(detailKey("C-0001", "r2", true));
+  });
+
+  test("opened afresh, its fields show the record as it is now", () => {
+    const data = appData("en");
+    const [first, ...rest] = data.items;
+    if (!first) throw new Error("no item");
+    const renamed = {
+      ...data,
+      items: [
+        { ...first, value: { ...first.value, name: "Renamed by a colleague" }, revision: "r2" },
+        ...rest,
+      ],
+    };
+    const html = render(
+      "en",
+      <ItemPage
+        key={detailKey(first.value.code, "r2", false)}
+        data={renamed}
+        code={first.value.code}
+        onChanged={changed}
+      />,
+      false,
+    );
+    expect(html).toContain('value="Renamed by a colleague"');
   });
 });

@@ -132,6 +132,16 @@ export function App() {
   );
 }
 
+/**
+ * The key of a record's detail page. A copy that writes keeps the page while
+ * the record changes, so what the person is typing stays; a copy that may
+ * not write shows the record as it is now, so a new revision opens the page
+ * afresh with its fields filled from it.
+ */
+export function detailKey(id: string, revision: string | undefined, canWrite: boolean): string {
+  return canWrite ? id : `${id}@${revision ?? ""}`;
+}
+
 function Page({
   route,
   data,
@@ -167,7 +177,18 @@ function Page({
     case "new-item":
       return <ItemPage key="new" data={data} code={null} onChanged={onChanged} />;
     case "item":
-      return <ItemPage key={route.code} data={data} code={route.code} onChanged={onChanged} />;
+      return (
+        <ItemPage
+          key={detailKey(
+            route.code,
+            data.items.find((entry) => entry.value.code === route.code)?.revision,
+            canWrite,
+          )}
+          data={data}
+          code={route.code}
+          onChanged={onChanged}
+        />
+      );
     case "import":
       return <ImportPage data={data} onChanged={onChanged} />;
     case "customers":
@@ -175,7 +196,18 @@ function Page({
     case "new-customer":
       return <CustomerPage key="new" data={data} id={null} onChanged={onChanged} />;
     case "customer":
-      return <CustomerPage key={route.id} data={data} id={route.id} onChanged={onChanged} />;
+      return (
+        <CustomerPage
+          key={detailKey(
+            route.id,
+            data.customers.find((entry) => entry.value.id === route.id)?.revision,
+            canWrite,
+          )}
+          data={data}
+          id={route.id}
+          onChanged={onChanged}
+        />
+      );
     case "settings":
       return <SettingsPage key={data.settings.revision} data={data} onChanged={onChanged} />;
     case "draft":
