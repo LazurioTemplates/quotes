@@ -33,7 +33,7 @@ describe("module contract", () => {
     ]) {
       expect({ file, exists: existsSync(resolve(ROOT, file)) }).toEqual({ file, exists: true });
     }
-    expect(read("docs/extending.md")).toContain("app-data@2026.12");
+    expect(read("docs/extending.md")).toContain("app-data@2027.01");
     expect(read("docs/adoption.md")).toContain(
       "lazurio module create <Org>/<slug> --stack vite-react",
     );
@@ -60,7 +60,7 @@ describe("module contract", () => {
       zod: "4.6.7",
       "@biomejs/biome": "2.6.4",
       "@lazurio/repository-db": "github:Lazurio/repository-db#v3.2.6",
-      "@lazurio/module-kit": "github:Lazurio/module-kit#v0.4.0",
+      "@lazurio/module-kit": "github:Lazurio/module-kit#v0.5.0",
     });
     for (const workflow of [
       ".github/workflows/check.yml",
