@@ -6,8 +6,9 @@
 
 - The stack profile release `app-data@2027.01`: `@lazurio/module-kit` v0.5.0
   instead of v0.4.0. A runtime that states production never writes without
-  `LAZURIO_RUNTIME_DATA_WRITER=true` (module-kit 0.4.1), and a production
-  application offers an agent no publication until that decision (0.5.0).
+  `LAZURIO_RUNTIME_DATA_WRITER=true` (module-kit 0.4.1). module-kit 0.5.0
+  still offers an agent no publication tool in a production application; a
+  later kit release lifts that. This template offers none.
   Nothing in an adopted copy's own files changes; take it by merging the tag.
 
 ## 0.2.0 — 2026-11-18
