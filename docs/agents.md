@@ -6,9 +6,11 @@ same rules as the App, and neither publishes or sends anything:
 - **`bun run quotes`**, the command line in `app/v3`, which the skills in
   `.agents/skills/` use. It reads and writes the Module's data checkout `db/`
   through the storage port; every write is a draft.
-- **WebMCP tools** the App registers in the Environment browser
-  (`agent-browser webmcp list`, `webmcp invoke`), for an agent that already
-  works in the open App.
+- **The tools for agents** of the App, defined once on its server
+  (`app/v3/src/server/agent-tools.ts`): on `/mcp` of the Application (an MCP
+  server behind the Application host's gateway), and the same tools as WebMCP
+  tools in the Environment browser (`agent-browser webmcp list`, `webmcp
+  invoke`), for an agent that already works in the open App.
 
 ## The command line
 
@@ -82,21 +84,33 @@ the write refuses the import too and is never overwritten. The rows of
 The new quote gets the next number of the settings' format, today's date and
 the usual validity.
 
-## WebMCP tools
+## The tools for agents
 
-| Tool | Input | Returns |
-| --- | --- | --- |
-| `find_items` | `search` | items of the price list |
-| `find_customers` | `search` | customers |
-| `find_quotes` | `status` | the latest version of every quote |
-| `open_quote` | `id` | one version with its lines |
-| `create_quote_draft` | `customer_id`, `title` | the new draft and its id |
-| `check_quote` | `id` | the errors and warnings of the check |
-| `prepare_quote_email` | `id` | recipient, subject, text, the PDF's name and the print page's path |
-| `preview_price_list_import` | `csv`, `supplier`, `valid_from`, `markup_percent`, `round_to_crowns` | the preview and its token; saves nothing |
+| Tool | Effect | Input | Returns |
+| --- | --- | --- | --- |
+| `find_items` | read | `search` | `items`: items of the price list |
+| `find_customers` | read | `search` | `customers` |
+| `find_quotes` | read | `status` | `quotes`: the latest version of every quote |
+| `open_quote` | read | `id` | one version with its lines |
+| `create_quote_draft` | write | `customer_id`, `title` | the new draft (`quote`) and its `id` |
+| `check_quote` | read | `id` | `issues`: the errors and warnings of the check |
+| `prepare_quote_email` | prepare | `id` | recipient, subject, text, the PDF's name and the print page's path |
+| `preview_price_list_import` | write | `csv`, `supplier`, `valid_from`, `markup_percent`, `round_to_crowns` | the preview and its token; saves nothing |
 
-The descriptions are in the language of the open App. A refusal is an answer
-`{ "refused": "<code>", "reason": "…" }`, never a page error.
+The module kit adds `get_app_context`: the module, version, data generation,
+your entry and role and whether you may change data. Every tool needs an
+application role (Application User or Admin, the same rights in Quotes) and
+calls the App's own HTTP API with the caller's request, so the API decides as
+for a click; the change is recorded with the channel `mcp` or `webmcp`. A copy
+that may not write does not list `create_quote_draft` and
+`preview_price_list_import`: the preview saves nothing, but the API takes it
+as the first step of an import, which a copy that may not write refuses.
+
+The descriptions and the answers speak the language the caller states
+(`Accept-Language`; the page states the open App's), otherwise the language of
+the Module's settings. A refusal is an answer
+`{ "ok": false, "reason": "<code>", "message": "…" }` (on `/mcp` a result
+with `isError`), never a page error.
 
 ## The PDF
 

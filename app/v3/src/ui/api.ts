@@ -108,8 +108,9 @@ const MESSAGES: Record<string, Localized> = {
   },
 };
 
-/** Who sends a request: the interface (`ui`) or the page's tools (`webmcp`). */
-export type ClientChannel = "ui" | "webmcp";
+/** Who sends a request: the interface (`ui`). The tools for agents state
+ * their own channel on the server (`server/agent-tools.ts`). */
+export type ClientChannel = "ui";
 
 async function send<T>(
   channel: ClientChannel,
@@ -213,9 +214,6 @@ function makeApi(channel: ClientChannel) {
 
 /** The interface's client: its changes are recorded with the channel `ui`. */
 export const api = makeApi("ui");
-
-/** The page tools' client: its changes are recorded with the channel `webmcp`. */
-export const webmcpApi = makeApi("webmcp");
 
 /** The print page of a quote version in the interface's language; the browser prints it to PDF. */
 export function printUrl(id: string, language: Locale = locale): string {

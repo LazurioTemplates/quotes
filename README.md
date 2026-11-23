@@ -32,7 +32,10 @@ called „Cenové nabídky“.
 - **For agents.** Three skills (`.agents/skills/`): prepare a quote from an
   inquiry, update the price list from a supplier's price list, check a quote
   before it goes out. They work through `bun run quotes`, the same service the
-  App uses, and the App offers the same actions as WebMCP tools.
+  App uses. The App offers its main actions as tools for agents, defined once
+  on its server: on `/mcp` of the Application and as WebMCP tools in the
+  Environment browser. They list only what the person's role and the writer
+  mode allow, and none of them publishes or sends.
 - **Draft & Publish.** Every save is a draft; a person reviews the changed
   records in business language and publishes them as one change to the
   Organization's data repository, or returns them.
@@ -60,8 +63,9 @@ app/v3/src/
   domain/     Zod schemas and pure logic: money, totals, numbers, states, checks, the import
   data/       the storage port (store.ts), its repository-db and memory implementations
   service/    the operations the API and the command line share
-  server/     Bun.serve: the HTTP API over the port, the print page, health, the client
-  ui/         React; talks only to the HTTP API; WebMCP tools
+  server/     Bun.serve: the HTTP API over the port, the tools for agents (/mcp and the page),
+              the print page, health, the client
+  ui/         React; talks only to the HTTP API; registers the server's tools for agents
   document/   the quote as the customer receives it
   cli/        bun run quotes, validation, schema export
   i18n/       the two languages
@@ -120,7 +124,7 @@ or sent without the person's instruction.
 - [`docs/extending.md`](docs/extending.md): changes within the generation, the look of the quote,
   sending through an Integration, taking template updates, stack profile releases, the move to `v4`
 - [`docs/data.md`](docs/data.md): the records, money in haléře, the data repository and its validator
-- [`docs/agents.md`](docs/agents.md): `bun run quotes` and the WebMCP tools
+- [`docs/agents.md`](docs/agents.md): `bun run quotes` and the tools for agents
 - [`CHANGELOG.md`](CHANGELOG.md), [`SECURITY.md`](SECURITY.md), [`CONTRIBUTING.md`](CONTRIBUTING.md), [`NOTICE.md`](NOTICE.md)
 
 ## License

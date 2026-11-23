@@ -18,7 +18,9 @@ the live rights of its people, not this repository's maintainers.
 
 The Module is one area of work: the price list, customers and quotes. People
 work in the App; agents work through the skills, which use `bun run quotes` in
-`app/v3` (see [`docs/agents.md`](docs/agents.md)) or the App's WebMCP tools:
+`app/v3` (see [`docs/agents.md`](docs/agents.md)), or through the App's tools
+for agents: on `/mcp` of the Application, or the same tools as WebMCP in the
+Environment browser:
 
 | When the person asks to … | Skill |
 | --- | --- |

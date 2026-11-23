@@ -26,8 +26,11 @@ security fix.
   only the port.
 - **A new page** is a React component in `app/v3/src/ui/pages/` and a route in
   `routes.ts`; it calls only the HTTP API (`app/v3/src/ui/api.ts`) and writes
-  every text in both languages. An action people do often gets a WebMCP tool in
-  `app/v3/src/ui/tools.ts`.
+  every text in both languages. An action people and agents do often gets a
+  tool for agents in `app/v3/src/server/agent-tools.ts`: defined once on the
+  server with `@lazurio/module-kit/tools`, calling the same HTTP API, and
+  offered on `/mcp` and to the page. Only a tool that just opens a view and
+  changes nothing lives in the page, as a view tool in `app/v3/src/ui/tools.ts`.
 - **The process.** When the way the Organization prices or quotes changes,
   change the skills in `.agents/skills/` and copy them to `.claude/skills/`
   (a test keeps them identical), and say the Organization's own rules in its

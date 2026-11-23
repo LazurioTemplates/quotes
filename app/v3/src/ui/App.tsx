@@ -1,11 +1,11 @@
 import type { DraftPanelInput } from "@lazurio/repository-db";
 import { Alert } from "design-system/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Category, Item } from "../domain/catalog.ts";
 import type { Customer } from "../domain/customer.ts";
 import type { Quote } from "../domain/quote.ts";
 import type { Settings } from "../domain/settings.ts";
-import { ApiError, api, type Stored, subscribe, webmcpApi } from "./api.ts";
+import { ApiError, api, type Stored, subscribe } from "./api.ts";
 import { Layout } from "./components/Layout.tsx";
 import { useLocale, useT } from "./i18n.tsx";
 import { CustomerListPage } from "./pages/CustomerListPage.tsx";
@@ -21,7 +21,7 @@ import { QuoteEditPage } from "./pages/QuoteEditPage.tsx";
 import { QuoteListPage } from "./pages/QuoteListPage.tsx";
 import { SettingsPage } from "./pages/SettingsPage.tsx";
 import { parseRoute, type Route } from "./routes.ts";
-import { quoteTools, registerTools } from "./tools.ts";
+import { type InstalledTools, installTools } from "./tools.ts";
 import { followWriteStatus, useCanWrite, WriteContext } from "./write.tsx";
 
 /** Everything the pages read, loaded once and again whenever the data moves. */
@@ -63,12 +63,22 @@ export function App() {
     );
   }, []);
 
-  // The page's tools follow the same status: reading tools only until it says
-  // this copy writes for the visitor.
-  useEffect(
-    () => registerTools(quoteTools(webmcpApi, locale, { canWrite: canWrite === true })),
-    [canWrite, locale],
-  );
+  // The tools for agents: the server's, as it lists them for the person now
+  // (role and writer mode), in the App's language.
+  const installed = useRef<InstalledTools | null>(null);
+  useEffect(() => {
+    const tools = installTools(locale);
+    installed.current = tools;
+    return () => {
+      installed.current = null;
+      tools.remove();
+    };
+  }, [locale]);
+  // Once the server said whether this copy writes for the visitor, or that
+  // changed, it lists other tools.
+  useEffect(() => {
+    if (canWrite !== null) installed.current?.refresh();
+  }, [canWrite]);
 
   const reload = useCallback(async () => {
     try {

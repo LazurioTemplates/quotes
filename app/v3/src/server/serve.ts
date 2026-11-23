@@ -7,7 +7,9 @@ import {
   withHealth,
 } from "@lazurio/module-kit";
 import type { QuotesStore } from "../data/store.ts";
+import { parseLocale } from "../i18n/locale.ts";
 import { accessOf, LISTENER } from "./access.ts";
+import { createAgentToolsHandler } from "./agent-tools.ts";
 import { createApi } from "./api.ts";
 import { createPrintHandler } from "./print.tsx";
 import { clientDirectory, createStaticHandler } from "./static.ts";
@@ -15,8 +17,9 @@ import { clientDirectory, createStaticHandler } from "./static.ts";
 export const HEALTH_PATH = "/healthz";
 
 /**
- * Starts the one server process of the App over a store: the API, the print
- * pages, the health path and the client. Host and port come only from the
+ * Starts the one server process of the App over a store: the API, the tools
+ * for agents (`/mcp` and the page's `/api/agent-tools`), the print pages,
+ * the health path and the client. Host and port come only from the
  * Lazurio listener (Module Standard); without them the process exits 2.
  */
 export async function serve(
@@ -46,6 +49,14 @@ export async function serve(
   const access = options.access ?? ((request: Request) => accessOf(request));
   const api = createApi(store, { allowedOrigins: origins, access });
   const print = createPrintHandler(store);
+  // The tools for agents call the same API (`agent-tools.ts`), offered on
+  // `/mcp` and to the page on `/api/agent-tools`.
+  const [ownOrigin] = origins;
+  const tools = createAgentToolsHandler({
+    api,
+    origin: app.externalOrigin ?? ownOrigin ?? `http://127.0.0.1:${app.port}`,
+    settingsLocale: async () => parseLocale((await store.settings()).value.language),
+  });
 
   const hostAllowed = (req: Request) => {
     const header = req.headers.get("host") ?? "";
@@ -60,6 +71,9 @@ export async function serve(
   const handle = withHealth(
     async (req: Request) => {
       const url = new URL(req.url);
+      if (url.pathname === "/mcp") return tools.handleMcp(req);
+      const toolPage = await tools.handlePage(req);
+      if (toolPage) return toolPage;
       if (url.pathname.startsWith("/api/")) return api(req);
       if (url.pathname.startsWith("/print/") && req.method === "GET") {
         // A print page shows a quote's data: the same role as the API.
@@ -95,6 +109,7 @@ export async function serve(
         development: { hmr: true, console: false },
         routes: {
           "/api/*": guarded,
+          "/mcp": guarded,
           "/print/*": guarded,
           [HEALTH_PATH]: guarded,
           "/*": (await import("../ui/index.html")).default,

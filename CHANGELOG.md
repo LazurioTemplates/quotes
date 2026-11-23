@@ -11,6 +11,19 @@
   later kit release lifts that. This template offers none.
   Nothing in an adopted copy's own files changes; take it by merging the tag.
 
+### For agents
+
+- The tools for agents are defined once on the server
+  (`app/v3/src/server/agent-tools.ts`, `@lazurio/module-kit/tools`) and
+  offered on `/mcp` of the Application and to the page (`/api/agent-tools`,
+  registered by `@lazurio/module-kit/webmcp`), with the same eight names and
+  descriptions as before. Each calls the App's own API, so the role and the
+  writer rule decide as for a click; a copy that may not write lists only the
+  reading tools. None publishes or sends, and the page has no view tool of its
+  own. A tool's answer is now `{ ok, data }` or `{ ok: false, reason, message }`
+  instead of `{ refused, reason }`, and a list comes as an object (`items`,
+  `customers`, `quotes`, `issues`).
+
 ## 0.2.0 — 2026-11-18
 
 Ready as an Application of an Organization (Lazurio decision 0249, Module
