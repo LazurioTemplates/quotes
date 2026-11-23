@@ -159,10 +159,10 @@ change of one Organization's copy.
 
 ## Stack profile releases
 
-The template follows the stack profile [`app-data@2027.01`](https://github.com/Lazurio/LazurioPlatform/blob/main/docs/stack-profiles.md#app-data):
+The template follows the stack profile [`app-data@2027.02`](https://github.com/Lazurio/LazurioPlatform/blob/main/docs/stack-profiles.md#app-data):
 exact versions of Bun, TypeScript, Vite, React, Biome, Zod, repository-db and
 module-kit (see `app/v3/package.json`). A **stack profile release** moves
-those versions together, for example `app-data@2027.01` to `app-data@2027.05`:
+those versions together, for example `app-data@2027.02` to `app-data@2027.05`:
 one template release that updates `packageManager`, the exact versions,
 `bun.lock`, the CI's Bun and, if the formatter changed, reformats once.
 Organizations take it by merging its tag like any other release. Between
