@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.3.0 — 2026-11-24
+
 ### For whoever runs it
 
 - **All writers at once.** With `app-data@2027.03` (`@lazurio/repository-db`
