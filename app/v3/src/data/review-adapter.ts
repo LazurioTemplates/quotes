@@ -11,6 +11,7 @@ import {
 import { COLLECTION_NAMES, type CollectionName } from "../domain/collections.ts";
 import { formatMoney } from "../domain/money.ts";
 import { type Locale, type Localized, pick } from "../i18n/locale.ts";
+import { withoutAudit } from "./records.ts";
 
 /** Czech labels of the fields a reviewer sees; a field without one shows its key. */
 const FIELD_LABELS: Record<string, Localized> = {
@@ -177,7 +178,10 @@ export function reviewResource(
   locale: Locale = "cs",
 ): ReviewableResource {
   const subject = describeRecord(collection, id, after ?? before, locale);
-  const diff = structuralDiff(before ?? {}, after ?? {}, { maxFields: 12 });
+  // The audit fields change on every write; a reviewer sees the business ones.
+  const diff = structuralDiff(withoutAudit(before ?? {}), withoutAudit(after ?? {}), {
+    maxFields: 12,
+  });
   const fields = labelFields(diff.fields, locale);
   return {
     appId: "quotes",

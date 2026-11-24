@@ -27,6 +27,16 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 9007199254740991
+        },
+        "revision": {
+          "description": "A new random value on every write; audit metadata, not business data.",
+          "type": "string",
+          "minLength": 1
+        },
+        "updatedAt": {
+          "description": "When the App last wrote the record (UTC); audit metadata, not business data.",
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"
         }
       },
       "required": [

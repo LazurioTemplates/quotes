@@ -1,321 +1,128 @@
-import { latestVersions, QUOTE_STATUSES } from "../domain/quote.ts";
-import { type Locale, pick } from "../i18n/locale.ts";
-import { ApiError, type api, printUrl } from "./api.ts";
+import {
+  type AgentTools,
+  type ModelContextLike,
+  type PageViewTool,
+  registerAgentTools,
+} from "@lazurio/module-kit/webmcp";
+import type { Locale } from "../i18n/locale.ts";
 
 /**
- * The App's main actions as WebMCP tools (Module Standard, "Tools for
- * agents"): an agent in the Environment browser lists and calls them with
- * `agent-browser webmcp list` and `webmcp invoke`. Each tool calls the same
- * HTTP API as the interface's button. None publishes, sends or deletes: a
- * draft quote is the furthest a tool goes, and publishing stays the person's
- * button in "Koncept a publikování" / "Draft & publish".
+ * The page's side of the tools for agents (Module Standard, "Agents in the
+ * App"). The tools are defined once on the server (`server/agent-tools.ts`)
+ * and the page registers exactly those its server lists for the person now,
+ * already filtered by role and writer mode; each call goes to the same
+ * handler as `/mcp`, with the page's own session. The page states its
+ * language, so the descriptions and the answers speak the open App's.
+ *
+ * Quotes has no view tool of its own: every tool of the App reads or writes
+ * its data, and none only opens a view.
  */
-export interface Tool {
-  name: string;
-  description: string;
-  inputSchema: Record<string, unknown>;
-  execute(input: Record<string, unknown>): Promise<{ content: { type: "text"; text: string }[] }>;
+
+/** The page's view tools: none (see above); a page that adds one, for
+ * example opening a quote's detail, lists it here. */
+export const VIEW_TOOLS: readonly PageViewTool[] = [];
+
+/** The page's registration: removes the tools, or asks the server again
+ * (after a sign-in or a change of the writer mode). */
+export interface InstalledTools {
+  readonly remove: () => void;
+  readonly refresh: () => void;
 }
 
-type Client = Pick<
-  typeof api,
-  | "items"
-  | "customers"
-  | "quotes"
-  | "quote"
-  | "createQuote"
-  | "checkQuote"
-  | "email"
-  | "importPreview"
->;
+/** `fetch` that states the page's language to the tools' endpoints. */
+export function fetchIn(locale: Locale, base: typeof fetch = fetch): typeof fetch {
+  return ((input: string | URL | Request, init?: RequestInit) => {
+    const headers = new Headers(init?.headers);
+    headers.set("accept-language", locale);
+    return base(input, { ...init, headers });
+  }) as typeof fetch;
+}
 
-const text = (value: unknown) => ({
-  content: [
-    {
-      type: "text" as const,
-      text: typeof value === "string" ? value : JSON.stringify(value, null, 2),
-    },
-  ],
-});
-
-const string = (description: string) => ({ type: "string", description });
-
-/** The tools that change data; a copy that may not write does not offer them. */
-export const WRITE_TOOLS = new Set(["create_quote_draft", "preview_price_list_import"]);
-
-export function quoteTools(client: Client, locale: Locale, options: { canWrite: boolean }): Tool[] {
-  const t = (cs: string, en: string) => pick(locale, cs, en);
-  /** A refusal is an answer with its reason, never a thrown page error. */
-  const answer = async (operation: () => Promise<unknown>) => {
-    try {
-      return text(await operation());
-    } catch (error) {
-      return text({
-        refused: error instanceof ApiError ? error.code : "unexpected",
-        reason: error instanceof Error ? error.message : String(error),
-      });
-    }
+/** The browser's WebMCP API, or `null` where it offers none. */
+function browserModelContext(): ModelContextLike | null {
+  const scope = globalThis as {
+    document?: { modelContext?: ModelContextLike };
+    navigator?: { modelContext?: ModelContextLike };
   };
-  const words = (value: unknown) =>
-    String(value ?? "")
-      .toLowerCase()
-      .split(/\s+/)
-      .filter(Boolean);
-  const tools: Tool[] = [
-    {
-      name: "find_items",
-      description: t(
-        "Najde položky ceníku podle slov v kódu, názvu nebo dodavateli. Vrátí kód, název, jednotku a ceny v haléřích.",
-        "Finds price list items by words of their code, name or supplier. Returns code, name, unit and prices in minor units (1/100 of the currency).",
-      ),
-      inputSchema: {
-        type: "object",
-        properties: { search: string(t("hledaná slova", "words to look for")) },
-      },
-      execute: (input) =>
-        answer(async () => {
-          const wanted = words(input.search);
-          return (await client.items())
-            .map((entry) => entry.value)
-            .filter((item) => !item.archived)
-            .filter((item) =>
-              wanted.every((word) =>
-                `${item.code} ${item.name} ${item.supplier ?? ""}`.toLowerCase().includes(word),
-              ),
-            );
-        }),
-    },
-    {
-      name: "find_customers",
-      description: t(
-        "Najde zákazníky podle názvu, IČO, e-mailu nebo kontaktní osoby.",
-        "Finds customers by name, company ID, e-mail or contact person.",
-      ),
-      inputSchema: {
-        type: "object",
-        properties: { search: string(t("hledaná slova", "words to look for")) },
-      },
-      execute: (input) =>
-        answer(async () => {
-          const wanted = words(input.search);
-          return (await client.customers())
-            .map((entry) => entry.value)
-            .filter((customer) =>
-              wanted.every((word) =>
-                `${customer.name} ${customer.company_id ?? ""} ${customer.email ?? ""} ${customer.contact_person ?? ""}`
-                  .toLowerCase()
-                  .includes(word),
-              ),
-            );
-        }),
-    },
-    {
-      name: "find_quotes",
-      description: t(
-        "Vypíše poslední verzi každé nabídky, případně jen v jednom stavu.",
-        "Lists the latest version of every quote, or of those in one state.",
-      ),
-      inputSchema: {
-        type: "object",
-        properties: { status: { type: "string", enum: [...QUOTE_STATUSES] } },
-      },
-      execute: (input) =>
-        answer(async () =>
-          latestVersions((await client.quotes()).map((entry) => entry.value)).filter(
-            (quote) => !input.status || quote.status === input.status,
-          ),
-        ),
-    },
-    {
-      name: "open_quote",
-      description: t(
-        "Vrátí jednu verzi nabídky podle id (číslo-vN) s řádky.",
-        "Returns one version of a quote by its id (number-vN) with its lines.",
-      ),
-      inputSchema: {
-        type: "object",
-        properties: { id: string("NAB-2026-0002-v2") },
-        required: ["id"],
-      },
-      execute: (input) => answer(async () => (await client.quote(String(input.id))).value),
-    },
-    {
-      name: "create_quote_draft",
-      description: t(
-        "Založí koncept nabídky s dalším číslem pro zákazníka. Nic neposílá ani nepublikuje; řádky doplní člověk nebo agent v editoru.",
-        "Creates a draft quote with the next number for a customer. It sends and publishes nothing; the lines come in the editor.",
-      ),
-      inputSchema: {
-        type: "object",
-        properties: {
-          customer_id: string("C-0001"),
-          title: string(t("předmět nabídky", "subject of the quote")),
-        },
-        required: ["customer_id", "title"],
-      },
-      execute: (input) =>
-        answer(async () => {
-          const created = await client.createQuote({
-            customer_id: String(input.customer_id),
-            title: String(input.title),
-          });
-          return { id: `${created.value.number}-v${created.value.version}`, quote: created.value };
-        }),
-    },
-    {
-      name: "check_quote",
-      description: t(
-        "Zkontroluje nabídku před odesláním: chyby, které odeslání brání, a upozornění.",
-        "Checks a quote before it goes out: the errors that stop it and the warnings.",
-      ),
-      inputSchema: {
-        type: "object",
-        properties: { id: string("NAB-2026-0004-v1") },
-        required: ["id"],
-      },
-      execute: (input) => answer(() => client.checkQuote(String(input.id))),
-    },
-    {
-      name: "prepare_quote_email",
-      description: t(
-        "Připraví text e-mailu k nabídce, název PDF a adresu tiskové stránky. E-mail neodešle: odeslání je na člověku.",
-        "Prepares the e-mail text of a quote, the PDF's name and the print page's address. It does not send: sending is the person's.",
-      ),
-      inputSchema: {
-        type: "object",
-        properties: { id: string("NAB-2026-0002-v2") },
-        required: ["id"],
-      },
-      execute: (input) =>
-        answer(async () => ({
-          ...(await client.email(String(input.id))),
-          print: printUrl(String(input.id), locale),
-        })),
-    },
-    {
-      name: "preview_price_list_import",
-      description: t(
-        "Ukáže, co by ceník dodavatele (CSV) v ceníku změnil. Nic neukládá.",
-        "Shows what a supplier's price list (CSV) would change in the price list. It saves nothing.",
-      ),
-      inputSchema: {
-        type: "object",
-        properties: {
-          csv: string(t("obsah CSV", "the CSV text")),
-          supplier: string(
-            t("dodavatel, jak ho zná ceník", "the supplier as the price list names it"),
-          ),
-          valid_from: string("YYYY-MM-DD"),
-          markup_percent: { type: "number" },
-          round_to_crowns: { type: "boolean" },
-        },
-        required: ["csv", "supplier", "valid_from"],
-      },
-      execute: (input) =>
-        answer(() =>
-          client.importPreview({
-            csv: String(input.csv),
-            options: {
-              supplier: String(input.supplier),
-              valid_from: String(input.valid_from),
-              ...(typeof input.markup_percent === "number"
-                ? { markup_percent: input.markup_percent }
-                : {}),
-              ...(input.round_to_crowns === true ? { round_to_crowns: true } : {}),
-            },
-          }),
-        ),
-    },
-  ];
-  return options.canWrite ? tools : tools.filter((tool) => !WRITE_TOOLS.has(tool.name));
-}
-
-interface ModelContext {
-  registerTool?(tool: Tool): unknown;
-  unregisterTool?(name: string): unknown;
-  provideContext?(context: { tools: Tool[] }): unknown;
-}
-
-/** What this page registered in one browser context, by tool name. */
-interface Registered {
-  /** The tools as they are now; a name not here refuses. */
-  current: Map<string, Tool>;
-  /** Names the browser holds, with how to remove each if it can. */
-  held: Map<string, (() => void) | null>;
-}
-
-const REGISTERED = new WeakMap<ModelContext, Registered>();
-
-/** Removes one registration, if the browser offers a way. */
-function removal(context: ModelContext, name: string, registration: unknown): (() => void) | null {
-  const handle = registration as { unregister?: () => void } | null | undefined;
-  if (typeof handle?.unregister === "function") return () => handle.unregister?.();
-  if (context.unregisterTool) return () => context.unregisterTool?.(name);
-  return null;
+  return scope.document?.modelContext ?? scope.navigator?.modelContext ?? null;
 }
 
 /**
- * Makes the browser's WebMCP tools these `tools`, and safe to call again with
- * another set (the status changed from writable to read-only or back, the
- * page's language, React running an effect twice). Every name is registered
- * once, as a wrapper that runs the tool as it is now; a name no longer in
- * the set is removed where the browser can remove it, and otherwise answers
- * with a refusal, so a tool that changes data never runs on a copy that may
- * not write. Where the browser has only `provideContext`, the whole set is
- * replaced. Elsewhere it does nothing. Returns the function that leaves no
- * tool of this page in use.
+ * The model context the page hands to `registerAgentTools`. In a browser
+ * with WebMCP, `registerTool(tool, { signal })` returns a promise that
+ * rejects with an `AbortError` once the signal aborts, which is exactly how
+ * the kit removes a tool; module-kit 0.6.0 leaves that promise unhandled
+ * (Lazurio/module-kit#14). The wrapper handles it and returns the browser's
+ * own answer unchanged, so a legacy `unregister()` handle keeps working.
  */
-export function registerTools(tools: readonly Tool[], host: unknown = globalThis): () => void {
-  const scope = host as {
-    document?: { modelContext?: ModelContext };
-    navigator?: { modelContext?: ModelContext };
+export function quietModelContext(context: ModelContextLike | null): ModelContextLike | null {
+  if (context === null) return null;
+  return {
+    registerTool: (tool, options) => {
+      const handle = context.registerTool(tool, options);
+      const thenable = handle as { then?: unknown } | null | undefined;
+      if (typeof thenable?.then === "function")
+        (handle as PromiseLike<unknown>).then(undefined, () => {});
+      return handle;
+    },
   };
-  const context = scope.document?.modelContext ?? scope.navigator?.modelContext;
-  if (!context) return () => {};
-  if (!context.registerTool) {
-    context.provideContext?.({ tools: [...tools] });
-    return () => context.provideContext?.({ tools: [] });
-  }
-  let state = REGISTERED.get(context);
-  if (!state) {
-    state = { current: new Map(), held: new Map() };
-    REGISTERED.set(context, state);
-  }
-  const registered = state;
-  const apply = (set: readonly Tool[]) => {
-    registered.current = new Map(set.map((tool) => [tool.name, tool]));
-    for (const [name, remove] of registered.held) {
-      if (registered.current.has(name) || !remove) continue;
-      remove();
-      registered.held.delete(name);
-    }
-    for (const tool of set) {
-      if (registered.held.has(tool.name)) continue;
-      const wrapper: Tool = {
-        name: tool.name,
-        description: tool.description,
-        inputSchema: tool.inputSchema,
-        execute: (input) => {
-          const now = registered.current.get(tool.name);
-          if (now) return now.execute(input);
-          return Promise.resolve(
-            text({
-              refused: "data_read_only",
-              reason: "This copy of Quotes does not change data now; this tool is not available.",
-            }),
-          );
-        },
+}
+
+/** Registers the server's tools where the browser offers WebMCP; elsewhere
+ * nothing is registered and the page works the same. */
+export function installTools(
+  locale: Locale,
+  options: {
+    views?: readonly PageViewTool[];
+    modelContext?: ModelContextLike | null;
+    fetch?: typeof fetch;
+  } = {},
+): InstalledTools {
+  let tools: AgentTools | null = null;
+  let stopped = false;
+  const context = quietModelContext(
+    options.modelContext === undefined ? browserModelContext() : options.modelContext,
+  );
+  const ready = registerAgentTools({
+    viewTools: options.views ?? VIEW_TOOLS,
+    fetch: fetchIn(locale, options.fetch),
+    modelContext: context,
+  }).then(
+    (registered) => {
+      if (!stopped) tools = registered;
+      else
+        try {
+          registered.unregister();
+        } catch {
+          // The browser refused the removal; the page goes on.
+        }
+    },
+    // A browser that refuses a registration leaves the page without tools,
+    // never without its interface.
+    () => {},
+  );
+  // One refresh at a time: two at once would register the same names twice,
+  // which the browser refuses.
+  let queue: Promise<unknown> = ready;
+  return {
+    // Neither call ever rejects: a failed removal or refresh leaves the page
+    // with fewer tools, never with an unhandled rejection.
+    remove: () => {
+      stopped = true;
+      const unregister = () => {
+        try {
+          tools?.unregister();
+        } catch {
+          // The browser refused the removal; the page goes on.
+        }
       };
-      try {
-        const registration = context.registerTool?.(wrapper);
-        registered.held.set(tool.name, removal(context, tool.name, registration));
-      } catch {
-        // The browser holds this name from an earlier page state it cannot
-        // forget; the wrapper registered then follows `current` too.
-        registered.held.set(tool.name, null);
-      }
-    }
+      unregister();
+      // A refresh already waiting for `/api/agent-tools` registers its tools
+      // after this call; once it settles, those go too.
+      queue = queue.then(unregister, unregister);
+    },
+    refresh: () => {
+      queue = queue.then(() => (stopped ? undefined : tools?.refresh())).catch(() => undefined);
+    },
   };
-  apply(tools);
-  return () => apply([]);
 }

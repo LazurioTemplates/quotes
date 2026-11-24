@@ -19,7 +19,13 @@ import type { Locale, Localized } from "../i18n/locale.ts";
  * and a change is confirmed by an opaque revision.
  */
 
-/** An opaque version of one stored record; a save names the one it was edited from. */
+/**
+ * An opaque version of one stored record; a save names the one it was edited
+ * from. It is new on every write, never derived from the content alone and
+ * never a counter: every write stores a new random `record.revision`, and the
+ * revision covers it and the content, so after A → B → A it differs from A's
+ * and a direct change that kept `record.revision` is a change too.
+ */
 export type Revision = string;
 
 export interface Stored<T> {

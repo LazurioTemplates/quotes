@@ -1,7 +1,7 @@
 import { describe, expect, setDefaultTimeout, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { toStableYaml } from "@lazurio/repository-db";
+import { parseYaml, toStableYaml } from "@lazurio/repository-db";
 import { createRepositoryDbStore } from "../src/data/repository-db-store.ts";
 import { copyWrites } from "../src/server/access.ts";
 import { storeContract } from "./store-contract.ts";
@@ -51,6 +51,119 @@ describe("repository-db store", () => {
       expect(log).toContain("Nabídka NAB-2026-0006");
       expect(log).toContain("Repository-Db-Source: quotes-v3");
       expect(git(fixture.originPath, ["rev-list", "--count", "v3"])).toBe("2");
+    } finally {
+      store.close();
+      fixture.cleanup();
+    }
+  });
+
+  test("every write stores a new random write revision in the record's file", async () => {
+    const fixture = createFixtureRepo();
+    const store = storeOver(fixture);
+    const file = join(fixture.mountRoot, "data/items/NAB-KONT-3.yaml");
+    const stored = () =>
+      (parseYaml(readFileSync(file, "utf8")) as { record: Record<string, unknown> }).record;
+    try {
+      // The seed has none: such a record is read as before.
+      expect(stored().revision).toBeUndefined();
+      const opened = await store.getItem("NAB-KONT-3");
+      if (!opened) throw new Error("NAB-KONT-3 missing");
+      await store.saveItem({ ...opened.value, name: "Kontejner B" }, opened.revision);
+      const first = stored();
+      expect(String(first.revision)).toMatch(/^[0-9a-f-]{36}$/);
+      expect(String(first.updatedAt)).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+      const current = await store.getItem("NAB-KONT-3");
+      await store.saveItem(opened.value, current?.revision ?? "");
+      expect(stored().revision).not.toBe(first.revision);
+      // A revision a caller sent in the record is not kept.
+      const latest = await store.getItem("NAB-KONT-3");
+      await store.saveItem(
+        { ...opened.value, name: "Kontejner C", revision: "mine" } as never,
+        latest?.revision ?? "",
+      );
+      expect(stored().revision).not.toBe("mine");
+      expect((await store.getItem("NAB-KONT-3"))?.value).not.toHaveProperty("revision");
+      // The data repository's validator takes the audit fields.
+      const card = await store.draft();
+      await store.publish({ expectedRevision: card.revision ?? "" });
+      expect((await store.draft()).status?.state).toBe("published");
+    } finally {
+      store.close();
+      fixture.cleanup();
+    }
+  });
+
+  test("a direct change of a record's file that kept its write revision is a change", async () => {
+    const fixture = createFixtureRepo();
+    const store = storeOver(fixture);
+    const file = join(fixture.mountRoot, "data/items/NAB-KONT-3.yaml");
+    try {
+      const opened = await store.getItem("NAB-KONT-3");
+      if (!opened) throw new Error("NAB-KONT-3 missing");
+      const saved = await store.saveItem({ ...opened.value, name: "Kontejner B" }, opened.revision);
+      const text = readFileSync(file, "utf8");
+      // An agent edits the file by hand and keeps `record.revision` as it was.
+      writeFileSync(file, text.replace("name: Kontejner B", "name: Kontejner ručně"));
+      const direct = await store.getItem("NAB-KONT-3");
+      expect(direct?.value.name).toBe("Kontejner ručně");
+      expect(direct?.revision).not.toBe(saved.revision);
+      expect(
+        await (async () => {
+          try {
+            await store.saveItem({ ...opened.value, unit: "kus" }, saved.revision);
+          } catch (error) {
+            return (error as { code?: string }).code;
+          }
+          return null;
+        })(),
+      ).toBe("record_changed");
+      expect((await store.getItem("NAB-KONT-3"))?.value.name).toBe("Kontejner ručně");
+    } finally {
+      store.close();
+      fixture.cleanup();
+    }
+  });
+
+  test("a colleague's change of another field of the same record merges", async () => {
+    const fixture = createFixtureRepo();
+    const store = storeOver(fixture);
+    try {
+      // Both start from a record the App wrote, with a write revision.
+      const opened = await store.getItem("NAB-KONT-3");
+      if (!opened) throw new Error("NAB-KONT-3 missing");
+      await store.saveItem({ ...opened.value, name: "Kontejner B" }, opened.revision);
+      let card = await store.draft();
+      await store.publish({ expectedRevision: card.revision ?? "" });
+
+      // A colleague's App changes the unit and publishes first.
+      const colleague = colleagueClone(fixture);
+      const theirs = join(colleague, "data/items/NAB-KONT-3.yaml");
+      const document = parseYaml(readFileSync(theirs, "utf8")) as {
+        record: Record<string, unknown>;
+      };
+      writeFileSync(
+        theirs,
+        toStableYaml({
+          ...document,
+          record: {
+            ...document.record,
+            unit: "kus",
+            revision: crypto.randomUUID(),
+            updatedAt: new Date(Date.now() - 1000).toISOString(),
+          },
+        }),
+      );
+      git(colleague, ["commit", "--quiet", "--all", "--message", "Jednotka kus"]);
+      git(colleague, ["push", "--quiet"]);
+
+      // Here the name changes; the publish takes the colleague's work along.
+      const mine = await store.getItem("NAB-KONT-3");
+      await store.saveItem({ ...opened.value, name: "Kontejner C" }, mine?.revision ?? "");
+      card = await store.draft();
+      await store.publish({ expectedRevision: card.revision ?? "" });
+      const merged = await store.getItem("NAB-KONT-3");
+      expect(merged?.value.name).toBe("Kontejner C");
+      expect(merged?.value.unit).toBe("kus");
     } finally {
       store.close();
       fixture.cleanup();

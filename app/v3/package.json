@@ -22,8 +22,8 @@
     "check": "bun run typecheck && bun run lint && bun run schema:check && bun run validate:data && bun test"
   },
   "dependencies": {
-    "@lazurio/module-kit": "github:Lazurio/module-kit#v0.4.0",
-    "@lazurio/repository-db": "github:Lazurio/repository-db#v3.2.6",
+    "@lazurio/module-kit": "github:Lazurio/module-kit#v0.6.0",
+    "@lazurio/repository-db": "github:Lazurio/repository-db#v3.4.0",
     "@vitejs/plugin-react": "6.2.1",
     "design-system": "github:LazurioTemplates/design-system#v2.0.0",
     "react": "19.3.1",

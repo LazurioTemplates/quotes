@@ -1,7 +1,15 @@
 import { z } from "zod";
 import { type Locale, type Localized, pick } from "../i18n/locale.ts";
 import { itemCode } from "./catalog.ts";
-import { addDays, currencyCode, isoDate, optionalText, text } from "./common.ts";
+import {
+  addDays,
+  currencyCode,
+  isoDate,
+  optionalText,
+  text,
+  writeRevision,
+  writtenAt,
+} from "./common.ts";
 import { customerId } from "./customer.ts";
 import { money, percent, quantity } from "./money.ts";
 import { emailTemplate, type Settings, supplier, TOTAL_ROUNDINGS } from "./settings.ts";
@@ -84,6 +92,8 @@ export const quote = z.strictObject({
   sent_settings: sentSettings
     .optional()
     .describe("The settings the version went out with; set when it is marked as sent."),
+  revision: writeRevision,
+  updatedAt: writtenAt,
 });
 
 export type Quote = z.infer<typeof quote>;

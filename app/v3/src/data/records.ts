@@ -94,6 +94,30 @@ export function parseIn<C extends CollectionName>(
   );
 }
 
+/**
+ * The audit fields of a stored record (`record.revision`, `record.updatedAt`):
+ * every write of the port stores new ones, and the values the port hands out
+ * leave them out. They are repository-db's audit bundle, never business data.
+ */
+export const AUDIT_FIELDS = ["revision", "updatedAt"] as const;
+
+/** A record without its audit fields, as the port hands it out and compares it. */
+export function withoutAudit<T>(value: T): T {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const rest = { ...(value as Record<string, unknown>) };
+  for (const field of AUDIT_FIELDS) delete rest[field];
+  return rest as T;
+}
+
+/**
+ * The audit fields of one write: a new random write revision, never derived
+ * from the content and never a counter (Lazurio Module Standard, "One data
+ * port"), and the instant of the write.
+ */
+export function newAudit(): { revision: string; updatedAt: string } {
+  return { revision: crypto.randomUUID(), updatedAt: new Date().toISOString() };
+}
+
 /** The key of a record across collections: `items/NAB-ZIDLE`. */
 export function recordKey(collection: CollectionName, id: string): string {
   return `${collection}/${id}`;

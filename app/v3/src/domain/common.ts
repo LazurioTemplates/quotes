@@ -12,6 +12,32 @@ export const text = z.string().trim().min(1);
 /** An optional free text; an empty string is stored as no value. */
 export const optionalText = z.string().trim().min(1).optional();
 
+/**
+ * The write revision of a stored record (`record.revision`): a new random
+ * value every write of the data port stores (Lazurio Module Standard, "One
+ * data port"). It is audit metadata, never business data: the port leaves it
+ * out of the values it hands out and replaces it on every save.
+ */
+export const writeRevision = z
+  .string()
+  .min(1)
+  .optional()
+  .describe("A new random value on every write; audit metadata, not business data.");
+
+/**
+ * When the data port last wrote the record (`record.updatedAt`), UTC with
+ * milliseconds. Together with `revision` it is repository-db's audit bundle:
+ * two colleagues' changes of different fields of one record merge, the later
+ * bundle is kept.
+ */
+export const writtenAt = z
+  .string()
+  .regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$/, {
+    message: "expected an instant YYYY-MM-DDTHH:MM:SS.sssZ",
+  })
+  .optional()
+  .describe("When the App last wrote the record (UTC); audit metadata, not business data.");
+
 /** A lowercase identifier of a category or a VAT rate: `office-furniture`, `standard`. */
 export const slug = z
   .string()

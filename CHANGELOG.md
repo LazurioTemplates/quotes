@@ -2,6 +2,71 @@
 
 ## Unreleased
 
+### For whoever runs it
+
+- **All writers at once.** With `app-data@2027.03` (`@lazurio/repository-db`
+  v3.4.0) every writer of the Module's data stores a new `record.revision` on
+  every write: the App, an import, an agent's script, a direct change. Take
+  this release in every Environment that writes the same data before their
+  writes meet. A writer that keeps or leaves out the revision makes the merge
+  fail on `/record/revision`.
+- The stack profile release `app-data@2027.03`: `@lazurio/module-kit` v0.6.0
+  instead of v0.4.0. A runtime that states production never writes without
+  `LAZURIO_RUNTIME_DATA_WRITER=true` (module-kit 0.4.1). module-kit 0.6.0
+  offers an App's publication tools (`effect: "publish"`) in a production
+  application too, and every audit line carries the tool's `effect`. This
+  template offers no publication tool.
+  Nothing in an adopted copy's own files changes; take it by merging the tag.
+- `@lazurio/repository-db` v3.4.0 instead of v3.2.6. It treats
+  `record.revision` as audit metadata with `record.updatedAt`: two changes of
+  different fields of one record merge, and a record whose `revision` one side
+  kept is refused on `/record/revision`. Records without `revision` behave as
+  before.
+- Every write of the App stores a new random write revision in
+  `record.revision` and the instant in `record.updatedAt`, in every
+  collection, also a save of several items and an import. The revision the App
+  hands out and checks covers that value and the content (Module Standard,
+  "One data port"): after A → B → A it is new, so an editor who opened A
+  first and an import preview computed from A are refused instead of
+  overwriting, and a direct change of a file that kept the old `revision` is
+  seen as a change. Before, the revision was a fingerprint of the content
+  alone and repeated after A → B → A. A save that changes nothing writes
+  nothing. The values the App shows and its API and tools return leave both
+  fields out; the Draft & Publish card does not count them as changed fields.
+  The schemas allow both as optional (`revision` a non-empty string,
+  `updatedAt` an instant `YYYY-MM-DDTHH:MM:SS.sssZ`), so existing records stay
+  valid. Copy the regenerated `templates/data-repo/schemas/` into the
+  Organization's data repository in the same release, before the first write
+  of the new App: the data repository's validator refuses the new fields with
+  the old schemas.
+
+### For agents
+
+- The page's tools are removed for good even while a refresh waits for the
+  server's list: once that refresh settles, the tools it registered go too.
+- A record's file changed by hand gets a new `record.revision`
+  (`crypto.randomUUID()`) and `record.updatedAt`, as every write of the App
+  does (`docs/data.md`, the data repository's `AGENTS.md`).
+
+- The tools for agents are defined once on the server
+  (`app/v3/src/server/agent-tools.ts`, `@lazurio/module-kit/tools`) and
+  offered on `/mcp` of the Application and to the page (`/api/agent-tools`,
+  registered by `@lazurio/module-kit/webmcp`), with the same eight names and
+  descriptions as before. Each calls the App's own API, so the role and the
+  writer rule decide as for a click; a copy that may not write lists only the
+  reading tools. None publishes or sends, and the page has no view tool of its
+  own. A tool's answer is now `{ ok, data }` or `{ ok: false, reason, message }`
+  instead of `{ refused, reason }`, and a list comes as an object (`items`,
+  `customers`, `quotes`, `issues`).
+- The page's tools no longer leave unhandled `AbortError` rejections when
+  they are removed or asked for again (after `/api/status`, a sign-in, a
+  change of language). The browser's WebMCP `registerTool` returns a promise
+  that rejects once the kit aborts its signal, and module-kit 0.6.0 leaves it
+  unhandled (Lazurio/module-kit#14), so `bun run dev:demo` showed Bun's error
+  overlay over the page. `app/v3/src/ui/tools.ts` hands the kit a wrapper of
+  the browser's `modelContext` that handles that promise, and a removal or a
+  refresh that fails leaves the page with fewer tools, never with an error.
+
 ## 0.2.0 — 2026-11-18
 
 Ready as an Application of an Organization (Lazurio decision 0249, Module

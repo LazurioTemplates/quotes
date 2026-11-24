@@ -18,7 +18,9 @@ the live rights of its people, not this repository's maintainers.
 
 The Module is one area of work: the price list, customers and quotes. People
 work in the App; agents work through the skills, which use `bun run quotes` in
-`app/v3` (see [`docs/agents.md`](docs/agents.md)) or the App's WebMCP tools:
+`app/v3` (see [`docs/agents.md`](docs/agents.md)), or through the App's tools
+for agents: on `/mcp` of the Application, or the same tools as WebMCP in the
+Environment browser:
 
 | When the person asks to … | Skill |
 | --- | --- |
@@ -80,6 +82,10 @@ skill keeps:
   `@lazurio/repository-db`: reads through `host.read`, writes through
   `host.run` and `Collection.put` with the base revision. Never run Git on the
   data checkout, never keep a second write queue, poll loop or conflict state.
+- Every write stores a new random `record.revision` and `record.updatedAt`
+  (`newAudit` in `records.ts`); the port's revision is the hash of the stored
+  file, never of the content alone and never a counter (Module Standard, "One
+  data port"). See [`docs/extending.md`](docs/extending.md).
 - `app/v3/tests/store-contract.ts` is the shared suite of the port. A change
   of the port's behaviour changes the suite, and every implementation passes it.
 - Every text people see is written in both languages side by side:

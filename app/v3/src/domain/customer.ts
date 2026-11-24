@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { optionalText, text } from "./common.ts";
+import { optionalText, text, writeRevision, writtenAt } from "./common.ts";
 
 /** A customer: a contact kept in the Module's own data (`data/customers/<id>.yaml`). */
 export const CUSTOMER_ID = /^C-[0-9]{4,6}$/;
@@ -18,6 +18,8 @@ export const customer = z.strictObject({
   email: optionalText,
   phone: optionalText,
   note: optionalText,
+  revision: writeRevision,
+  updatedAt: writtenAt,
 });
 
 export type Customer = z.infer<typeof customer>;
