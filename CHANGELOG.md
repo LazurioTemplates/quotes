@@ -24,6 +24,14 @@
   own. A tool's answer is now `{ ok, data }` or `{ ok: false, reason, message }`
   instead of `{ refused, reason }`, and a list comes as an object (`items`,
   `customers`, `quotes`, `issues`).
+- The page's tools no longer leave unhandled `AbortError` rejections when
+  they are removed or asked for again (after `/api/status`, a sign-in, a
+  change of language). The browser's WebMCP `registerTool` returns a promise
+  that rejects once the kit aborts its signal, and module-kit 0.6.0 leaves it
+  unhandled (Lazurio/module-kit#14), so `bun run dev:demo` showed Bun's error
+  overlay over the page. `app/v3/src/ui/tools.ts` hands the kit a wrapper of
+  the browser's `modelContext` that handles that promise, and a removal or a
+  refresh that fails leaves the page with fewer tools, never with an error.
 
 ## 0.2.0 — 2026-11-18
 

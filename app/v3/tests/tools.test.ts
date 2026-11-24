@@ -104,6 +104,62 @@ describe("tools for agents: names, inputs and the page", () => {
     expect(registered).toEqual([]);
   });
 
+  test("a browser whose registration rejects on abort leaves no unhandled rejection, and refresh registers again", async () => {
+    // As the WebMCP API in the Environment browser: `registerTool` returns a
+    // promise that rejects with an `AbortError` once its signal aborts.
+    const registered: string[] = [];
+    const context = {
+      registerTool: (tool: WebMcpTool, options?: { signal?: AbortSignal }) => {
+        registered.push(tool.name);
+        return new Promise<void>((_resolve, reject) => {
+          options?.signal?.addEventListener("abort", () => {
+            registered.splice(registered.indexOf(tool.name), 1);
+            reject(new DOMException("signal is aborted without reason", "AbortError"));
+          });
+        });
+      },
+    };
+    const server = (async () =>
+      Response.json({
+        tools: ["find_items", "find_quotes"].map((name) => ({
+          name,
+          description: name,
+          inputSchema: { type: "object" },
+          annotations: { readOnlyHint: true, untrustedContentHint: false },
+        })),
+      })) as unknown as typeof fetch;
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => unhandled.push(reason);
+    process.on("unhandledRejection", onUnhandled);
+    try {
+      const settle = async () => {
+        for (let turn = 0; turn < 5; turn += 1) await Bun.sleep(0);
+      };
+      const installed = installTools("cs", { modelContext: context, fetch: server });
+      await settle();
+      expect(registered).toEqual(["find_items", "find_quotes"]);
+      // As after `/api/status`: the page asks again, twice in a row.
+      installed.refresh();
+      installed.refresh();
+      await settle();
+      expect(registered).toEqual(["find_items", "find_quotes"]);
+      installed.remove();
+      expect(registered).toEqual([]);
+      installed.refresh();
+      await settle();
+      expect(registered).toEqual([]);
+      // A page whose registration is removed before it finished.
+      const early = installTools("en", { modelContext: context, fetch: server });
+      early.remove();
+      await settle();
+      expect(registered).toEqual([]);
+      await Bun.sleep(10);
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off("unhandledRejection", onUnhandled);
+    }
+  });
+
   test("without WebMCP nothing is registered and the page works the same", async () => {
     const installed = installTools("cs", { modelContext: null });
     installed.refresh();

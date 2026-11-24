@@ -38,6 +38,36 @@ export function fetchIn(locale: Locale, base: typeof fetch = fetch): typeof fetc
   }) as typeof fetch;
 }
 
+/** The browser's WebMCP API, or `null` where it offers none. */
+function browserModelContext(): ModelContextLike | null {
+  const scope = globalThis as {
+    document?: { modelContext?: ModelContextLike };
+    navigator?: { modelContext?: ModelContextLike };
+  };
+  return scope.document?.modelContext ?? scope.navigator?.modelContext ?? null;
+}
+
+/**
+ * The model context the page hands to `registerAgentTools`. In a browser
+ * with WebMCP, `registerTool(tool, { signal })` returns a promise that
+ * rejects with an `AbortError` once the signal aborts, which is exactly how
+ * the kit removes a tool; module-kit 0.6.0 leaves that promise unhandled
+ * (Lazurio/module-kit#14). The wrapper handles it and returns the browser's
+ * own answer unchanged, so a legacy `unregister()` handle keeps working.
+ */
+export function quietModelContext(context: ModelContextLike | null): ModelContextLike | null {
+  if (context === null) return null;
+  return {
+    registerTool: (tool, options) => {
+      const handle = context.registerTool(tool, options);
+      const thenable = handle as { then?: unknown } | null | undefined;
+      if (typeof thenable?.then === "function")
+        (handle as PromiseLike<unknown>).then(undefined, () => {});
+      return handle;
+    },
+  };
+}
+
 /** Registers the server's tools where the browser offers WebMCP; elsewhere
  * nothing is registered and the page works the same. */
 export function installTools(
@@ -50,26 +80,43 @@ export function installTools(
 ): InstalledTools {
   let tools: AgentTools | null = null;
   let stopped = false;
+  const context = quietModelContext(
+    options.modelContext === undefined ? browserModelContext() : options.modelContext,
+  );
   const ready = registerAgentTools({
     viewTools: options.views ?? VIEW_TOOLS,
     fetch: fetchIn(locale, options.fetch),
-    ...(options.modelContext === undefined ? {} : { modelContext: options.modelContext }),
+    modelContext: context,
   }).then(
     (registered) => {
-      if (stopped) registered.unregister();
-      else tools = registered;
+      if (!stopped) tools = registered;
+      else
+        try {
+          registered.unregister();
+        } catch {
+          // The browser refused the removal; the page goes on.
+        }
     },
     // A browser that refuses a registration leaves the page without tools,
     // never without its interface.
     () => {},
   );
+  // One refresh at a time: two at once would register the same names twice,
+  // which the browser refuses.
+  let queue: Promise<unknown> = ready;
   return {
+    // Neither call ever rejects: a failed removal or refresh leaves the page
+    // with fewer tools, never with an unhandled rejection.
     remove: () => {
       stopped = true;
-      tools?.unregister();
+      try {
+        tools?.unregister();
+      } catch {
+        // The browser refused the removal; the page goes on.
+      }
     },
     refresh: () => {
-      void ready.then(() => (stopped ? undefined : tools?.refresh().catch(() => [])));
+      queue = queue.then(() => (stopped ? undefined : tools?.refresh())).catch(() => undefined);
     },
   };
 }
