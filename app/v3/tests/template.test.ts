@@ -59,7 +59,7 @@ describe("module contract", () => {
       react: "19.3.1",
       zod: "4.6.7",
       "@biomejs/biome": "2.6.4",
-      "@lazurio/repository-db": "github:Lazurio/repository-db#v3.2.6",
+      "@lazurio/repository-db": "github:Lazurio/repository-db#v3.4.0",
       "@lazurio/module-kit": "github:Lazurio/module-kit#v0.6.0",
     });
     for (const workflow of [

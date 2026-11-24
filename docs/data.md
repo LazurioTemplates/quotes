@@ -34,6 +34,17 @@ schemaVersion: quotes.item.v1
 The schemas are Zod in `app/v3/src/domain/` and nothing else; `bun run
 schema:export` writes their JSON Schemas into `templates/data-repo/schemas/`.
 
+Every record may carry two audit fields, which are not business data:
+`revision`, a new random value of every write, and `updatedAt`, when it was
+written (UTC with milliseconds, `2026-11-24T09:30:00.000Z`). The App writes
+both on every save and leaves them out of what it shows; the starts in
+`app/v3/seed/` have none. Whoever changes a record's file directly, past the
+App, writes a new `revision` (`crypto.randomUUID()`) and `updatedAt` too
+(Module Standard, "One data port"): repository-db v3.4.0 refuses to merge a
+colleague's change into a record whose `revision` one side kept. The App
+still sees a direct change that kept the old `revision`, because its revision
+of a record covers the whole file.
+
 ## Money and numbers
 
 - **Amounts** are whole minor units of the currency, haléře for CZK:

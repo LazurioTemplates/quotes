@@ -1,7 +1,14 @@
 import { createHash } from "node:crypto";
 import type { CollectionName, DataSet } from "../domain/collections.ts";
 import { createRecordStore, type Put } from "./record-store.ts";
-import { type Entry, emptySnapshot, recordId, recordKey, type Snapshot } from "./records.ts";
+import {
+  type Entry,
+  emptySnapshot,
+  recordId,
+  recordKey,
+  type Snapshot,
+  withoutAudit,
+} from "./records.ts";
 import { reviewResource } from "./review-adapter.ts";
 import type { DiscardScope, DraftCard, QuotesStore, Revision, StoreEvent } from "./store.ts";
 import { StoreError } from "./store.ts";
@@ -14,6 +21,12 @@ import { StoreError } from "./store.ts";
  */
 type Key = string;
 
+/**
+ * The revision of a stored value: a hash of the whole value, which covers the
+ * new random write revision every save stores in it (`revision`) and the
+ * content, as the repository-db store hashes the record's file. A seed record
+ * without one is hashed by its content.
+ */
 function revisionOf(value: unknown): Revision {
   return `sha256:${createHash("sha256").update(JSON.stringify(value)).digest("hex")}`;
 }
@@ -54,11 +67,15 @@ export function createMemoryStore(seed: Partial<DataSet>): QuotesStore {
     const result = emptySnapshot();
     for (const [key, value] of draft) {
       const { collection, id } = split(key);
-      (result[collection] as Map<string, Entry>).set(id, { value, revision: revisionOf(value) });
+      (result[collection] as Map<string, Entry>).set(id, {
+        value: withoutAudit(value),
+        revision: revisionOf(value),
+      });
     }
     return result;
   }
 
+  // `value` carries this write's new `revision` and `updatedAt`.
   const put: Put = (collection, id, value) => {
     draft.set(recordKey(collection, id), value);
     return revisionOf(value);

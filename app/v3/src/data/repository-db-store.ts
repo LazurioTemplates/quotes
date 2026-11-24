@@ -26,7 +26,7 @@ import type { Localized } from "../i18n/locale.ts";
 import { restoringOnFailure } from "./draft-restore.ts";
 import { currentOrigin, originKind } from "./origin.ts";
 import { createRecordStore, type Put } from "./record-store.ts";
-import { type Entry, emptySnapshot, parseIn, type Snapshot } from "./records.ts";
+import { type Entry, emptySnapshot, parseIn, type Snapshot, withoutAudit } from "./records.ts";
 import { quotesReviewAdapter } from "./review-adapter.ts";
 import type { DraftCard, QuotesStore, StoreEvent } from "./store.ts";
 import { readOnly, StoreError } from "./store.ts";
@@ -71,6 +71,15 @@ export interface RepositoryDbStoreOptions {
  * `record`. Every read goes through the sync host's `read`, every write
  * through its queue (`run`) and `Collection.put` with the base revision, so
  * the App never runs Git on its data.
+ *
+ * Every write stores a new random write revision in `record.revision` and the
+ * instant in `record.updatedAt` (repository-db's audit bundle, see
+ * `newAudit`). The revision the port hands out and compares is the hash of
+ * the record's file as stored, which covers that write revision and the
+ * content (Lazurio Module Standard, "One data port"): after A → B → A it is
+ * new each time, and a direct change of the file that kept the old
+ * `record.revision` still gives a new one. The values it hands out leave the
+ * audit fields out.
  */
 export function createRepositoryDbStore(options: RepositoryDbStoreOptions): QuotesStore {
   const { mountRoot } = options;
@@ -211,8 +220,10 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Quot
             });
             continue;
           }
+          // The revision covers the whole file: the write revision every save
+          // stores and the content, so a direct change is a change too.
           (result[collection] as Map<string, Entry>).set(id, {
-            value,
+            value: withoutAudit(value),
             revision: recordRevisionFromBytes(Buffer.from(text, "utf8")),
           });
         } catch (error) {
@@ -268,6 +279,7 @@ export function createRepositoryDbStore(options: RepositoryDbStoreOptions): Quot
                   });
                 }
                 remember(file);
+                // `value` carries this write's new `revision` and `updatedAt`.
                 writeYamlFileAtomic(file, {
                   schemaVersion: collections[collection].schemaVersion,
                   id,

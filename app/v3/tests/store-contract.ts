@@ -137,6 +137,106 @@ export function storeContract(
       );
     });
 
+    test("every write of every collection gives a new revision, also after A → B → A", async () => {
+      // One record of each collection, its edit B, and the way back to A.
+      const settings = await store.settings();
+      const category = (await store.listCategories())[0];
+      const item = await store.getItem("NAB-KONT-3");
+      const customer = await store.getCustomer("C-0001");
+      const quote = await store.getQuote("NAB-2026-0005-v1");
+      if (!category || !item || !customer || !quote) throw new Error("sample records missing");
+      const cases = [
+        {
+          opened: settings,
+          edit: { ...settings.value, validity_days: settings.value.validity_days + 1 },
+          save: (value: unknown, base: string) => store.saveSettings(value as never, base),
+          read: async () => (await store.settings()).revision,
+        },
+        {
+          opened: category,
+          edit: { ...category.value, name: "Nábytek B" },
+          save: (value: unknown, base: string) => store.saveCategory(value as never, base),
+          read: async () =>
+            (await store.listCategories()).find((entry) => entry.value.id === category.value.id)
+              ?.revision,
+        },
+        {
+          opened: item,
+          edit: { ...item.value, name: "Kontejner B" },
+          save: (value: unknown, base: string) => store.saveItem(value as never, base),
+          read: async () => (await store.getItem("NAB-KONT-3"))?.revision,
+        },
+        {
+          opened: customer,
+          edit: { ...customer.value, phone: "+420 000 000 999" },
+          save: (value: unknown, base: string) => store.saveCustomer(value as never, base),
+          read: async () => (await store.getCustomer("C-0001"))?.revision,
+        },
+        {
+          opened: quote,
+          edit: { ...quote.value, title: "Nabídka B" },
+          save: (value: unknown, base: string) => store.saveQuote(value as never, base),
+          read: async () => (await store.getQuote("NAB-2026-0005-v1"))?.revision,
+        },
+      ];
+      for (const { opened, edit, save, read } of cases) {
+        const b = await save(edit, opened.revision);
+        const back = await save(opened.value, b.revision);
+        // A again: the same content, a new revision each time, never a repeat.
+        expect(back.value).toEqual(opened.value);
+        expect(new Set([opened.revision, b.revision, back.revision]).size).toBe(3);
+        expect(await read()).toBe(back.revision);
+        // The value handed out carries no audit fields.
+        expect(Object.keys(back.value as object)).not.toContain("revision");
+        expect(Object.keys(back.value as object)).not.toContain("updatedAt");
+        // An editor who opened A or B before is refused, not overwritten.
+        expect(await refusal(() => save(edit, opened.revision))).toBe("record_changed");
+        expect(await refusal(() => save(edit, b.revision))).toBe("record_changed");
+        expect(await read()).toBe(back.revision);
+      }
+    });
+
+    test("a save of several items gives each changed one a new revision, also after A → B → A", async () => {
+      const before = await store.readCatalog();
+      const shown = catalogRevisions(before);
+      const desk = before.items.find((entry) => entry.value.code === "NAB-STUL-160");
+      const lamp = before.items.find((entry) => entry.value.code === "OSV-LAMPA-LED");
+      if (!desk || !lamp) throw new Error("sample items missing");
+      const b = await store.saveItems([
+        { value: { ...desk.value, name: "Stůl B" }, baseRevision: desk.revision },
+        { value: { ...lamp.value, name: "Lampa B" }, baseRevision: lamp.revision },
+      ]);
+      const back = await store.saveItems([
+        { value: desk.value, baseRevision: b[0]?.revision ?? "" },
+        { value: lamp.value, baseRevision: b[1]?.revision ?? "" },
+      ]);
+      expect(back.map((entry) => entry.value)).toEqual([desk.value, lamp.value]);
+      const revisions = [desk, lamp, ...b, ...back].map((entry) => entry.revision);
+      expect(new Set(revisions).size).toBe(6);
+      // A save over the revisions of A before the round trip is refused.
+      expect(
+        await refusal(() =>
+          store.saveItems([{ value: { ...desk.value, unit: "kus" }, baseRevision: desk.revision }]),
+        ),
+      ).toBe("record_changed");
+      // So is one over the whole catalog as it was shown before (an import's preview).
+      expect(catalogRevisions(await store.readCatalog())).not.toEqual(shown);
+      expect(
+        await refusal(() =>
+          store.saveItems([{ value: newItem(), baseRevision: null }], { unchanged: shown }),
+        ),
+      ).toBe("data_changed");
+      expect(await store.getItem("NAB-STOLEK")).toBeNull();
+    });
+
+    test("a save that changes nothing writes nothing and keeps the revision", async () => {
+      const opened = await store.getItem("NAB-KONT-3");
+      if (!opened) throw new Error("NAB-KONT-3 missing");
+      const saved = await store.saveItem({ ...opened.value }, opened.revision);
+      expect(saved.revision).toBe(opened.revision);
+      expect((await store.draft()).records ?? []).toEqual([]);
+    });
+
     test("refuses a record that breaks its schema or a rule across records", async () => {
       expect(await refusal(() => store.saveItem({ ...newItem(), name: "" }, null))).toBe(
         "invalid_record",

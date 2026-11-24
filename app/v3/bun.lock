@@ -6,7 +6,7 @@
       "name": "quotes-app-v3",
       "dependencies": {
         "@lazurio/module-kit": "github:Lazurio/module-kit#v0.6.0",
-        "@lazurio/repository-db": "github:Lazurio/repository-db#v3.2.6",
+        "@lazurio/repository-db": "github:Lazurio/repository-db#v3.4.0",
         "@vitejs/plugin-react": "6.2.1",
         "design-system": "github:LazurioTemplates/design-system#v2.0.0",
         "react": "19.3.1",
@@ -48,7 +48,7 @@
 
     "@lazurio/module-kit": ["@lazurio/module-kit@github:Lazurio/module-kit#b3e34fe", {}, "Lazurio-module-kit-b3e34fe", "sha512-b56OFb9s/nkGsnh+4/DADKXavRv+Iler2xEshIv7cnTbNCkbCoqp+NRu3/28v2hr/fN4kvLAL/lctPpexLUBpA=="],
 
-    "@lazurio/repository-db": ["@lazurio/repository-db@github:Lazurio/repository-db#db91c63", { "dependencies": { "yaml": "^2.8.0" }, "peerDependencies": { "react": ">=18" }, "optionalPeers": ["react"], "bin": { "repository-db": "./src/cli.ts" } }, "Lazurio-repository-db-db91c63", "sha512-14CRzUSEFoLf1jloI6PBqqEOgxqh7RmIUtvmTRTepFnwkaVkpAbyyP+OXaFo2fwNBJBytgXARsoPfILFME0DBQ=="],
+    "@lazurio/repository-db": ["@lazurio/repository-db@github:Lazurio/repository-db#f4f15a8", { "dependencies": { "yaml": "^2.8.0" }, "peerDependencies": { "react": ">=18" }, "optionalPeers": ["react"], "bin": { "repository-db": "./src/cli.ts" } }, "Lazurio-repository-db-f4f15a8", "sha512-MJm+QKeweW6Bt8oU5ks5UDYBF0BIW6OL7DBxiTvEEopHk/qzIjblSnQ+HRty13g510k8T0o/CtOtMkmEWLCXSA=="],
 
     "@oxc-project/types": ["@oxc-project/types@0.156.0", "", {}, "sha512-1Duyg48TdJNdyhEB8Xn1L36bT9Pv6GUtlKjHxOys8xkaF/rQq3XJE+bAurSK/AgIz5mGFsb77cn9Pb20+WCScw=="],
 

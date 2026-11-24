@@ -7,11 +7,13 @@ import {
   assertRulesFor,
   dataSetOf,
   type Entry,
+  newAudit,
   ordered,
   parseIn,
   recordId,
   recordKey,
   type Snapshot,
+  withoutAudit,
 } from "./records.ts";
 import type {
   Catalog,
@@ -26,7 +28,11 @@ import type {
 } from "./store.ts";
 import { StoreError } from "./store.ts";
 
-/** Writes one record as a draft and returns its new revision. */
+/**
+ * Writes one record as a draft and returns its new revision. The value
+ * carries the write's new audit fields (`revision`, `updatedAt`); the
+ * revision it returns is the one the port hands out for what it stored.
+ */
 export type Put = <C extends CollectionName>(
   collection: C,
   id: string,
@@ -36,7 +42,9 @@ export type Put = <C extends CollectionName>(
 
 /**
  * What a store implementation provides below the port: a fresh snapshot of
- * every record for a read, a write queue with a `put`, and Draft & Publish.
+ * every record for a read (values without their audit fields, each with the
+ * revision of what is stored), a write queue with a `put`, and Draft &
+ * Publish.
  * `createRecordStore` builds the domain operations of the port on it once, so
  * the memory store and the repository-db store keep the same rules.
  */
@@ -112,8 +120,9 @@ export function createRecordStore(backend: RecordBackend): QuotesStore {
     entries: readonly Save<RecordOf[C]>[],
     unchanged?: CatalogRevisions,
   ): Promise<Stored<RecordOf[C]>[]> {
+    // Audit fields a caller sent are not its to set: every write stores new ones.
     const parsed = entries.map((entry) => ({
-      value: parseIn(collection, entry.value),
+      value: withoutAudit(parseIn(collection, entry.value)),
       base: entry.baseRevision,
     }));
     const ids = parsed.map((entry) => recordId(collection, entry.value));
@@ -151,17 +160,37 @@ export function createRecordStore(backend: RecordBackend): QuotesStore {
           });
         }
       });
+      // A save that changes nothing writes nothing and keeps the revision: no
+      // write, no new revision, and no record in the draft that changed nothing.
+      const unchangedAt = parsed.map((entry, index) => {
+        const existing = records.get(ids[index] as string);
+        return existing !== undefined &&
+          canonicalJson(existing.value) === canonicalJson(entry.value)
+          ? existing
+          : null;
+      });
       parsed.forEach((entry, index) => {
+        if (unchangedAt[index]) return;
         records.set(ids[index] as string, { value: entry.value, revision: "" });
       });
       assertRulesFor(
         ids.map((id) => recordKey(collection, id)),
         dataSetOf(snapshot),
       );
-      return parsed.map((entry, index) => ({
-        value: entry.value,
-        revision: put(collection, ids[index] as string, entry.value, entry.base),
-      }));
+      // Every record this write changes gets its own new write revision.
+      return parsed.map((entry, index) => {
+        const kept = unchangedAt[index];
+        if (kept) return stored(kept);
+        return {
+          value: entry.value,
+          revision: put(
+            collection,
+            ids[index] as string,
+            { ...entry.value, ...newAudit() },
+            entry.base,
+          ),
+        };
+      });
     });
   }
 

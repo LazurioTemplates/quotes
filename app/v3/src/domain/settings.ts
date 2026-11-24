@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { LOCALES } from "../i18n/locale.ts";
-import { currencyCode, optionalText, slug, text } from "./common.ts";
+import { currencyCode, optionalText, slug, text, writeRevision, writtenAt } from "./common.ts";
 import { percent } from "./money.ts";
 
 /**
@@ -65,6 +65,8 @@ export const settings = z.strictObject({
   default_introduction: optionalText,
   default_terms: optionalText,
   email: emailTemplate,
+  revision: writeRevision,
+  updatedAt: writtenAt,
 });
 
 export type Settings = z.infer<typeof settings>;

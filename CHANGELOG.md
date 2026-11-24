@@ -11,8 +11,34 @@
   application too, and every audit line carries the tool's `effect`. This
   template offers no publication tool.
   Nothing in an adopted copy's own files changes; take it by merging the tag.
+- `@lazurio/repository-db` v3.4.0 instead of v3.2.6. It treats
+  `record.revision` as audit metadata with `record.updatedAt`: two changes of
+  different fields of one record merge, and a record whose `revision` one side
+  kept is refused on `/record/revision`. Records without `revision` behave as
+  before.
+- Every write of the App stores a new random write revision in
+  `record.revision` and the instant in `record.updatedAt`, in every
+  collection, also a save of several items and an import. The revision the App
+  hands out and checks covers that value and the content (Module Standard,
+  "One data port"): after A → B → A it is new, so an editor who opened A
+  first and an import preview computed from A are refused instead of
+  overwriting, and a direct change of a file that kept the old `revision` is
+  seen as a change. Before, the revision was a fingerprint of the content
+  alone and repeated after A → B → A. A save that changes nothing writes
+  nothing. The values the App shows and its API and tools return leave both
+  fields out; the Draft & Publish card does not count them as changed fields.
+  The schemas allow both as optional (`revision` a non-empty string,
+  `updatedAt` an instant `YYYY-MM-DDTHH:MM:SS.sssZ`), so existing records stay
+  valid. Copy the regenerated `templates/data-repo/schemas/` into the
+  Organization's data repository in the same release, before the first write
+  of the new App: the data repository's validator refuses the new fields with
+  the old schemas.
 
 ### For agents
+
+- A record's file changed by hand gets a new `record.revision`
+  (`crypto.randomUUID()`) and `record.updatedAt`, as every write of the App
+  does (`docs/data.md`, the data repository's `AGENTS.md`).
 
 - The tools for agents are defined once on the server
   (`app/v3/src/server/agent-tools.ts`, `@lazurio/module-kit/tools`) and

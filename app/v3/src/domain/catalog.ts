@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { isoDate, optionalText, slug, text } from "./common.ts";
+import { isoDate, optionalText, slug, text, writeRevision, writtenAt } from "./common.ts";
 import { money } from "./money.ts";
 
 /**
@@ -10,6 +10,8 @@ export const category = z.strictObject({
   id: slug,
   name: text,
   order: z.int().min(0).optional(),
+  revision: writeRevision,
+  updatedAt: writtenAt,
 });
 
 /** Our code of an item: letters, digits, `.`, `_` and `-`. */
@@ -46,6 +48,8 @@ export const item = z.strictObject({
   supplier_code: optionalText,
   archived: z.boolean().optional(),
   price_history: z.array(priceChange).optional(),
+  revision: writeRevision,
+  updatedAt: writtenAt,
 });
 
 export type Category = z.infer<typeof category>;

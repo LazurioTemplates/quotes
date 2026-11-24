@@ -24,6 +24,25 @@ security fix.
   `moveFile`), implemented in every store and covered by
   `tests/store-contract.ts`. The server, the service and the command line call
   only the port.
+- **A record's revision** is opaque and new on every write (Module Standard,
+  "One data port"). Every save of the port, a save of several items and an
+  import included, stores a new random write revision (`crypto.randomUUID()`)
+  in `record.revision` and the instant in `record.updatedAt` (`newAudit` in
+  `app/v3/src/data/records.ts`, called once per changed record by
+  `record-store.ts`). The revision the port hands out and compares is the
+  hash of the record's file as stored, which covers that write revision and
+  the content: after A → B → A it is new each time, so an editor who opened A
+  first and an import preview computed from A are refused, and a direct change
+  of the file that kept the old `record.revision` is still a change. A save
+  that changes nothing writes nothing and keeps the revision. The values the
+  port hands out leave `revision` and `updatedAt` out, a revision a caller
+  sends in a record is replaced, and the Draft & Publish card does not show
+  them as changed fields. Keep it so in a new store and a new collection: the
+  shared suite checks A → B → A for every collection. `record.updatedAt`
+  matters for colleagues: with repository-db v3.4.0 two changes of different
+  fields of one record merge only when both carry it (the later audit bundle
+  is kept, the merged record gets a new revision); with `revision` alone the
+  publish ends with a conflict on `/record/revision`.
 - **A new page** is a React component in `app/v3/src/ui/pages/` and a route in
   `routes.ts`; it calls only the HTTP API (`app/v3/src/ui/api.ts`) and writes
   every text in both languages. An action people and agents do often gets a
@@ -188,7 +207,9 @@ planned, reviewed and reversible:
    and `tests/store-contract.ts` are copied unchanged. Add
    `src/data/dolt-store.ts`, the storage port over Dolt (Kysely 0.29.8 and
    mysql2 3.24.6 per the profile `app-database`), and SQL migrations derived
-   from the Zod schemas. Settings, categories, items, customers and quote
+   from the Zod schemas. Every write stores a new random value in the row's
+   `revision` column, as v3 does in `record.revision`; a revision does not
+   survive the move, so a client reads the record again after it. Settings, categories, items, customers and quote
    versions are flat records with a stable id, so they map to rows; the lines
    of a quote and the price history of an item become tables of their own.
 2. **Draft & Publish stays the same for people.** A draft is the person's

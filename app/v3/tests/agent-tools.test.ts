@@ -175,6 +175,53 @@ describe("tools for agents", () => {
     expect(await store.listItems()).toEqual(before);
   });
 
+  test("after A → B → A an import preview from /mcp or the page no longer applies", async () => {
+    // No tool takes a record's revision; the import preview's token is
+    // computed from the revisions of the settings, categories and items, and
+    // the import writes only over them. With a content fingerprint the token
+    // of A would repeat after A → B → A and an outdated preview would apply.
+    const { tools, store, api } = setup(true);
+    const input = { csv: CSV, supplier: "Ukázkový velkoobchod nábytku", valid_from: "2026-11-06" };
+    const viaMcp = async () =>
+      String((await mcpTool(tools, "preview_price_list_import", input, user)).structured.token);
+    const viaPage = async () => {
+      const { status, body } = await pageTool(tools, "preview_price_list_import", input, user);
+      expect(status).toBe(200);
+      return String((body.data as { token: string }).token);
+    };
+    const apply = async (token: string) => {
+      const response = await api(
+        gatewayRequest("/api/import/apply", {
+          caller: user,
+          origin: TEST_ORIGIN,
+          // The tools speak English here; the preview's token follows the language.
+          headers: { "accept-language": "en" },
+          body: {
+            csv: CSV,
+            options: { supplier: input.supplier, valid_from: input.valid_from },
+            token,
+          },
+        }),
+      );
+      return [response.status, ((await response.json()) as { code?: string }).code];
+    };
+    const roundTrip = async () => {
+      const a = await store.getItem("NAB-KONT-3");
+      if (!a) throw new Error("NAB-KONT-3 missing");
+      const b = await store.saveItem({ ...a.value, name: "Kontejner B" }, a.revision);
+      await store.saveItem(a.value, b.revision);
+    };
+    for (const preview of [viaMcp, viaPage]) {
+      const before = await preview();
+      await roundTrip();
+      const after = await preview();
+      expect(after).not.toBe(before);
+      expect(await apply(before)).toEqual([409, "preview_stale"]);
+    }
+    // The current preview applies.
+    expect(await apply(await viaMcp())).toEqual([200, undefined]);
+  });
+
   test("the page calls the same tools with its own session and channel", async () => {
     const { tools, channels, audits } = setup(true);
     const { status, body } = await pageTool(
