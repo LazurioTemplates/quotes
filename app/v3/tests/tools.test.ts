@@ -148,6 +148,26 @@ describe("tools for agents: names, inputs and the page", () => {
       installed.refresh();
       await settle();
       expect(registered).toEqual([]);
+      // A page removed while a refresh waits for the server's list: the tools
+      // that refresh registers afterwards go too.
+      let release: () => void = () => {};
+      let calls = 0;
+      const slow = (async (...args: Parameters<typeof fetch>) => {
+        calls += 1;
+        if (calls === 2) await new Promise<void>((resolve) => (release = resolve));
+        return (server as (...a: Parameters<typeof fetch>) => Promise<Response>)(...args);
+      }) as unknown as typeof fetch;
+      const pending = installTools("cs", { modelContext: context, fetch: slow });
+      await settle();
+      expect(registered).toEqual(["find_items", "find_quotes"]);
+      pending.refresh();
+      await settle();
+      pending.remove();
+      expect(registered).toEqual([]);
+      release();
+      await settle();
+      await Bun.sleep(5);
+      expect(registered).toEqual([]);
       // A page whose registration is removed before it finished.
       const early = installTools("en", { modelContext: context, fetch: server });
       early.remove();

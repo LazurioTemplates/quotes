@@ -36,6 +36,8 @@
 
 ### For agents
 
+- The page's tools are removed for good even while a refresh waits for the
+  server's list: once that refresh settles, the tools it registered go too.
 - A record's file changed by hand gets a new `record.revision`
   (`crypto.randomUUID()`) and `record.updatedAt`, as every write of the App
   does (`docs/data.md`, the data repository's `AGENTS.md`).

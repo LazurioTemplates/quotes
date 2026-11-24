@@ -109,11 +109,17 @@ export function installTools(
     // with fewer tools, never with an unhandled rejection.
     remove: () => {
       stopped = true;
-      try {
-        tools?.unregister();
-      } catch {
-        // The browser refused the removal; the page goes on.
-      }
+      const unregister = () => {
+        try {
+          tools?.unregister();
+        } catch {
+          // The browser refused the removal; the page goes on.
+        }
+      };
+      unregister();
+      // A refresh already waiting for `/api/agent-tools` registers its tools
+      // after this call; once it settles, those go too.
+      queue = queue.then(unregister, unregister);
     },
     refresh: () => {
       queue = queue.then(() => (stopped ? undefined : tools?.refresh())).catch(() => undefined);
