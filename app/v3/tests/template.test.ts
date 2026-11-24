@@ -33,7 +33,7 @@ describe("module contract", () => {
     ]) {
       expect({ file, exists: existsSync(resolve(ROOT, file)) }).toEqual({ file, exists: true });
     }
-    expect(read("docs/extending.md")).toContain("app-data@2027.02");
+    expect(read("docs/extending.md")).toContain("app-data@2027.03");
     expect(read("docs/adoption.md")).toContain(
       "lazurio module create <Org>/<slug> --stack vite-react",
     );

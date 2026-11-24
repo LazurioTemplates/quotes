@@ -4,7 +4,13 @@
 
 ### For whoever runs it
 
-- The stack profile release `app-data@2027.02`: `@lazurio/module-kit` v0.6.0
+- **All writers at once.** With `app-data@2027.03` (`@lazurio/repository-db`
+  v3.4.0) every writer of the Module's data stores a new `record.revision` on
+  every write: the App, an import, an agent's script, a direct change. Take
+  this release in every Environment that writes the same data before their
+  writes meet. A writer that keeps or leaves out the revision makes the merge
+  fail on `/record/revision`.
+- The stack profile release `app-data@2027.03`: `@lazurio/module-kit` v0.6.0
   instead of v0.4.0. A runtime that states production never writes without
   `LAZURIO_RUNTIME_DATA_WRITER=true` (module-kit 0.4.1). module-kit 0.6.0
   offers an App's publication tools (`effect: "publish"`) in a production
