@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.3.1 — 2026-11-25
+
 ### For whoever adopts it
 
 - **The scaffold's own files go.** After the merge of the release, the
