@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+### For whoever adopts it
+
+- **The scaffold's own files go.** After the merge of the release, the
+  adoption removes every file under `app/v3/` the release does not have, by
+  one loop over `git ls-files`, instead of a fixed list that missed what
+  `lazurio module create --data` adds today (`src/server.ts`,
+  `src/app-server.ts`, `src/agent-tools.ts`, `tests/store-contract.test.ts`
+  and their tests); left behind, they failed the Module's checks. A test runs
+  the loop.
+- **Teams the command accepts.** The adoption offers only Teams the root's
+  `lazurio.organization.json` declares, that GitHub has under their bound
+  slug and, where the binding names an id, with that id (every page of
+  the list), and stops before the plan when none is, instead of meeting
+  `unknown_team`, `team-not-on-github` or `team-binding-mismatch` at the
+  command.
+- **Who approves, said up front.** For each of the three pull requests
+  (the root's default branch, the new Module's `main`, the data's `v3`) the
+  adoption reads the rulesets, the Organization's rulesets that reach new
+  repositories and the branch protection, and the plan says what each
+  requires and who could approve, or that it cannot be established yet;
+  when the person is the only one who could, it says so before anything is
+  created, never proposing a bypass (step 1.6).
+- **The release's commit.** The release check asks `git ls-remote` for the
+  tag's peeled ref, the commit, not the annotated tag's object.
+
 ## 0.3.0 — 2026-11-24
 
 ### For whoever runs it

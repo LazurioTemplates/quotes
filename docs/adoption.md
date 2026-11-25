@@ -28,12 +28,14 @@ Do all of this live, before showing a plan.
    Organization's Module needs an active Owner of the Organization:
    `gh api orgs/<Org>/memberships/<login> --jq .role` is `admin`. Otherwise
    prepare a request for an Owner
-   (`gh api "orgs/<Org>/members?role=admin" --jq '.[].login'`): an issue in
+   (`gh api --paginate "orgs/<Org>/members?role=admin" --jq '.[].login'`): an issue in
    the Organization's root repository with the plan below, assigned to them.
-2. **The release.** Compare it with the brief:
-   `git ls-remote https://github.com/LazurioTemplates/quotes refs/tags/<tag>`
-   must point to the recorded commit (for an annotated tag, its peeled `^{}`
-   line). A mismatch stops the adoption.
+2. **The release.** Compare it with the brief. Releases are annotated tags,
+   so ask for the commit the tag points to, its peeled ref:
+   `git ls-remote https://github.com/LazurioTemplates/quotes 'refs/tags/<tag>^{}'`
+   must print the recorded commit (asking for `refs/tags/<tag>` alone gives
+   the tag object, not the commit). A mismatch, or no line, stops the
+   adoption.
 3. **Name collision.** The slug is `quotes`. Look in the Organization's
    `modules.manifest.json` for a slot with that slug or path, and on GitHub for
    `<Org>/quotes` and `<Org>/quotes-data`.
@@ -49,6 +51,63 @@ Do all of this live, before showing a plan.
 4. **Compatibility.** The Organization's Environments run a LazurioPlatform
    release that knows `start_script` and `build_output` (v0.1.11 or newer);
    Bun 1.4.4 is fetched by Lazurio when missing.
+5. **Teams the command accepts.** `lazurio module create` takes a Team only
+   when the root's `lazurio.organization.json` declares it (`teams[].slug`,
+   otherwise `unknown_team`), GitHub has a Team under the slug its
+   `forge_binding.team.asserted_slug` names, or under its own slug without a
+   binding (otherwise `team-not-on-github`), and that Team's id is the
+   binding's `forge_binding.team.id` (otherwise `team-binding-mismatch`).
+   Read both sides, every page of the GitHub list:
+
+   ```bash
+   jq -r '.teams[] | [.slug, (.forge_binding.team.asserted_slug // .slug), (.forge_binding.team.id // "")] | @tsv' lazurio.organization.json
+   gh api --paginate orgs/<Org>/teams --jq '.[] | [.slug, (.id | tostring)] | @tsv'
+   ```
+
+   Offer the person only a declared Team whose GitHub slug is in the list
+   and, where the binding names an id, has that id. When none qualifies,
+   stop before the plan and tell the person which Team is missing or bound
+   to another id: an Owner creates the Team or corrects the binding in the
+   root; this adoption changes neither.
+6. **Who approves the pull requests.** The adoption ends with three pull
+   requests and the person merges them: the root's slot (into the root's
+   default branch), the Module (into `main` of the new `<Org>/<slug>`) and
+   the data (into `v3` of `<Org>/<slug>-data`). For each target read the
+   approvals it requires and who may give them:
+
+   ```bash
+   # the root's default branch: rulesets and classic branch protection
+   gh api repos/<Org>/<root>/rules/branches/<default> --jq '.[] | select(.type == "pull_request") | .parameters'
+   gh api repos/<Org>/<root>/branches/<default>/protection --jq '.required_pull_request_reviews' # 404: none
+   # the Organization's rulesets, which also reach repositories created later
+   gh api --paginate orgs/<Org>/rulesets --jq '.[].id'
+   gh api orgs/<Org>/rulesets/<id> --jq '{enforcement, target, conditions, pull_request: [.rules[] | select(.type == "pull_request") | .parameters]}'
+   # who could approve in the root: write access, and CODEOWNERS when code owners must review
+   gh api --paginate repos/<Org>/<root>/collaborators --jq '.[] | select(.permissions.push) | .login'
+   ```
+
+   A ruleset counts for a target when it is `active` and its `conditions`
+   (`repository_name` include and exclude, `ref_name` include and exclude,
+   `~DEFAULT_BRANCH`, `~ALL`) match the target's repository and branch; the
+   Module and its data repository do not exist yet, so match their names
+   `<slug>` and `<slug>-data` and the branches `main` and `v3`.
+   `required_approving_review_count` above 0 means someone other than the
+   author approves, and GitHub never counts the author's own approval;
+   `require_code_owner_review` means one of the code owners. The new
+   repositories' possible reviewers are the Organization's Owners and the
+   members of the Teams chosen in step 1.5.
+
+   In the plan, say per target what it requires and who could approve.
+   When the person is the only one who could (the Organization's only Owner,
+   no other member with write access or among the code owners), say so now,
+   not at the third pull request, and ask whom to ask; when the Organization
+   has no one, the pull request waits until it adds someone. When a target's
+   requirement cannot be established yet (a ruleset whose conditions you
+   cannot match with certainty, rules you cannot read), say exactly that in
+   the plan and read the rules again once the repository exists, before
+   asking the person to merge. Never promise a reviewer you have not found,
+   and never propose a bypass, an exception in the rules or merging without
+   the review.
 
 ## 2. Show the plan and wait for confirmation
 
@@ -58,8 +117,11 @@ Show the person, in their language and in a few lines:
   Organization's Environments (`bun install`, the tests, the App);
 - the two private repositories that will be created: `<Org>/<slug>` and
   `<Org>/<slug>-data`;
-- the Teams that get access, chosen from the Organization's real list
-  (`gh api orgs/<Org>/teams --jq '.[].slug'`), never guessed;
+- the Teams that get access, chosen with the person from those step 1.5
+  found both declared and on GitHub, never guessed;
+- per pull request (root, Module, data) what approval it requires and who
+  could give it (step 1.6), or that it cannot be established yet;
+  when the person is the only one who could, whom they will ask;
 - the start and its language;
 - for the `empty` start: the Organization's details a quote prints (name,
   company ID, VAT ID, address, e-mail, phone, web, bank account). Take them
@@ -105,10 +167,21 @@ The template's tree wins everywhere except the Organization's identity:
 | `README.md`, `AGENTS.md` | | the template's; add a section "This Organization's copy" at the end of `AGENTS.md` |
 | `.gitignore` | | the template's (it ignores `/db/`) |
 
-Remove what only the scaffold had: `app/v3/index.html`, `app/v3/src/App.tsx`,
-`app/v3/src/main.tsx`, `app/v3/src/greeting.ts`, `app/v3/src/greeting.test.ts`,
-`app/v3/seed/.gitkeep` and `app/v3/tests/data.test.ts`. Then set the
-Organization's identity:
+Remove every file under `app/v3/` that only the scaffold had, whatever the
+Lazurio release created (an `index.html`, `src/App.tsx`, `src/greeting.ts`,
+`src/server.ts`, `src/app-server.ts`, `src/agent-tools.ts`,
+`tests/store-contract.test.ts`, `seed/.gitkeep` and others): anything the
+release does not have would still run in the Module's checks against the
+template's code. In the Module's root, after the merge and before its commit:
+
+```bash
+git ls-files app/v3 | while IFS= read -r file; do
+  git cat-file -e "<commit>:$file" 2>/dev/null || git rm -q -f -- "$file"
+done
+```
+
+`git status` then shows no file under `app/v3/` that the release lacks. Then
+set the Organization's identity:
 
 - `app/v3/config/data-repository.json`: the `remote` of `<Org>/<slug>-data`
   exactly as `db/repository-db.yaml` names it, `branch: v3`;
