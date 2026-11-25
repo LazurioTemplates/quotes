@@ -30,8 +30,12 @@ describe("module contract", () => {
     expect(guide).toContain("'refs/tags/<tag>^{}'");
     expect(guide).toContain("**Teams the command accepts.**");
     expect(guide).toContain("forge_binding.team.asserted_slug");
+    expect(guide).toContain("team-binding-mismatch");
+    expect(guide).toContain("gh api --paginate orgs/<Org>/teams");
+    expect(guide).toContain("`v3` of `<Org>/<slug>-data`");
+    expect(guide).toContain("cannot be established yet");
     expect(guide).toContain("**Who approves the pull requests.**");
-    expect(guide).toContain("Never propose a bypass");
+    expect(guide).toContain("never propose a bypass");
   });
 
   test("the adoption guide's clean-up removes every scaffold file the release lacks", () => {

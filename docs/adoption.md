@@ -51,40 +51,63 @@ Do all of this live, before showing a plan.
 4. **Compatibility.** The Organization's Environments run a LazurioPlatform
    release that knows `start_script` and `build_output` (v0.1.11 or newer);
    Bun 1.4.4 is fetched by Lazurio when missing.
-5. **Teams the command accepts.** `lazurio module create` takes only Teams
-   that the root's `lazurio.organization.json` declares (`teams[].slug`,
-   otherwise `unknown_team`) and that exist on GitHub under that slug or the
-   one its `forge_binding.team.asserted_slug` names (otherwise
-   `team-not-on-github`). List the declared ones and check each:
+5. **Teams the command accepts.** `lazurio module create` takes a Team only
+   when the root's `lazurio.organization.json` declares it (`teams[].slug`,
+   otherwise `unknown_team`), GitHub has a Team under the slug its
+   `forge_binding.team.asserted_slug` names, or under its own slug without a
+   binding (otherwise `team-not-on-github`), and that Team's id is the
+   binding's `forge_binding.team.id` (otherwise `team-binding-mismatch`).
+   Read both sides, every page of the GitHub list:
 
    ```bash
-   jq -r '.teams[] | [.slug, (.forge_binding.team.asserted_slug // .slug)] | @tsv' lazurio.organization.json
-   gh api orgs/<Org>/teams --jq '.[].slug'
+   jq -r '.teams[] | [.slug, (.forge_binding.team.asserted_slug // .slug), (.forge_binding.team.id // "")] | @tsv' lazurio.organization.json
+   gh api --paginate orgs/<Org>/teams --jq '.[] | [.slug, (.id | tostring)] | @tsv'
    ```
 
-   Offer the person only Teams in both lists. When none is, stop before the
-   plan: tell the person which declared Team is missing on GitHub, and that
-   an Owner either creates it on GitHub or declares an existing one in the
+   Offer the person only a declared Team whose GitHub slug is in the list
+   and, where the binding names an id, has that id. When none qualifies,
+   stop before the plan and tell the person which Team is missing or bound
+   to another id: an Owner creates the Team or corrects the binding in the
    root; this adoption changes neither.
 6. **Who approves the pull requests.** The adoption ends with three pull
-   requests (the root's slot, the Module, the data) and the person merges
-   them. Read the review rules that will apply to each:
+   requests and the person merges them: the root's slot (into the root's
+   default branch), the Module (into `main` of the new `<Org>/<slug>`) and
+   the data (into `v3` of `<Org>/<slug>-data`). For each target read the
+   approvals it requires and who may give them:
 
    ```bash
-   gh api repos/<Org>/<root>/rules/branches/main --jq '.[].type'
-   gh api orgs/<Org>/rulesets --jq '.[] | [.name, .target, .enforcement] | @tsv'
-   gh api "orgs/<Org>/members?role=admin" --jq '.[].login'
+   # the root's default branch: rulesets and classic branch protection
+   gh api repos/<Org>/<root>/rules/branches/<default> --jq '.[] | select(.type == "pull_request") | .parameters'
+   gh api repos/<Org>/<root>/branches/<default>/protection --jq '.required_pull_request_reviews' # 404: none
+   # the Organization's rulesets, which also reach repositories created later
+   gh api --paginate orgs/<Org>/rulesets --jq '.[].id'
+   gh api orgs/<Org>/rulesets/<id> --jq '{enforcement, target, conditions, pull_request: [.rules[] | select(.type == "pull_request") | .parameters]}'
+   # who could approve in the root: write access, and CODEOWNERS when code owners must review
+   gh api --paginate repos/<Org>/<root>/collaborators --jq '.[] | select(.permissions.push) | .login'
    ```
 
-   A `pull_request` rule with required approvals means someone other than
-   the author approves before the merge, and GitHub never counts the
-   author's own approval. When the person is the only one who could approve
-   (the Organization's only Owner, no other reviewer in its Teams or
-   `CODEOWNERS`), say so in the plan, not at the third pull request: name
-   the reviewer the Organization has (a member or a review persona its
-   rules name) and ask the person whom to ask; when it has none, tell them
-   the pull requests will wait until they add one. Never propose a bypass,
-   an exception in the rules or merging without the review.
+   A ruleset counts for a target when it is `active` and its `conditions`
+   (`repository_name` include and exclude, `ref_name` include and exclude,
+   `~DEFAULT_BRANCH`, `~ALL`) match the target's repository and branch; the
+   Module and its data repository do not exist yet, so match their names
+   `<slug>` and `<slug>-data` and the branches `main` and `v3`.
+   `required_approving_review_count` above 0 means someone other than the
+   author approves, and GitHub never counts the author's own approval;
+   `require_code_owner_review` means one of the code owners. The new
+   repositories' possible reviewers are the Organization's Owners and the
+   members of the Teams chosen in step 1.5.
+
+   In the plan, say per target what it requires and who could approve.
+   When the person is the only one who could (the Organization's only Owner,
+   no other member with write access or among the code owners), say so now,
+   not at the third pull request, and ask whom to ask; when the Organization
+   has no one, the pull request waits until it adds someone. When a target's
+   requirement cannot be established yet (a ruleset whose conditions you
+   cannot match with certainty, rules you cannot read), say exactly that in
+   the plan and read the rules again once the repository exists, before
+   asking the person to merge. Never promise a reviewer you have not found,
+   and never propose a bypass, an exception in the rules or merging without
+   the review.
 
 ## 2. Show the plan and wait for confirmation
 
@@ -96,8 +119,9 @@ Show the person, in their language and in a few lines:
   `<Org>/<slug>-data`;
 - the Teams that get access, chosen with the person from those step 1.5
   found both declared and on GitHub, never guessed;
-- who approves the three pull requests (step 1.6) and, when the person is
-  the only one who could, whom they will ask;
+- per pull request (root, Module, data) what approval it requires and who
+  could give it (step 1.6), or that it cannot be established yet;
+  when the person is the only one who could, whom they will ask;
 - the start and its language;
 - for the `empty` start: the Organization's details a quote prints (name,
   company ID, VAT ID, address, e-mail, phone, web, bank account). Take them
