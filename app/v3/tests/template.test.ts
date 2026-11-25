@@ -1,7 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import packageJson from "../package.json";
 import { parseDesignSystemPin } from "./support/design-system-pin.ts";
 
@@ -16,6 +25,58 @@ const read = (path: string) => readFileSync(resolve(ROOT, path), "utf8");
 const TEMPLATE = JSON.parse(read("lazurio.module.json")).company === "REPLACE-WITH-ORG-NAME";
 
 describe("module contract", () => {
+  test("the adoption guide checks the release's commit, the Teams and the reviews", () => {
+    const guide = read("docs/adoption.md");
+    expect(guide).toContain("'refs/tags/<tag>^{}'");
+    expect(guide).toContain("**Teams the command accepts.**");
+    expect(guide).toContain("forge_binding.team.asserted_slug");
+    expect(guide).toContain("**Who approves the pull requests.**");
+    expect(guide).toContain("Never propose a bypass");
+  });
+
+  test("the adoption guide's clean-up removes every scaffold file the release lacks", () => {
+    // The guide's own loop, run in a repository like a Module after the merge:
+    // the release's files stay, whatever only the scaffold had goes.
+    const guide = read("docs/adoption.md");
+    const loop = /```bash\n(git ls-files app\/v3 \| while[\s\S]*?)```/.exec(guide)?.[1];
+    expect(loop).toBeString();
+    const dir = mkdtempSync(join(tmpdir(), "quotes-adoption-"));
+    const git = (...args: string[]) =>
+      spawnSync(
+        "git",
+        ["-C", dir, "-c", "user.name=t", "-c", "user.email=t@example.invalid", ...args],
+        {
+          encoding: "utf8",
+        },
+      );
+    try {
+      git("init", "-q", "-b", "main");
+      const put = (path: string) => {
+        mkdirSync(join(dir, path, ".."), { recursive: true });
+        writeFileSync(join(dir, path), `${path}\n`);
+      };
+      put("app/v3/package.json");
+      put("app/v3/src/data/store.ts");
+      git("add", "-A");
+      git("commit", "-q", "-m", "release");
+      const release = git("rev-parse", "HEAD").stdout.trim();
+      for (const path of ["app/v3/src/server.ts", "app/v3/src/agent-tools.ts", "app/v3/index.html"])
+        put(path);
+      git("add", "-A");
+      const ran = spawnSync("bash", ["-c", (loop as string).replaceAll("<commit>", release)], {
+        cwd: dir,
+        encoding: "utf8",
+      });
+      expect(ran.status).toBe(0);
+      expect(git("ls-files", "app/v3").stdout.trim().split("\n").sort()).toEqual([
+        "app/v3/package.json",
+        "app/v3/src/data/store.ts",
+      ]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   test("MIT by Lazurio contributors, with the documents an adoption needs", () => {
     expect(read("LICENSE")).toContain("MIT License");
     expect(read("LICENSE")).toContain("Copyright (c) 2026 Lazurio contributors");
