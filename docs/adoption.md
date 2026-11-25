@@ -28,7 +28,7 @@ Do all of this live, before showing a plan.
    Organization's Module needs an active Owner of the Organization:
    `gh api orgs/<Org>/memberships/<login> --jq .role` is `admin`. Otherwise
    prepare a request for an Owner
-   (`gh api "orgs/<Org>/members?role=admin" --jq '.[].login'`): an issue in
+   (`gh api --paginate "orgs/<Org>/members?role=admin" --jq '.[].login'`): an issue in
    the Organization's root repository with the plan below, assigned to them.
 2. **The release.** Compare it with the brief. Releases are annotated tags,
    so ask for the commit the tag points to, its peeled ref:
