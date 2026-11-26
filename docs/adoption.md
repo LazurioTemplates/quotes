@@ -65,7 +65,10 @@ Do all of this live, before showing a plan.
    ```
 
    Offer the person only a declared Team whose GitHub slug is in the list
-   and, where the binding names an id, has that id. When none qualifies,
+   and, where the binding names an id, has that id. Recommend first the one
+   the root marks `"default": true`, when it qualifies, and say in plain
+   words what a Team is here: the group of people who get access to the
+   Module and its data. When none qualifies,
    stop before the plan and tell the person which Team is missing or bound
    to another id: an Owner creates the Team or corrects the binding in the
    root; this adoption changes neither.
@@ -73,7 +76,13 @@ Do all of this live, before showing a plan.
    requests and the person merges them: the root's slot (into the root's
    default branch), the Module (into `main` of the new `<Org>/<slug>`) and
    the data (into `v3` of `<Org>/<slug>-data`). For each target read the
-   approvals it requires and who may give them:
+   approvals it requires and who may give them. First the Organization's
+   GitHub plan (`gh api orgs/<Org> --jq .plan.name`): on `free`, private
+   repositories have no rulesets and no branch protection, and GitHub
+   answers a ruleset question with 403 "Upgrade to GitHub Team…". That is
+   no missing right: the private Module and data repository then require
+   no approval, and the root requires one only when it is public and its
+   rules say so. Then the rules themselves:
 
    ```bash
    # the root's default branch: rulesets and classic branch protection
@@ -103,9 +112,11 @@ Do all of this live, before showing a plan.
    not at the third pull request, and ask whom to ask; when the Organization
    has no one, the pull request waits until it adds someone. When a target's
    requirement cannot be established yet (a ruleset whose conditions you
-   cannot match with certainty, rules you cannot read), say exactly that in
-   the plan and read the rules again once the repository exists, before
-   asking the person to merge. Never promise a reviewer you have not found,
+   cannot match with certainty, a 403 or 404 that names missing rights, not
+   an upgrade), say exactly that in the plan and read the rules again once
+   the repository exists, before asking the person to merge. Never open an
+   issue or a request about rules you could not read; the plan is where it
+   is said. Never promise a reviewer you have not found,
    and never propose a bypass, an exception in the rules or merging without
    the review.
 
@@ -195,9 +206,10 @@ set the Organization's identity:
   and run `bun install` (commit `bun.lock`); otherwise keep
   `github:LazurioTemplates/design-system#v2.0.0` and tell the person their
   quotes print in the example brand until they have their own. A private
-  design system cannot be installed by the Module's CI yet
-  (Lazurio/LazurioPlatform#915): say so in the pull request, and run
-  `bun run check` on the Environment. Both pins pass the Module's tests
+  design system may not install in the Module's CI
+  (Lazurio/LazurioPlatform#915): when the CI fails at `bun install` for
+  it, say so in the pull request and run `bun run check` on the
+  Environment; when it installs, nothing more is needed. Both pins pass the Module's tests
   (`tests/design-system.test.ts`) as long as they name a released tag
   `v<major>.<minor>.<patch>` and `bun.lock` matches it;
 - keep `LICENSE` and `NOTICE.md`: MIT requires the notices.
@@ -255,5 +267,7 @@ In a worktree of `<Org>/<slug>-data`, on a branch from `v3`:
 
 Tell the person, with links: the root pull request (slots), the Module pull
 request, the data pull request, what each waits for and who decides it, the
+last step that stays open until they do it, the access of Teams in Přehled
+Organizace (section 6), the
 Organization's details still left as placeholders, and any request prepared
 for someone with more rights.

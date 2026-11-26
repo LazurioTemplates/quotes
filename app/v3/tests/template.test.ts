@@ -34,6 +34,13 @@ describe("module contract", () => {
     expect(guide).toContain("gh api --paginate orgs/<Org>/teams");
     expect(guide).toContain("`v3` of `<Org>/<slug>-data`");
     expect(guide).toContain("cannot be established yet");
+    // From the trial in the example Organization: a free plan is no missing
+    // right, no issue about unread rules, the default Team first, and the
+    // access of Teams named in the handoff.
+    expect(guide).toContain("Upgrade to GitHub Team");
+    expect(guide).toContain("Never open an\n   issue or a request about rules you could not read");
+    expect(guide).toContain('`"default": true`');
+    expect(guide).toMatch(/## Handoff[\s\S]*access of Teams in Přehled\nOrganizace/);
     expect(guide).toContain("**Who approves the pull requests.**");
     expect(guide).toContain("never propose a bypass");
   });

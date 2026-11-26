@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### For whoever adopts it
+
+From the first adoption tried end to end, in an example Organization:
+
+- **A free plan is no missing right.** On GitHub Free, private repositories
+  have no rulesets or branch protection and GitHub answers 403 "Upgrade to
+  GitHub Team"; the adoption now reads the plan first and tells the person
+  the private Module and data need no approval, instead of calling it a
+  missing right. It never opens an issue about rules it could not read.
+- **The default Team first.** It recommends the Team the root marks as
+  default and says what a Team is here.
+- **A private design system** may install in the Module's CI after all; the
+  guide no longer says it cannot.
+- **The last step in the handoff.** The access of Teams in Přehled
+  Organizace is named as the step that stays open.
+
 ## 0.3.1 — 2026-11-25
 
 ### For whoever adopts it
