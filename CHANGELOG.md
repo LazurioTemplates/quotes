@@ -6,11 +6,15 @@
 
 From the first adoption tried end to end, in an example Organization:
 
-- **A free plan is no missing right.** On GitHub Free, private repositories
-  have no rulesets or branch protection and GitHub answers 403 "Upgrade to
-  GitHub Team"; the adoption now reads the plan first and tells the person
-  the private Module and data need no approval, instead of calling it a
-  missing right. It never opens an issue about rules it could not read.
+- **What GitHub enforces, and what the Organization requires.** On GitHub
+  Free, private repositories have no rulesets or branch protection and
+  GitHub answers 403 "Upgrade to GitHub Team"; the adoption now reads the
+  plan first and no longer takes that for a missing right. It reports per
+  pull request what GitHub enforces and, separately, what the
+  Organization's own working rules require, since a review agreed there
+  holds where GitHub enforces nothing. Where missing rights keep it from the
+  rules, it prepares a request to someone who has them, and never invents
+  the rules.
 - **The default Team first.** It recommends the Team the root marks as
   default and says what a Team is here.
 - **A private design system** may install in the Module's CI after all; the

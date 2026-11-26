@@ -76,13 +76,17 @@ Do all of this live, before showing a plan.
    requests and the person merges them: the root's slot (into the root's
    default branch), the Module (into `main` of the new `<Org>/<slug>`) and
    the data (into `v3` of `<Org>/<slug>-data`). For each target read the
-   approvals it requires and who may give them. First the Organization's
+   approvals it requires and who may give them. Two things answer that,
+   and the plan names both: what GitHub enforces, and what the
+   Organization's own working rules require (its root's `AGENTS.md`,
+   `CONTRIBUTING.md`, `CODEOWNERS` and any review procedure they point to),
+   which hold even where GitHub enforces nothing. First the Organization's
    GitHub plan (`gh api orgs/<Org> --jq .plan.name`): on `free`, private
    repositories have no rulesets and no branch protection, and GitHub
    answers a ruleset question with 403 "Upgrade to GitHub Team…". That is
-   no missing right: the private Module and data repository then require
-   no approval, and the root requires one only when it is public and its
-   rules say so. Then the rules themselves:
+   no missing right and it settles only that GitHub enforces no approval
+   there; whether a review is still required comes from the working rules.
+   Then the rules GitHub enforces:
 
    ```bash
    # the root's default branch: rulesets and classic branch protection
@@ -106,7 +110,8 @@ Do all of this live, before showing a plan.
    repositories' possible reviewers are the Organization's Owners and the
    members of the Teams chosen in step 1.5.
 
-   In the plan, say per target what it requires and who could approve.
+   In the plan, say per target what GitHub enforces, what the
+   Organization's working rules require, and who could approve.
    When the person is the only one who could (the Organization's only Owner,
    no other member with write access or among the code owners), say so now,
    not at the third pull request, and ask whom to ask; when the Organization
@@ -114,9 +119,11 @@ Do all of this live, before showing a plan.
    requirement cannot be established yet (a ruleset whose conditions you
    cannot match with certainty, a 403 or 404 that names missing rights, not
    an upgrade), say exactly that in the plan and read the rules again once
-   the repository exists, before asking the person to merge. Never open an
-   issue or a request about rules you could not read; the plan is where it
-   is said. Never promise a reviewer you have not found,
+   the repository exists, before asking the person to merge. Where missing
+   rights keep you from the rules, prepare a request to someone who has
+   them (an Owner) for the access or an authoritative answer, as for every
+   right that does not reach; never invent the rules you could not read.
+   A free plan's 403 is no such case and needs no request. Never promise a reviewer you have not found,
    and never propose a bypass, an exception in the rules or merging without
    the review.
 
